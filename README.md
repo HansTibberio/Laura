@@ -12,5 +12,5 @@
 
 ⚠️ **This project is in development**. We are currently working on the core functionality of the engine and its integration with various user interfaces.
 
-[license-link]:https://github.com/hanstibberio/Laura/blob/main/LICENSE
+[license-link]:https://github.com/hanstibberio/Laura/blob/master/LICENSE
 [license-badge]:https://img.shields.io/github/license/hanstibberio/laura?style=for-the-badge&label=license&color=success
