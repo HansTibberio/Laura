@@ -1,4 +1,4 @@
-# Laura Chess Engine
+# Laura
 
 **Laura** is a chess engine currently under development, designed to be efficient and flexible. The goal of this project is to create an engine that can play competitive chess games, with support for analyzing positions and moves.
 
