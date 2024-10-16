@@ -1,5 +1,7 @@
 <div align="center">
+
   ![logo](logo.png)
+  
 </div>
 
 # <div align="center"> Laura </div>
