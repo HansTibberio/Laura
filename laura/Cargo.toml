@@ -1,0 +1,25 @@
+[package]
+name = "laura"
+version = "0.1.0"
+edition = "2021"
+authors = ["HansTibberio <hanstiberio@proton.me>"]
+description = "A WIP chess engine in Rust."
+license = "GPL-3.0"
+readme = "README.md"
+keywords = ["chess"]
+categories = ["games"]
+
+include = ["src/*", "cargo.toml",]
+
+[lib]
+name = "laura"
+bench = true
+path = "src/lib.rs"
+doctest = true
+
+[dependencies]
+
+[profile.release]
+opt-level = 2
+lto = "fat"
+codegen-units = 1

@@ -1,0 +1,8 @@
+[workspace]
+members = ["laura", "laura_engine"]
+default-members = ["laura", "laura_engine"]
+
+[profile.release]
+opt-level = 2
+lto = "fat"
+codegen-units = 1
