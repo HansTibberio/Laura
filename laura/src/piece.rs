@@ -93,7 +93,7 @@ impl Piece {
     /// Returns the corresponding character for the `Piece`.
     /// Uppercase for white pieces, lowercase for black pieces.
     #[inline]
-    pub const  fn to_char(&self) -> char {
+    pub const fn to_char(&self) -> char {
         match self {
             Self::WP => 'P',
             Self::WN => 'N',
