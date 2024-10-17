@@ -8,9 +8,9 @@ use crate::square::Square;
 /// Represents a chess move using a 16-bit integer.
 /// The move encodes the source square, destination square, move type, and any promotion.
 /// 
-///     000000_000000_111111    Source
-///     000000_111111_000000    Destination
-///     111111_000000_000000    Move Type
+///     0000 0000 0011 1111    source        0x003F
+///     0000 1111 1100 0000    destination   0x0FC0
+///     1111 0000 0000 0000    MoveType      0xF000
 /// 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Default, Hash)]
 pub struct Move(pub u16);
@@ -62,9 +62,25 @@ pub enum MoveType {
 
 impl Move {
     /// Represents a null move (an invalid or empty move).
-    pub const NULL: Self = Self(0);
+    #[inline]
+    pub const fn null() -> Self {
+        Self(0)
+    }
+
+    /// Returns `true` if the move is a null move.
+    #[inline]
+    pub const fn is_null(self) -> bool {
+        self.0 == 0
+    }
 
     /// Creates a new move given the source and destination squares, and the move type.
+    /// ### Example
+    /// ```
+    /// let mv = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
+    /// assert_eq!(mv.get_src(), Square::E2);
+    /// assert_eq!(mv.get_dest(), Square::E4);
+    /// assert_eq!(mv.get_type(), MoveType::DoublePawn);
+    /// ```
     #[inline]
     pub const fn new(src: Square, dest: Square, move_type: MoveType) -> Self {
         Self((move_type as u16) << 12 | (dest as u16) << 6 | (src as u16))
@@ -125,6 +141,13 @@ impl Move {
         self.0 >> 12
     }
 
+}
+
+#[test]
+fn null_move() {
+    let mv: Move = Move::null();
+
+    assert_eq!(mv.is_null(), true);
 }
 
 #[test]
