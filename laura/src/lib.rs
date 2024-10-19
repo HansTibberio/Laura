@@ -8,3 +8,4 @@ pub mod moves;
 pub mod move_list;
 pub mod bitboard;
 pub mod macros;
+pub mod castle_rights;

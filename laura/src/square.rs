@@ -1,6 +1,7 @@
 use std::mem::transmute;
 use std::str::FromStr;
 
+use crate::bitboard::BitBoard;
 use crate::color::Color;
 use crate::file::File;
 use crate::rank::Rank;
@@ -69,6 +70,12 @@ impl Square {
     #[inline]
     pub const fn to_index(self) -> usize {
         self as usize
+    }
+
+    /// Convert a `Square` to `Bitboard`
+    #[inline]
+    pub const fn to_bitboard(self) -> BitBoard {
+        BitBoard(1u64 << self.to_index())
     }
 
     /// Get the rank (row) of the square.
@@ -147,4 +154,11 @@ fn test() {
     println!("Square: {}, File: {}, Rank: {}, Index: {}", square, square.file(), square.rank(), square.to_index());
     println!("Up: {}, Down: {}, Left: {}, Right: {}", square.up(), square.down(), square.left(), square.right());
     println!("Forward: {}, Backward: {}", square.forward(Color::White), square.backward(Color::White));
+}
+
+#[test]
+fn c6_square_to_bitboard(){
+    let square = Square::from_index(42);
+    assert_eq!(square, Square::C6);
+    println!("{}", square.to_bitboard())
 }

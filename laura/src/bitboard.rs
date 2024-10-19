@@ -40,8 +40,12 @@ const FULL: u64 = 0xFFFF_FFFF_FFFF_FFFF;
 /// A `BitBoard` represents a 64-bit chessboard where each bit corresponds to a square.
 /// It is useful for efficiently representing and manipulating chess positions.
 /// 
+/// The bitboard follows the Little-Endian Rank-File (LERF) notation. 
+/// In this system, the least significant bit (LSB) represents the bottom-left corner of the chessboard, 
+/// while the most significant bit (MSB) represents the top-right corner.
+/// 
 ///  ```md,ignore
-///8 | 56 57 58 59 60 61 62 63
+/// 8 | 56 57 58 59 60 61 62 63
 /// 7 | 48 49 50 51 52 53 54 55
 /// 6 | 40 41 42 43 44 45 46 47
 /// 5 | 32 33 34 35 36 37 38 39
