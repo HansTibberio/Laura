@@ -1,12 +1,10 @@
 use crate::moves::Move;
 
-#[cfg(target_pointer_width = "128")]
-pub const MAX_MOVES: usize = 248;
 #[cfg(target_pointer_width = "64")]
 pub const MAX_MOVES: usize = 252;
 #[cfg(target_pointer_width = "32")]
 pub const MAX_MOVES: usize = 254;
-#[cfg(any(target_pointer_width = "16", target_pointer_width = "8",))]
+#[cfg(target_pointer_width = "16")]
 pub const MAX_MOVES: usize = 255;
 
 /// A struct that holds a list of `Move` objects for a given position in a chess game.

@@ -1,6 +1,6 @@
 [workspace]
-members = ["laura", "laura_engine"]
-default-members = ["laura", "laura_engine"]
+members = ["laura_core", "laura_engine"]
+default-members = ["laura_core", "laura_engine"]
 
 [profile.release]
 opt-level = 2
