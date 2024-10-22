@@ -62,7 +62,7 @@ pub enum MoveType {
 
 impl Move {
     /// Represents a null move (an invalid or empty move).
-    #[inline]
+    #[inline(always)]
     pub const fn null() -> Self {
         Self(0)
     }

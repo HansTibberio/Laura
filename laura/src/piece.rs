@@ -61,6 +61,9 @@ pub const PROM_PIECES: [[Piece; 4]; 2] = [
 
 impl Piece {
 
+    /// Total number of pieces on chess (6x2 = 12).
+    pub const NUM_PIECES: usize = 12;
+
     /// Creates a new `Piece` given a `PieceType` and a `Color`.
     /// The piece is determined by the combination of the piece type and the color.
     #[inline]
