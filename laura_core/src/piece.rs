@@ -155,7 +155,7 @@ fn test(){
 
 #[test]
 fn test_from(){
-    let char: char = 'N';
-    let piece: Piece = Piece::try_from(char).unwrap();
+    let c: char = 'N';
+    let piece: Piece = Piece::try_from(c).unwrap();
     println!("Char: '{}' Color: {}, Type: {}", piece, piece.color(), piece.piece_type());
 }

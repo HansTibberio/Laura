@@ -11,3 +11,4 @@ pub mod macros;
 pub mod castle_rights;
 pub mod zobrist;
 pub mod gen;
+pub mod board;

@@ -28,12 +28,12 @@ impl FromStr for Square {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 2 { return Err("Invalid square!"); };
+        if s.len() != 2 { return Err("Invalid Square!"); };
 
         let index: usize = Self::SQUARE_NAMES
             .iter()
             .position(|&tgt| tgt == s)
-            .ok_or("Invalid square name!")?;
+            .ok_or("Invalid Square Name!")?;
 
         Ok(Square::from_index(index))
     }
