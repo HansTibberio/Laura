@@ -53,6 +53,30 @@ impl fmt::Display for Piece {
     }
 }
 
+/// Attempt to convert a character into a `Piece`.
+/// Returns an error if the character does not correspond to a valid chess piece.
+impl TryFrom<char> for Piece {
+    type Error = &'static str;
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        match c {
+            'P' => Ok(Piece::WP),
+            'N' => Ok(Piece::WN),
+            'B' => Ok(Piece::WB),
+            'R' => Ok(Piece::WR),
+            'Q' => Ok(Piece::WQ),
+            'K' => Ok(Piece::WK),
+            'p' => Ok(Piece::BP),
+            'n' => Ok(Piece::BN),
+            'b' => Ok(Piece::BB),
+            'r' => Ok(Piece::BR),
+            'q' => Ok(Piece::BQ),
+            'k' => Ok(Piece::BK),
+            _ => Err("Invalid character for chess piece"),
+        }
+    }
+}
+
 /// A 2D array representing the pieces available for promotion in chess.
 pub const PROM_PIECES: [[Piece; 4]; 2] = [
             [Piece::WN, Piece::WB, Piece::WR, Piece::WQ],
@@ -121,10 +145,17 @@ impl Piece {
 }
 
 #[test]
-fn test() {
+fn test(){
     let piece: Piece = Piece::new(PieceType::King, Color::White);
     println!("Char: '{}' Color: {}, Type: {}", piece, piece.color(), piece.piece_type());
 
     let piece: Option<Piece> = Piece::from_index(12);
     println!("{:?}", piece);
+}
+
+#[test]
+fn test_from(){
+    let char: char = 'N';
+    let piece: Piece = Piece::try_from(char).unwrap();
+    println!("Char: '{}' Color: {}, Type: {}", piece, piece.color(), piece.piece_type());
 }
