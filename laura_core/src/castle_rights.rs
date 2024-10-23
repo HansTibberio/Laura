@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 use crate::color::Color;
 use crate::square::Square;
@@ -12,6 +13,34 @@ use crate::file::File;
 /// 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 pub struct CastleRights(u8);
+
+/// Implement the `FromStr` trait for `CastleRights`.
+/// This allows parsing a string into a `CastleRights` object.
+impl FromStr for CastleRights {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut rights:u8 = 0;
+        
+        for ch in s.chars() {
+            match ch {
+                'K' => rights |= CASTLE_WK_MASK,
+                'Q' => rights |= CASTLE_WQ_MASK,
+                'k' => rights |= CASTLE_BK_MASK,
+                'q' => rights |= CASTLE_BQ_MASK,
+                '-' => {
+                    if s.len() != 1 {
+                        return Err("Invalid format for castling rights");
+                    }
+                    rights = 0;
+                },
+                _ => return Err("Invalid character in castling rights"),
+            }
+        }
+
+        Ok(CastleRights(rights))
+    }
+}
 
 /// Implements the `fmt::Display` trait for the `CastleRights` struct,
 /// allowing castling rights to be displayed as a string.
@@ -148,4 +177,14 @@ fn castling_test(){
 fn rook_castling_test(){
     let mv: (Square, Square) = get_rook_castling(Square::C1);
     println!("{:?}", mv);
+}
+
+#[test]
+fn test_from_string(){
+    let castle_rights: CastleRights = CastleRights::from_str("Kk").unwrap();
+    assert_eq!(castle_rights.has_kingside(Color::White), true);
+    assert_eq!(castle_rights.has_queenside(Color::White), false);
+    assert_eq!(castle_rights.has_kingside(Color::Black), true);
+    assert_eq!(castle_rights.has_queenside(Color::Black), false);
+    println!("{}", castle_rights);
 }
