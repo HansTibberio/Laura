@@ -96,7 +96,13 @@ impl Piece {
         unsafe { std::mem::transmute(index) }
     }
 
-     /// Converts a usize index to a `Piece`, if the index is valid (less than 12).
+    /// Returns the index of the `Piece` as a usize.
+    #[inline]
+    pub const fn to_index(self) -> usize {
+        self as usize
+    }
+
+    /// Converts a usize index to a `Piece`, if the index is valid (less than 12).
     #[inline]
     pub const fn from_index(index: usize) -> Option<Self> {
         if index < 12 {

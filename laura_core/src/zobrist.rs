@@ -60,7 +60,7 @@ impl Zobrist {
     /// a precomputed key for the given piece and square.
     #[inline(always)]
     pub fn hash_piece(&mut self, piece: Piece, square: Square) {
-        self.0 ^= KEY_PIECE_SQUARE[piece as usize][square.to_index()]
+        self.0 ^= KEY_PIECE_SQUARE[piece.to_index()][square.to_index()]
     }
 
     /// Updates the Zobrist hash to reflect the en passant square. The hash is
