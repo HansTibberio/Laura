@@ -1,4 +1,6 @@
 
+use std::fmt;
+
 use crate::castle_rights::CastleRights;
 use crate::piece::Piece;
 use crate::square::Square;
@@ -47,6 +49,17 @@ pub const KEY_SIDE: u64 = 5862962466813393681;
 #[derive(PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Default, Hash)]
 pub struct Zobrist(pub u64);
 
+/// Formats the `Zobrist` hash as a hexadecimal string.
+///
+/// This implementation converts the 64-bit internal value into a
+/// fixed-length hexadecimal string (16 characters), with leading zeros
+/// if necessary.
+impl fmt::Display for Zobrist {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:016x}", self.0)
+    }
+}
+
 impl Zobrist {
     
     /// Creates a `Zobrist` instance with a hash value of zero.
@@ -87,4 +100,10 @@ impl Zobrist {
     }
 
 
+}
+
+#[test]
+fn test_zobrist(){
+    let zobrist: Zobrist = Zobrist::null();
+    println!("{}", zobrist);
 }
