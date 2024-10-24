@@ -434,6 +434,33 @@ impl Board {
         // Return the updated board
         board
     }
+
+    /// Executes a null move, switching the turn to the opponent without making any actual moves.
+    /// 
+    /// This function is useful for certain algorithms where you want to evaluate a position
+    /// as if the current player passed their turn. It asserts that the current player is not in check
+    /// before performing the null move. The function will reset the en passant square and clear any checkers
+    /// on the board.
+    /// 
+    /// ### Panics
+    /// This function will panic if the current player's checkers are not empty, indicating that the
+    /// game state is invalid for performing a null move.
+    pub fn null_move(&self) -> Board {
+        assert!(self.checkers.is_empty());
+
+        let mut board: Board = self.clone();
+        board.side = !self.side;
+        board.zobrist.hash_side();
+
+        board.enpassant_square = None;
+        if let Some(square) = self.enpassant_square {
+            board.zobrist.hash_enpassant(square);
+        }
+
+        board.checkers = BitBoard::EMPTY;
+
+        board
+    }
 }
 
 #[test]

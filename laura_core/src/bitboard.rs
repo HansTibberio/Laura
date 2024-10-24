@@ -179,6 +179,15 @@ impl BitBoard {
     pub const fn flip(self) -> Self {
         Self(self.0.swap_bytes())
     }
+
+    /// Checks if the bitboard is empty.
+    ///
+    /// An empty bitboard means that there are no pieces present (all bits are 0).
+    /// Returns `true` if the bitboard is empty, otherwise `false`.
+    #[inline]
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
 }
 
 #[test]
