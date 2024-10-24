@@ -151,7 +151,7 @@ impl CastleRights {
             NOT_BQ_RIGHTS, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, NOT_BLACK_RIGHTS, ALL_CASTLE, ALL_CASTLE, NOT_BK_RIGHTS
         ];
 
-        let updated: u8 = self.0 & CASTLE_RIGHTS_MASK[src as usize] & CASTLE_RIGHTS_MASK[dest as usize];
+        let updated: u8 = self.0 & CASTLE_RIGHTS_MASK[src.to_index()] & CASTLE_RIGHTS_MASK[dest.to_index()];
         CastleRights(updated)
     }
 }

@@ -73,7 +73,7 @@ impl Zobrist {
     /// a precomputed key for the given piece and square.
     #[inline(always)]
     pub fn hash_piece(&mut self, piece: Piece, square: Square) {
-        self.0 ^= KEY_PIECE_SQUARE[piece.to_index()][square.to_index()]
+        self.0 ^= KEY_PIECE_SQUARE[piece.to_index()][square.to_index()];
     }
 
     /// Updates the Zobrist hash to reflect the en passant square. The hash is
@@ -81,7 +81,7 @@ impl Zobrist {
     /// en passant square.
     #[inline(always)]
     pub fn hash_enpassant(&mut self, square: Square) {
-        self.0 ^= KEY_ENPASSANT[square.to_index()]
+        self.0 ^= KEY_ENPASSANT[square.to_index()];
     }
 
     /// Updates the Zobrist hash to reflect changes in the castling rights. The
@@ -89,14 +89,26 @@ impl Zobrist {
     /// the current castling rights.
     #[inline(always)]
     pub fn hash_castle(&mut self, castle: CastleRights) {
-        self.0 ^= KEY_CASTLE[castle.to_index()]
+        self.0 ^= KEY_CASTLE[castle.to_index()];
+    }
+
+    /// Updates the Zobrist hash by swapping the old castling rights with the new ones.
+    ///
+    /// This function XORs the hash with the Zobrist key corresponding to the old castling rights
+    /// to remove their contribution from the current hash, and then XORs it again with the Zobrist 
+    /// key for the new castling rights to add their contribution. This ensures that the hash
+    /// accurately reflects the current castling rights of the position.
+    #[inline(always)]
+    pub fn swap_castle_hash(&mut self, old: CastleRights, new: CastleRights) {
+        self.0 ^= KEY_CASTLE[old.to_index()];
+        self.0 ^= KEY_CASTLE[new.to_index()];
     }
 
     /// Updates the Zobrist hash to reflect a change in the side to move. The hash
     /// is updated by XOR-ing the current value with a predefined key for the side.
     #[inline(always)]
     pub fn hash_side(&mut self) {
-        self.0 ^= KEY_SIDE
+        self.0 ^= KEY_SIDE;
     }
 
 

@@ -3,9 +3,9 @@ use std::str::FromStr;
 use std::fmt;
 
 use crate::bitboard::BitBoard;
-use crate::castle_rights::CastleRights;
+use crate::castle_rights::{get_rook_castling, CastleRights};
 use crate::moves::{Move, MoveType};
-use crate::piece::Piece;
+use crate::piece::{Piece, PieceType};
 use crate::color::Color;
 use crate::file::File;
 use crate::rank::Rank;
@@ -15,7 +15,7 @@ use crate::zobrist::Zobrist;
 /// Represents a chess board, with bitboards for tracking piece positions,
 /// castling rights, en passant squares, the fifty-move rule counter, and
 /// Zobrist hashing for fast state comparison.
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Board {
     /// Array of bitboards, one for each type of piece. Each bitboard tracks
     /// the positions of that specific piece type on the board.
@@ -197,6 +197,25 @@ impl Default for Board {
 }
 
 impl Board {
+
+    /// Creates a new empty board with no pieces. The bitboards are initialized as empty,
+    /// and castling rights, en passant square, and other attributes are set to their
+    /// default (empty or zero) values.
+    pub const fn new() -> Self {
+        Self {
+            pieces_bitboard: [BitBoard::EMPTY; Piece::NUM_PIECES],
+            sides_bitboard: [BitBoard::EMPTY; 2],
+            piece_map: [None; Square::NUM_SQUARES],
+            enpassant_square: None,
+            castling: CastleRights::null(),
+            fifty_move: 0,
+            ply: 0,
+            zobrist: Zobrist::null(),
+            side: Color::White,
+            checkers: BitBoard::EMPTY,
+        }
+    }
+
     /// Converts the current board state into a FEN (Forsyth-Edwards Notation) string.
     ///
     /// FEN is a standard notation for describing a particular board position of a chess game. 
@@ -239,37 +258,17 @@ impl Board {
         fen.push(' ');
 
         fen.push_str(&self.castling.to_string());
+        fen.push(' ');
 
         if let Some(enpassant_square) = self.enpassant_square {
             fen.push_str(&enpassant_square.to_string());
         } else {
-            fen.push_str(" -");
+            fen.push('-');
         }
 
         fen.push_str(&format!(" {} {}", self.fifty_move, self.ply));
 
         fen
-    }
-}
-
-impl Board {
-
-    /// Creates a new empty board with no pieces. The bitboards are initialized as empty,
-    /// and castling rights, en passant square, and other attributes are set to their
-    /// default (empty or zero) values.
-    pub const fn new() -> Self {
-        Self {
-            pieces_bitboard: [BitBoard::EMPTY; Piece::NUM_PIECES],
-            sides_bitboard: [BitBoard::EMPTY; 2],
-            piece_map: [None; Square::NUM_SQUARES],
-            enpassant_square: None,
-            castling: CastleRights::null(),
-            fifty_move: 0,
-            ply: 0,
-            zobrist: Zobrist::null(),
-            side: Color::White,
-            checkers: BitBoard::EMPTY,
-        }
     }
 
     /// Sets a piece on the board at a given square and updates the corresponding bitboards
@@ -355,6 +354,86 @@ impl Board {
     pub fn checkers(&self) -> BitBoard {
         BitBoard::EMPTY
     }
+
+    /// Executes a move on the chessboard, updating the board state, castling rights, 
+    /// en passant square, fifty-move rule counter, and Zobrist hash accordingly.
+    ///
+    /// This function clones the current board state, applies the given move, 
+    /// and returns the resulting board. The move can include special cases such as captures, 
+    /// pawn promotions, castling, and en passant captures.
+    /// 
+    /// ### Panics
+    /// The function will panic if the source and destination squares of the move are the same.
+    pub fn make_move(&self, mv: Move) -> Board {
+        let mut board: Board = self.clone();
+        
+        // Ensure the source and destination squares are different.
+        assert_ne!(mv.get_src(), mv.get_dest());
+
+        let src: Square = mv.get_src();
+        let dest: Square = mv.get_dest();
+        let piece: Piece = self.piece_on(src);
+        let piece_type = piece.piece_type();
+        let move_type: MoveType = mv.get_type();
+        let is_capture: bool = mv.is_capture();
+
+        // Remove the piece from its source square
+        board.remove_piece(src);
+
+        // Update fifty-move rule counter
+        board.fifty_move = if is_capture || piece_type == PieceType::Pawn { 0 } else { board.fifty_move + 1 };
+
+        // Handle special move types (En Passant, Castling, Captures)
+        match move_type {
+            MoveType::EnPassant => {
+                board.remove_piece(dest.forward(!self.side));
+            },
+            MoveType::KingCastle | MoveType::QueenCastle => {
+                let rook: Piece = Piece::new(PieceType::Rook, self.side);
+                let (rook_src, rook_dest) = get_rook_castling(dest);
+                board.remove_piece(rook_src);
+                board.set_piece(rook, rook_dest);
+            },
+            _ if is_capture => {
+                board.remove_piece(dest);
+            },
+            _ => {},
+        }
+
+        // Handle promotions or move the piece to its destination
+        if mv.is_promotion() {
+            board.set_piece(mv.get_prom(self.side), dest);
+        } else {
+            board.set_piece(piece, dest);
+        }
+
+        // Update en passant square and Zobrist hash
+        if let Some(square) = self.enpassant_square {
+            board.enpassant_square = None;
+            board.zobrist.hash_enpassant(square);
+        }
+
+        if move_type == MoveType::DoublePawn {
+            let enpassant_target = src.forward(self.side);
+            board.enpassant_square = Some(enpassant_target);
+            board.zobrist.hash_enpassant(enpassant_target);
+        }
+
+        // Update castling rights and Zobrist hash
+        let new_castling_rights: CastleRights = self.castling.update(src, dest);
+        board.castling = new_castling_rights;
+        board.zobrist.swap_castle_hash(self.castling, new_castling_rights);
+
+        // Toggle side to move and update Zobrist hash
+        board.side = !self.side;
+        board.zobrist.hash_side();
+
+        // Recalculate checkers for the new board state
+        board.checkers = board.checkers();
+
+        // Return the updated board
+        board
+    }
 }
 
 #[test]
@@ -375,5 +454,19 @@ fn test_default(){
     let board: Board = Board::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
     let board_default: Board = Board::default();
     println!("{}", board);
-    assert_eq!(board.zobrist, board_default.zobrist);
+    assert_eq!(board, board_default);
+}
+
+#[test]
+fn test_move(){
+    let board: Board = Board::default();
+    let mv: Move = Move::new(Square::G1, Square::F3, MoveType::Quiet);
+    let board: Board = board.make_move(mv);
+    println!("{}", board);
+    let mv: Move = Move::new(Square::E7, Square::E6, MoveType::Quiet);
+    let board: Board = board.make_move(mv);
+    println!("{}", board);
+    let mv: Move = Move::new(Square::B1, Square::C3, MoveType::Quiet);
+    let board: Board = board.make_move(mv);
+    println!("{}", board);
 }
