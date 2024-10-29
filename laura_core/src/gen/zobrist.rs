@@ -13,7 +13,8 @@ use crate::square::Square;
 /// - A 1D array `KEY_ENPASSANT` that hashes en passant squares.
 /// - A 1D array `KEY_CASTLE` that hashes castling rights.
 /// - A single `u64` constant `KEY_SIDE` that hashes which side is to move.
-fn _generate_unique_u64_keys(seed: [u64; 4]) {
+#[allow(dead_code)]
+pub fn generate_unique_u64_keys(seed: [u64; 4]) {
     // Initialize the PRNG using the provided seed (A 4-element array of `u64` values).
     let mut prng: Xoshiro256PlusPlus = Xoshiro256PlusPlus::new(seed);
 
@@ -61,5 +62,5 @@ fn _generate_unique_u64_keys(seed: [u64; 4]) {
 #[test]
 fn generate_zobrist() {
     let seed: [u64; 4] = [0x1a2b3c4d5e6f7, 0x1122334455667788, 0x99aabbccddeeff00, 0x2233445566778899];
-    _generate_unique_u64_keys(seed);
+    generate_unique_u64_keys(seed);
 }
