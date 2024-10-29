@@ -1,8 +1,9 @@
 [workspace]
 members = ["laura_core", "laura_engine"]
 default-members = ["laura_core", "laura_engine"]
+resolver = "2"
 
 [profile.release]
-opt-level = 2
+opt-level = 3
 lto = "fat"
 codegen-units = 1
