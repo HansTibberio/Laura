@@ -44,3 +44,20 @@ impl_bitwise_op!(BitXor, bitxor);
 impl_bitwise_assign_op!(BitAndAssign, bitand_assign);
 impl_bitwise_assign_op!(BitOrAssign, bitor_assign);
 impl_bitwise_assign_op!(BitXorAssign, bitxor_assign);
+
+/// A macro to create a `MagicEntry` instance with the provided parameters.
+///
+/// This macro simplifies the initialization of `MagicEntry` structs by directly
+/// mapping the values to the struct's fields, which represent various components
+/// of the magic bitboard setup for chess engines or similar applications.
+#[macro_export]
+macro_rules! Magic {
+    ($mk: expr, $mg: expr, $s: expr, $o: expr) => {
+        MagicEntry {
+            mask: $mk,
+            magic: $mg,
+            shift: $s,
+            offset: $o,
+        }
+    };
+}
