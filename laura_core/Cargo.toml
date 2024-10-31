@@ -9,9 +9,8 @@ readme = "README.md"
 keywords = ["chess"]
 categories = ["games"]
 
-include = ["src/*", "cargo.toml",]
+include = ["src/*", "cargo.toml"]
 
 [lib]
 name = "laura_core"
 path = "src/lib.rs"
-
