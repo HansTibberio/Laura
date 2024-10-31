@@ -3,6 +3,7 @@ use crate::castle_rights::CastleRights;
 use crate::piece::Piece;
 use crate::square::Square;
 
+
 /// Generates unique `u64` keys for Zobrist hashing, using the Xoshiro256++
 /// pseudorandom number generator. These keys are used to hash different board states
 /// in a chess game, including piece positions, en passant squares, castling rights, and

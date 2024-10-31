@@ -4,9 +4,9 @@ use std::ops::Not;
 
 use crate::square::Square;
 
+
 // Constants representing various positions and sections of the chessboard as `u64` bitboards.
 // These constants use specific bit patterns to represent different files, ranks, and sides on the board.
-
 const WHITE_SIDE: u64 = 0x0000_0000_FFFF_FFFF;
 const BLACK_SIDE: u64 = 0xFFFF_FFFF_0000_0000;
 

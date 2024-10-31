@@ -1,6 +1,7 @@
 use std::mem::transmute;
 use std::fmt;
 
+
 /// Enum representing the files (columns) on a chessboard.
 /// Files are labeled from 'A' to 'H'.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]

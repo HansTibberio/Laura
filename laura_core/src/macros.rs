@@ -1,6 +1,8 @@
 use std::ops::{BitAnd, BitOr, BitXor};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
+
 use crate::bitboard::BitBoard;
+
 
 /// Macro to implement bitwise operators for a type.
 ///

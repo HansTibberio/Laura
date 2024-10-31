@@ -1,4 +1,3 @@
-
 pub mod piece;
 pub mod color;
 pub mod file;

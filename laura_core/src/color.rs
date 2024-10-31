@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::Not;
 
+
 /// Enum representing the color of a piece/player in a chess game.
 /// It can either be `White` or `Black`.
 #[repr(u8)]

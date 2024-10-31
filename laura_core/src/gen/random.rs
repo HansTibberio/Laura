@@ -1,4 +1,3 @@
-
 /// `Xoshiro256PlusPlus` is an implementation of the Xoshiro256++ pseudorandom number
 /// generator (PRNG). It uses a 256-bit state (represented by four `u64` values)
 /// and produces high-quality 64-bit pseudorandom numbers. This PRNG is known for

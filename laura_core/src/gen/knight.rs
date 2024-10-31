@@ -1,6 +1,8 @@
 use std::mem::transmute;
+
 use crate::bitboard::BitBoard;
 use crate::square::Square;
+
 
 /// Contains the movement deltas for a knight, relative to its current position.
 /// These deltas represent the possible knight moves in terms of changes in rank and file.

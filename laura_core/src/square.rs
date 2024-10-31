@@ -1,11 +1,12 @@
 use std::mem::transmute;
 use std::str::FromStr;
+use std::fmt;
 
 use crate::bitboard::BitBoard;
 use crate::color::Color;
 use crate::file::File;
 use crate::rank::Rank;
-use std::fmt;
+
 
 /// Enum representing each square on a chessboard, from A1 to H8.
 /// The squares are ordered by rank (rows) and file (columns), with A1 as the bottom-left and H8 as the top-right.

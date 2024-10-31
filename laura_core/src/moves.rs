@@ -5,6 +5,7 @@ use crate::color::Color;
 use crate::piece::{Piece, PROM_PIECES};
 use crate::square::Square;
 
+
 /// Represents a chess move using a 16-bit integer.
 /// The move encodes the source square, destination square, move type, and any promotion.
 /// 

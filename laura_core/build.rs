@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use build_dep::magics::*;
 use build_dep::types::BitBoard;
 
+
 /// Sets up a buffered writer for a given filename in the output directory specified by `OUT_DIR`.
 fn create_out_file(filename: &str) -> BufWriter<File> {
     let mut out_path: PathBuf = var("OUT_DIR").unwrap().into();

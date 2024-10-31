@@ -5,6 +5,7 @@ use std::mem::transmute;
 use super::types::Square;
 use super::types::BitBoard;
 
+
 /// A macro to create a `MagicEntry` instance with the provided parameters.
 ///
 /// This macro simplifies the initialization of `MagicEntry` structs by directly

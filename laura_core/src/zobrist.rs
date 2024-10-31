@@ -1,9 +1,9 @@
-
 use std::fmt;
 
 use crate::castle_rights::CastleRights;
 use crate::piece::Piece;
 use crate::square::Square;
+
 
 /// A 2D array containing Zobrist hash keys for each piece on every square.
 /// This is used to represent piece-square combinations in the hash calculation.

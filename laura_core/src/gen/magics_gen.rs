@@ -1,7 +1,9 @@
 use super::random::Xoshiro256PlusPlus;
 use super::sliders::Slider;
+
 use crate::bitboard::BitBoard;
 use crate::square::Square;
+
 
 /*  From:
 **  Magical Bitboards and How to Find Them: Sliding move generation in chess by Analog Hors

@@ -2,6 +2,7 @@ use crate::bitboard::BitBoard;
 use crate::square::Square;
 use crate::Magic;
 
+
 // Include precomputed attack and magic tables for rooks and bishops.
 // These tables are generated during the build process and stored in
 // the specified output directory.

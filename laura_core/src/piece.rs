@@ -1,5 +1,7 @@
-use crate::color::Color;
 use std::fmt;
+
+use crate::color::Color;
+
 
 /// Enum representing the different types of chess pieces.
 #[derive(PartialEq, Eq, Ord, PartialOrd, Copy, Clone, Debug, Hash)]

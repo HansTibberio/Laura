@@ -1,6 +1,8 @@
 use std::mem::transmute;
+
 use crate::bitboard::BitBoard;
 use crate::square::Square;
+
 
 /// The possible relative moves a king can make on a chessboard.
 /// Each tuple represents the change in rank (row) and file (column) for each direction the king can move.

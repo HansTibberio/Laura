@@ -1,6 +1,7 @@
 use std::mem::transmute;
 use std::fmt;
 
+
 /// Enum representing the ranks (rows) on a chessboard.
 /// Ranks are numbered from 'One' (1) to 'Eight' (8).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]

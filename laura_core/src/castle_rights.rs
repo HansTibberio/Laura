@@ -5,6 +5,7 @@ use crate::color::Color;
 use crate::square::Square;
 use crate::file::File;
 
+
 /// `CastleRights` represents the castling rights of both players (White and Black)
 /// using a bitmask stored in a `u8`. It tracks the availability of kingside and queenside
 /// castling rights for both sides.

@@ -3,6 +3,7 @@ use std::mem::transmute;
 use crate::bitboard::BitBoard;
 use crate::square::Square;
 
+
 /// Represents a sliding piece (like a rook or bishop) on a chessboard, which moves
 /// in specific directions defined by a set of delta pairs. Each delta pair defines
 /// a direction in which the piece can move.
