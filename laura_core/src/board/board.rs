@@ -18,7 +18,7 @@ use crate::zobrist::Zobrist;
 pub struct Board {
     /// Array of bitboards, one for each type of piece. Each bitboard tracks
     /// the positions of that specific piece type on the board.
-    pub pieces_bitboard: [BitBoard; Piece::NUM_PIECES],
+    pub pieces_bitboard: [BitBoard; Piece::COUNT],
 
     /// Bitboards for the sides: one for white pieces, one for black pieces.
     pub sides_bitboard: [BitBoard; 2],
@@ -202,7 +202,7 @@ impl Board {
     /// default (empty or zero) values.
     pub const fn new() -> Self {
         Self {
-            pieces_bitboard: [BitBoard::EMPTY; Piece::NUM_PIECES],
+            pieces_bitboard: [BitBoard::EMPTY; Piece::COUNT],
             sides_bitboard: [BitBoard::EMPTY; 2],
             piece_map: [None; Square::NUM_SQUARES],
             enpassant_square: None,
@@ -274,7 +274,7 @@ impl Board {
     /// and Zobrist hash. This method modifies both the specific piece bitboard and the
     /// side's bitboard (either White or Black).
     pub fn set_piece(&mut self, piece: Piece, square: Square) {
-        let index: usize = piece.to_index();
+        let index: usize = piece.piece_index();
         let color: usize = piece.color() as usize;
 
         self.pieces_bitboard[index] = self.pieces_bitboard[index].set_square(square);
@@ -287,8 +287,8 @@ impl Board {
     /// Zobrist hash.
     pub fn remove_piece(&mut self, square: Square) {
         let piece: Piece = self.piece_on(square);
-        let index = piece.to_index();
-        let color = piece.color() as usize;
+        let index: usize = piece.piece_index();
+        let color: usize = piece.color() as usize;
 
         self.pieces_bitboard[index] = self.pieces_bitboard[index].pop_square(square);
         self.sides_bitboard[color] = self.sides_bitboard[color].pop_square(square);
@@ -302,27 +302,6 @@ impl Board {
     #[inline]
     pub fn piece_on(&self, square: Square) -> Piece {
         self.piece_map[square.to_index()].unwrap()
-    }
-
-    /// Returns the bitboard representing all pieces for the white side.
-    #[inline(always)]
-    pub const fn white_bitboard(&self) -> BitBoard {
-        self.sides_bitboard[Color::White as usize]
-    }
-
-    /// Returns the bitboard representing all pieces for the black side.
-    #[inline(always)]
-    pub const fn black_bitboard(&self) -> BitBoard {
-        self.sides_bitboard[Color::Black as usize]
-    }
-
-    /// Returns a bitboard representing all pieces currently on the board for both sides.
-    /// 
-    /// This function combines the bitboards for both white and black pieces by performing
-    /// a bitwise OR operation.
-    #[inline(always)]
-    pub const fn combined_bitboard(&self) -> BitBoard {
-        BitBoard(self.white_bitboard().0 | self.black_bitboard().0)
     }
 
     /// Returns the side to move (white or black).
@@ -359,10 +338,7 @@ impl Board {
         self.ply
     }
 
-    /// Returns the bitboard representing the pieces that are checking the king.
-    pub fn checkers(&self) -> BitBoard {
-        BitBoard::EMPTY
-    }
+    
 
 }
 
