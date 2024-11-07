@@ -30,6 +30,17 @@ pub const PAWN_ATTACKS: [[BitBoard; 64]; 2] = [
     [BitBoard(0), BitBoard(0), BitBoard(0), BitBoard(0), BitBoard(0), BitBoard(0), BitBoard(0), BitBoard(0), BitBoard(2), BitBoard(5), BitBoard(10), BitBoard(20), BitBoard(40), BitBoard(80), BitBoard(160), BitBoard(64), BitBoard(512), BitBoard(1280), BitBoard(2560), BitBoard(5120), BitBoard(10240), BitBoard(20480), BitBoard(40960), BitBoard(16384), BitBoard(131072), BitBoard(327680), BitBoard(655360), BitBoard(1310720), BitBoard(2621440), BitBoard(5242880), BitBoard(10485760), BitBoard(4194304), BitBoard(33554432), BitBoard(83886080), BitBoard(167772160), BitBoard(335544320), BitBoard(671088640), BitBoard(1342177280), BitBoard(2684354560), BitBoard(1073741824), BitBoard(8589934592), BitBoard(21474836480), BitBoard(42949672960), BitBoard(85899345920), BitBoard(171798691840), BitBoard(343597383680), BitBoard(687194767360), BitBoard(274877906944), BitBoard(2199023255552), BitBoard(5497558138880), BitBoard(10995116277760), BitBoard(21990232555520), BitBoard(43980465111040), BitBoard(87960930222080), BitBoard(175921860444160), BitBoard(70368744177664), BitBoard(562949953421312), BitBoard(1407374883553280), BitBoard(2814749767106560), BitBoard(5629499534213120), BitBoard(11258999068426240), BitBoard(22517998136852480), BitBoard(45035996273704960), BitBoard(18014398509481984)]
 ];
 
+/// Retrieves the attack `BitBoard` for a pawn of the specified color from a given square.
+///
+/// This function returns a `BitBoard` that represents all possible attack
+/// squares for a pawn positioned on the given square, taking into account the
+/// pawn’s color (white or black). The attacks are precomputed and stored in
+/// the `PAWN_ATTACKS` array for fast access.
+#[inline(always)]
+pub const fn get_pawn_attacks(color: Color, square: Square) -> BitBoard {
+    PAWN_ATTACKS[color as usize][square.to_index()]
+}
+
 /// Generates the attack tables for both white and black pawns for all squares
 /// on the chessboard.
 ///
@@ -86,6 +97,14 @@ fn test_gen_attacks(){
     let square: usize = Square::D5.to_index();
     let color:Color = Color::Black;
     println!("Pawn attacks ({}) from D5: {}", color, pawn_attacks[color as usize][square]);
+}
+
+#[test]
+fn test_get_attacks(){
+    let square: Square = Square::E3;
+    let color:Color = Color::White;
+    let pawn_attack: BitBoard = get_pawn_attacks(color, square);
+    println!("Pawn attacks ({}) from E3: {}", color, pawn_attack);
 }
 
 #[test]
