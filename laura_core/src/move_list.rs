@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::moves::Move;
 
 #[cfg(target_pointer_width = "64")]
@@ -33,6 +35,25 @@ impl Default for MoveList {
             index: [Move::null(); MAX_MOVES],
             len: 0,
         }
+    }
+}
+
+/// Implements the `fmt::Display` trait for `MoveList`, enabling formatted output.
+///
+/// This implementation formats the `MoveList` for display, showing the total
+/// number of moves and listing each move sequentially. If the list is empty,
+/// it displays "MoveList: (0) []" to indicate no moves are present.
+impl fmt::Display for MoveList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.index.is_empty() {
+            return write!(f, "MoveList: (0) []");
+        }
+
+        writeln!(f, "MoveList ({} moves):", self.len)?;
+        for (index, mv) in self.index.iter().take(self.len).enumerate() {
+            writeln!(f, "{}: {}", index + 1, mv)?;
+        }
+        Ok(())
     }
 }
 
@@ -90,5 +111,6 @@ fn test_list(){
 
     list.push(Move::new(Square::E2, Square::E3, MoveType::Quiet));
     list.push(Move::new(Square::D7, Square::D5, MoveType::DoublePawn));
+    println!("{}", list);
     assert_eq!(list.len(), 2);
 }
