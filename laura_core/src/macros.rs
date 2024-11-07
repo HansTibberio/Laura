@@ -2,6 +2,7 @@ use std::ops::{BitAnd, BitOr, BitXor};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 
 use crate::bitboard::BitBoard;
+use crate::board::board::Board;
 
 
 /// Macro to implement bitwise operators for a type.
@@ -62,4 +63,45 @@ macro_rules! Magic {
             offset: $o,
         }
     };
+}
+
+/// Macro to implement board lookup functions for specific piece types.
+///
+/// This macro generates functions within the `Board` struct to retrieve bitboards
+/// representing the positions of allied, enemy, and all pieces of a specified type.
+/// Each piece type has three corresponding functions:
+/// - An `allied_fn` function to get positions of allied pieces of this type.
+/// - An `enemy_fn` function to get positions of enemy pieces of this type.
+/// - A `total_fn` function to get all positions of this piece type, regardless of side.
+macro_rules! impl_piece_lookups {
+    ($($piece_index:expr, $allied_fn:ident, $enemy_fn:ident, $total_fn:ident),*) => {
+        impl Board {
+            $(  
+                #[inline]
+                pub const fn $allied_fn(&self) -> BitBoard {
+                    BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize].0)
+                }
+                
+                #[inline]
+                pub const fn $enemy_fn(&self) -> BitBoard {
+                    BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize ^ 1].0)
+                }
+                
+                #[inline]
+                pub const fn $total_fn(&self) -> BitBoard {
+                    self.pieces_bitboard[$piece_index]
+                }
+            )*
+        }
+    };
+}
+
+// Implementing piece lookups
+impl_piece_lookups! {
+    0, allied_pawns, enemy_pawns, pawns,
+    1, allied_knights, enemy_knights, knights,
+    2, allied_bishops, enemy_bishops, bishops,
+    3, allied_rooks, enemy_rooks, rooks,
+    4, allied_queens, enemy_queens, queens,
+    5, allied_king, enemy_king, kings
 }
