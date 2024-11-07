@@ -87,25 +87,35 @@ pub const PROM_PIECES: [[Piece; 4]; 2] = [
 
 impl Piece {
 
+    pub const COUNT: usize = 6;
+
     /// Total number of pieces on chess (6x2 = 12).
     pub const NUM_PIECES: usize = 12;
 
     /// Creates a new `Piece` given a `PieceType` and a `Color`.
     /// The piece is determined by the combination of the piece type and the color.
-    #[inline]
+    #[inline(always)]
     pub const fn new(piece_type: PieceType, color: Color) -> Self {
         let index: u8 = color as u8 * 6 + piece_type as u8;
         unsafe { std::mem::transmute(index) }
     }
 
+    /// Returns the `PieceType` index of the `Piece` as a usize.
+    /// This index is used to identify the piece type within the range of 0-5.
+    #[inline(always)]
+    pub const fn piece_index(self) -> usize {
+        let index: u8 = self as u8 % 6;
+        index as usize
+    }
+
     /// Returns the index of the `Piece` as a usize.
-    #[inline]
+    #[inline(always)]
     pub const fn to_index(self) -> usize {
         self as usize
     }
 
     /// Converts a usize index to a `Piece`, if the index is valid (less than 12).
-    #[inline]
+    #[inline(always)]
     pub const fn from_index(index: usize) -> Option<Self> {
         if index < 12 {
         Some( unsafe { std::mem::transmute(index as u8 & 15) } )
@@ -115,7 +125,7 @@ impl Piece {
     }
 
     /// Returns the `Color` of the `Piece` (either `White` or `Black`).
-    #[inline]
+    #[inline(always)]
     pub const fn color(self) -> Color {
         if (self as u8) < 6 {
             Color::White
@@ -125,7 +135,7 @@ impl Piece {
     }
 
     /// Returns the `PieceType` of the `Piece` (e.g., Pawn, Knight, etc.).
-    #[inline]
+    #[inline(always)]
     pub const fn piece_type(self) -> PieceType {
         let index: u8 = self as u8 % 6;
         unsafe { PieceType::from_index_unchecked(index) }
@@ -166,4 +176,10 @@ fn test_from(){
     let c: char = 'N';
     let piece: Piece = Piece::try_from(c).unwrap();
     println!("Char: '{}' Color: {}, Type: {}", piece, piece.color(), piece.piece_type());
+}
+
+#[test]
+fn test_piece(){
+    let piece: usize = Piece::piece_index(Piece::WN);
+    println!("{}", piece)
 }
