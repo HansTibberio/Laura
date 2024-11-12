@@ -1,10 +1,9 @@
-use std::io::Write;
 use std::io::Result;
+use std::io::Write;
 use std::mem::transmute;
 
-use super::types::Square;
 use super::types::BitBoard;
-
+use super::types::Square;
 
 /// A macro to create a `MagicEntry` instance with the provided parameters.
 ///
@@ -225,10 +224,10 @@ fn moves(deltas: &[(i8, i8)], square: Square, blockers: BitBoard) -> BitBoard {
         let mut new_file: i8 = file + df;
 
         while (0..8).contains(&new_rank) && (0..8).contains(&new_file) {
-            let new_square: Square = Square::from_file_rank(
-                unsafe { transmute(new_file as u8) },
-                unsafe { transmute(new_rank as u8) },
-            );
+            let new_square: Square =
+                Square::from_file_rank(unsafe { transmute(new_file as u8) }, unsafe {
+                    transmute(new_rank as u8)
+                });
             let target_bitboard: BitBoard = new_square.to_bitboard();
             moves |= target_bitboard;
 
@@ -251,7 +250,11 @@ fn moves(deltas: &[(i8, i8)], square: Square, blockers: BitBoard) -> BitBoard {
 /// magic entries for each square. The resulting table is stored in a
 /// `Vec<BitBoard>`, where each entry is a precomputed `BitBoard` of moves
 /// for a given square/blocker configuration.
-pub fn make_table(size: usize, deltas: &[(i8, i8)], magics: &[MagicEntry; Square::NUM_SQUARES]) -> Vec<BitBoard> {
+pub fn make_table(
+    size: usize,
+    deltas: &[(i8, i8)],
+    magics: &[MagicEntry; Square::NUM_SQUARES],
+) -> Vec<BitBoard> {
     let mut table: Vec<BitBoard> = vec![BitBoard::EMPTY; size];
 
     for square_index in 0..Square::NUM_SQUARES {
@@ -290,18 +293,26 @@ pub fn write_table(name: &str, table: &[BitBoard], out: &mut impl Write) -> Resu
 }
 
 /// Writes a Rust array declaration for magic entries to the specified output writer.
-/// 
+///
 /// The function outputs a constant Rust array in source format, with each `MagicEntry`
 /// represented in hexadecimal format for readability and conciseness.
-pub fn write_magic(name: &str, magics: &[MagicEntry; Square::NUM_SQUARES], out: &mut impl Write) -> Result<()> {
-    write!(out, "const {}_MAGICS: [MagicEntry; Square::NUM_SQUARES] = [", name)?;
+pub fn write_magic(
+    name: &str,
+    magics: &[MagicEntry; Square::NUM_SQUARES],
+    out: &mut impl Write,
+) -> Result<()> {
+    write!(
+        out,
+        "const {}_MAGICS: [MagicEntry; Square::NUM_SQUARES] = [",
+        name
+    )?;
 
     for entry in magics {
         write!(
-            out, 
+            out,
             "Magic!(0x{:016X}, 0x{:016X}, {}, {}), ",
             entry.mask, entry.magic, entry.shift, entry.offset
-    )?;
+        )?;
     }
     write!(out, "];")?;
     Ok(())
