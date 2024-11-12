@@ -20,7 +20,7 @@ macro_rules! impl_bitwise_op {
                 Self(std::ops::$trait::$func(self.0, other.0))
             }
         }
-    }
+    };
 }
 
 /// Macro to implement bitwise assignment operators for a type.
@@ -30,7 +30,6 @@ macro_rules! impl_bitwise_op {
 macro_rules! impl_bitwise_assign_op {
     ($trait:ident, $func:ident) => {
         impl std::ops::$trait for BitBoard {
-
             fn $func(&mut self, other: Self) {
                 std::ops::$trait::$func(&mut self.0, other.0)
             }
@@ -85,6 +84,10 @@ impl std::fmt::Display for BitBoard {
 impl BitBoard {
     pub const EMPTY: BitBoard = BitBoard(0);
 
+    pub const fn set_square(self, square: Square) -> Self {
+        Self(self.0 | 1u64 << square.to_index())
+    }
+
     pub const fn get_square(self, square: Square) -> bool {
         self.0 & (1u64 << square.to_index()) != 0
     }
@@ -108,7 +111,7 @@ impl Square {
 
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
         let index: u8 = (rank as u8) << 3 ^ (file as u8);
-        unsafe { std::mem::transmute(index & 63) } 
+        unsafe { std::mem::transmute(index & 63) }
     }
 
     pub const fn from_index(index: usize) -> Self {
@@ -124,11 +127,11 @@ impl Square {
     }
 
     pub const fn rank(self) -> Rank {
-        unsafe { std::mem::transmute((self as u8 >> 3) & 7)}
+        unsafe { std::mem::transmute((self as u8 >> 3) & 7) }
     }
 
     pub const fn file(self) -> File {
-        unsafe { std::mem::transmute(self as u8 & 7)}
+        unsafe { std::mem::transmute(self as u8 & 7) }
     }
 }
 
@@ -137,7 +140,14 @@ impl Square {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum File {
-    A, B, C, D, E, F, G, H,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
 }
 
 /// Enum representing the ranks (rows) on a chessboard.
@@ -145,5 +155,12 @@ pub enum File {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum Rank {
-    One, Two, Three, Four, Five, Six, Seven, Eight,
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
 }
