@@ -1,9 +1,8 @@
-use std::mem::transmute;
 use std::fmt;
+use std::mem::transmute;
 use std::ops::Not;
 
-use crate::square::Square;
-
+use crate::{Color, Square};
 
 // Constants representing various positions and sections of the chessboard as `u64` bitboards.
 // These constants use specific bit patterns to represent different files, ranks, and sides on the board.
@@ -39,11 +38,11 @@ const FULL: u64 = 0xFFFF_FFFF_FFFF_FFFF;
 
 /// A `BitBoard` represents a 64-bit chessboard where each bit corresponds to a square.
 /// It is useful for efficiently representing and manipulating chess positions.
-/// 
-/// The bitboard follows the Little-Endian Rank-File (LERF) notation. 
-/// In this system, the least significant bit (LSB) represents the bottom-left corner of the chessboard, 
+///
+/// The bitboard follows the Little-Endian Rank-File (LERF) notation.
+/// In this system, the least significant bit (LSB) represents the bottom-left corner of the chessboard,
 /// while the most significant bit (MSB) represents the top-right corner.
-/// 
+///
 ///  ```md,ignore
 /// 8 | 56 57 58 59 60 61 62 63
 /// 7 | 48 49 50 51 52 53 54 55
@@ -98,7 +97,7 @@ impl Not for BitBoard {
 impl Iterator for BitBoard {
     type Item = Square;
 
-    #[inline]
+    #[inline(always)]
     fn next(&mut self) -> Option<Square> {
         if *self == Self::EMPTY {
             None
@@ -113,11 +112,10 @@ impl Iterator for BitBoard {
 
 /// Methods for the `BitBoard` struct, including utilities for manipulating bits and interacting with squares.
 impl BitBoard {
-
     // Predefined `BitBoard` constants for sides, files, and ranks
     pub const WHITE_SIDE: BitBoard = BitBoard(WHITE_SIDE);
     pub const BLACK_SIDE: BitBoard = BitBoard(BLACK_SIDE);
-    
+
     pub const FILE_A: BitBoard = BitBoard(FILE_A);
     pub const FILE_B: BitBoard = BitBoard(FILE_B);
     pub const FILE_C: BitBoard = BitBoard(FILE_C);
@@ -136,6 +134,10 @@ impl BitBoard {
     pub const RANK_7: BitBoard = BitBoard(RANK_7);
     pub const RANK_8: BitBoard = BitBoard(RANK_8);
 
+    pub const PROMOTION_RANKS: [BitBoard; 2] = [BitBoard(RANK_7), BitBoard(RANK_2)];
+    pub const PAWN_START: [BitBoard; 2] = [BitBoard(RANK_2), BitBoard(RANK_7)];
+    pub const EN_PASSANT_RANKS: [BitBoard; 2] = [BitBoard(RANK_5), BitBoard(RANK_4)];
+
     pub const DARK_SQUARES: BitBoard = BitBoard(DARK_SQUARES);
     pub const LIGHT_SQUARES: BitBoard = BitBoard(LIGHT_SQUARES);
 
@@ -143,7 +145,7 @@ impl BitBoard {
     pub const FULL: BitBoard = BitBoard(FULL);
 
     /// Converts the `BitBoard` to a `Square`, returning the square that corresponds to the least significant '1' bit.
-    #[inline]
+    #[inline(always)]
     pub const fn to_square(self) -> Square {
         unsafe { transmute((self.0.trailing_zeros() as u8) & 63) }
     }
@@ -155,7 +157,7 @@ impl BitBoard {
     }
 
     /// Checks if a specific `Square` is set on the `BitBoard`.
-    /// 
+    ///
     /// `true` if the square is set, otherwise `false`.
     #[inline]
     pub const fn get_square(self, square: Square) -> bool {
@@ -180,6 +182,15 @@ impl BitBoard {
         Self(self.0.swap_bytes())
     }
 
+    /// Shift the bitboard one rank forward for the side to move.
+    #[inline]
+    pub const fn forward(self, side: Color) -> Self {
+        match side {
+            Color::White => Self(self.0 << 8),
+            Color::Black => Self(self.0 >> 8),
+        }
+    }
+
     /// Checks if the bitboard is empty.
     ///
     /// An empty bitboard means that there are no pieces present (all bits are 0).
@@ -191,7 +202,7 @@ impl BitBoard {
 }
 
 #[test]
-fn bitboard_test(){
+fn bitboard_test() {
     let bitboard: BitBoard = BitBoard(2097152);
     assert_eq!(bitboard.to_square(), Square::F3);
     println!("{}", bitboard);

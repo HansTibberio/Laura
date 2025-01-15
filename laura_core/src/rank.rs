@@ -1,6 +1,5 @@
-use std::mem::transmute;
 use std::fmt;
-
+use std::mem::transmute;
 
 /// Enum representing the ranks (rows) on a chessboard.
 /// Ranks are numbered from 'One' (1) to 'Eight' (8).
@@ -19,7 +18,7 @@ pub enum Rank {
 
 /// Implementing `Display` for `Rank` to convert the enum to a string representation (One-Eight).
 impl fmt::Display for Rank {
-    fn fmt(&self, f:&mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::One => write!(f, "One"),
             Self::Two => write!(f, "Two"),
@@ -34,18 +33,26 @@ impl fmt::Display for Rank {
 }
 
 impl Rank {
-    
     /// Total number of ranks (8 in standard chess).
     pub const NUM_RANKS: usize = 8;
     /// Array containing all possible ranks (One to Eight).
-    pub const ALL: [Self; 8] = [Self::One, Self::Two, Self::Three, Self::Four, Self::Five, Self::Six, Self::Seven, Self::Eight];
+    pub const ALL: [Self; 8] = [
+        Self::One,
+        Self::Two,
+        Self::Three,
+        Self::Four,
+        Self::Five,
+        Self::Six,
+        Self::Seven,
+        Self::Eight,
+    ];
 
     /// Converts an index (0-7) to the corresponding `Rank`.
     #[inline]
     pub const fn from_index(index: usize) -> Rank {
         unsafe { transmute(index as u8 & 7) }
     }
-    
+
     /// Converts a `Rank` into its corresponding index (0 for One, 7 for Eight).
     #[inline]
     pub const fn to_index(self) -> usize {

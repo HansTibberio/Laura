@@ -1,6 +1,5 @@
-use std::mem::transmute;
 use std::fmt;
-
+use std::mem::transmute;
 
 /// Enum representing the files (columns) on a chessboard.
 /// Files are labeled from 'A' to 'H'.
@@ -19,7 +18,7 @@ pub enum File {
 
 /// Implementing `Display` for `File` to convert the enum to a string representation (A-H).
 impl fmt::Display for File {
-    fn fmt(&self, f:&mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::A => write!(f, "A"),
             Self::B => write!(f, "B"),
@@ -34,11 +33,19 @@ impl fmt::Display for File {
 }
 
 impl File {
-
     /// Total number of files (8 in standard chess).
     pub const NUM_FILES: usize = 8;
     /// Array containing all possible files (A to H).
-    pub const ALL: [Self; Self::NUM_FILES] = [Self::A, Self::B, Self::C, Self::D, Self::E, Self::F, Self::G, Self::H];
+    pub const ALL: [Self; Self::NUM_FILES] = [
+        Self::A,
+        Self::B,
+        Self::C,
+        Self::D,
+        Self::E,
+        Self::F,
+        Self::G,
+        Self::H,
+    ];
 
     /// Converts an index (0-7) to the corresponding `File`.
     #[inline]

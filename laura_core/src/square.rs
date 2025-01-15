@@ -1,12 +1,8 @@
+use std::fmt;
 use std::mem::transmute;
 use std::str::FromStr;
-use std::fmt;
 
-use crate::bitboard::BitBoard;
-use crate::color::Color;
-use crate::file::File;
-use crate::rank::Rank;
-
+use crate::{BitBoard, Color, File, Rank};
 
 /// Enum representing each square on a chessboard, from A1 to H8.
 /// The squares are ordered by rank (rows) and file (columns), with A1 as the bottom-left and H8 as the top-right.
@@ -29,7 +25,9 @@ impl FromStr for Square {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 2 { return Err("Invalid Square!"); };
+        if s.len() != 2 {
+            return Err("Invalid Square!");
+        };
 
         let index: usize = Self::SQUARE_NAMES
             .iter()
@@ -49,7 +47,6 @@ impl fmt::Display for Square {
 }
 
 impl Square {
-
     /// Total number of squares on a chessboard (8x8 = 64).
     pub const NUM_SQUARES: usize = 64;
 
@@ -58,7 +55,7 @@ impl Square {
     #[inline]
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
         let index: u8 = (rank as u8) << 3 ^ (file as u8);
-        unsafe { transmute(index & 63) } 
+        unsafe { transmute(index & 63) }
     }
 
     /// Convert an index (0-63) to a `Square`.
@@ -82,13 +79,13 @@ impl Square {
     /// Get the rank (row) of the square.
     #[inline]
     pub const fn rank(self) -> Rank {
-        unsafe { transmute((self as u8 >> 3) & 7)}
+        unsafe { transmute((self as u8 >> 3) & 7) }
     }
 
     /// Get the file (column) of the square.
     #[inline]
     pub const fn file(self) -> File {
-        unsafe { transmute(self as u8 & 7)}
+        unsafe { transmute(self as u8 & 7) }
     }
 
     /// Get the square one rank down from original (towards rank 1).
@@ -138,27 +135,40 @@ impl Square {
     }
 
     const SQUARE_NAMES: [&'static str; Self::NUM_SQUARES] = [
-        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
-        "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
-        "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
-        "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
-        "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
-        "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
-        "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
-        "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
+        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2",
+        "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4",
+        "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6", "c6", "d6", "e6",
+        "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8",
+        "e8", "f8", "g8", "h8",
     ];
 }
 
 #[test]
 fn test() {
     let square: Square = Square::from_str("f5").unwrap();
-    println!("Square: {}, File: {}, Rank: {}, Index: {}", square, square.file(), square.rank(), square.to_index());
-    println!("Up: {}, Down: {}, Left: {}, Right: {}", square.up(), square.down(), square.left(), square.right());
-    println!("Forward: {}, Backward: {}", square.forward(Color::White), square.backward(Color::White));
+    println!(
+        "Square: {}, File: {}, Rank: {}, Index: {}",
+        square,
+        square.file(),
+        square.rank(),
+        square.to_index()
+    );
+    println!(
+        "Up: {}, Down: {}, Left: {}, Right: {}",
+        square.up(),
+        square.down(),
+        square.left(),
+        square.right()
+    );
+    println!(
+        "Forward: {}, Backward: {}",
+        square.forward(Color::White),
+        square.backward(Color::White)
+    );
 }
 
 #[test]
-fn c6_square_to_bitboard(){
+fn c6_square_to_bitboard() {
     let square = Square::from_index(42);
     assert_eq!(square, Square::C6);
     println!("{}", square.to_bitboard())

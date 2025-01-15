@@ -1,7 +1,6 @@
 use std::fmt;
 
-use crate::color::Color;
-
+use crate::Color;
 
 /// Enum representing the different types of chess pieces.
 #[derive(PartialEq, Eq, Ord, PartialOrd, Copy, Clone, Debug, Hash)]
@@ -16,7 +15,7 @@ pub enum PieceType {
 
 /// Implementing `Display` for `PieceType` to allow converting the enum into a human-readable string.
 impl fmt::Display for PieceType {
-    fn fmt(&self, f:&mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Pawn => write!(f, "Pawn"),
             Self::Knight => write!(f, "Knight"),
@@ -29,8 +28,16 @@ impl fmt::Display for PieceType {
 }
 
 impl PieceType {
-    
+    pub const PAWN: usize = 0;
+    pub const KNIGHT: usize = 1;
+    pub const BISHOP: usize = 2;
+    pub const ROOK: usize = 3;
+    pub const QUEEN: usize = 4;
+    pub const KING: usize = 5;
+
     /// Returns a `PieceType` from a given index without bounds checking.
+    /// 
+    /// ### Safety
     /// This is an unsafe operation as it directly converts the index to `PieceType`.
     #[inline]
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
@@ -81,12 +88,11 @@ impl TryFrom<char> for Piece {
 
 /// A 2D array representing the pieces available for promotion in chess.
 pub const PROM_PIECES: [[Piece; 4]; 2] = [
-            [Piece::WN, Piece::WB, Piece::WR, Piece::WQ],
-            [Piece::BN, Piece::BB, Piece::BR, Piece::BQ],
-        ];
+    [Piece::WN, Piece::WB, Piece::WR, Piece::WQ],
+    [Piece::BN, Piece::BB, Piece::BR, Piece::BQ],
+];
 
 impl Piece {
-
     pub const COUNT: usize = 6;
 
     /// Total number of pieces on chess (6x2 = 12).
@@ -118,7 +124,7 @@ impl Piece {
     #[inline(always)]
     pub const fn from_index(index: usize) -> Option<Self> {
         if index < 12 {
-        Some( unsafe { std::mem::transmute(index as u8 & 15) } )
+            Some(unsafe { std::mem::transmute::<u8, Piece>(index as u8 & 15) })
         } else {
             None
         }
@@ -163,23 +169,33 @@ impl Piece {
 }
 
 #[test]
-fn test(){
+fn test() {
     let piece: Piece = Piece::new(PieceType::King, Color::White);
-    println!("Char: '{}' Color: {}, Type: {}", piece, piece.color(), piece.piece_type());
+    println!(
+        "Char: '{}' Color: {}, Type: {}",
+        piece,
+        piece.color(),
+        piece.piece_type()
+    );
 
     let piece: Option<Piece> = Piece::from_index(12);
     println!("{:?}", piece);
 }
 
 #[test]
-fn test_from(){
+fn test_from() {
     let c: char = 'N';
     let piece: Piece = Piece::try_from(c).unwrap();
-    println!("Char: '{}' Color: {}, Type: {}", piece, piece.color(), piece.piece_type());
+    println!(
+        "Char: '{}' Color: {}, Type: {}",
+        piece,
+        piece.color(),
+        piece.piece_type()
+    );
 }
 
 #[test]
-fn test_piece(){
+fn test_piece() {
     let piece: usize = Piece::piece_index(Piece::WN);
     println!("{}", piece)
 }

@@ -1,31 +1,23 @@
-use std::mem::transmute;
 use std::fmt;
+use std::mem::transmute;
 
-use crate::color::Color;
-use crate::piece::{Piece, PROM_PIECES};
-use crate::square::Square;
-
+use crate::{piece::PROM_PIECES, Color, Piece, Square};
 
 /// Represents a chess move using a 16-bit integer.
 /// The move encodes the source square, destination square, move type, and any promotion.
-/// 
+///
 ///     0000 0000 0011 1111    source        0x003F
 ///     0000 1111 1100 0000    destination   0x0FC0
 ///     1111 0000 0000 0000    MoveType      0xF000
-/// 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Default, Hash)]
+///
+#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Debug, Default, Hash)]
 pub struct Move(pub u16);
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: String = format!("{}{}", self.get_src(), self.get_dest());
         if self.is_promotion() {
-            write!(
-                f,
-                "{}{}",
-                s,
-                self.get_prom(Color::Black).to_char()
-            )
+            write!(f, "{}{}", s, self.get_prom(Color::Black).to_char())
         } else {
             write!(f, "{s}")
         }
@@ -41,7 +33,7 @@ const CAP_MASK: u16 = 0b01000000_00000000;
 
 /// Enum representing the different types of moves in chess, including promotions and special moves.
 /// https://www.chessprogramming.org/Encoding_Moves
-/// 
+///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum MoveType {
@@ -108,7 +100,7 @@ impl Move {
     /// Returns the promotion piece (if any) based on the color.
     /// This function retrieves the promoted piece for the corresponding color.
     #[inline(always)]
-    pub const fn get_prom(self, color: Color)  -> Piece {
+    pub const fn get_prom(self, color: Color) -> Piece {
         PROM_PIECES[color as usize][self.flag() as usize & 0b011]
     }
 
@@ -127,7 +119,7 @@ impl Move {
     /// Returns `true` if the move is a capture.
     #[inline(always)]
     pub const fn is_capture(self) -> bool {
-        ((self.0 & CAP_MASK )>> 14) == 1
+        ((self.0 & CAP_MASK) >> 14) == 1
     }
 
     /// Returns `true` if the move is a quiet move (no capture, promotion, castle or double pawn push).
@@ -141,7 +133,6 @@ impl Move {
     pub const fn flag(self) -> u16 {
         self.0 >> 12
     }
-
 }
 
 #[test]
@@ -178,7 +169,7 @@ fn test_capture() {
 }
 
 #[test]
-fn test_promotion() { 
+fn test_promotion() {
     let mv: Move = Move::new(Square::B7, Square::C8, MoveType::CapPromoQueen);
 
     assert_eq!(mv.get_src(), Square::B7);
