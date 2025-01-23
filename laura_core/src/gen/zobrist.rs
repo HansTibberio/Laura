@@ -1,8 +1,5 @@
 use crate::gen::random::Xoshiro256PlusPlus;
-use crate::castle_rights::CastleRights;
-use crate::piece::Piece;
-use crate::square::Square;
-
+use crate::{CastleRights, Piece, Square};
 
 /// Generates unique `u64` keys for Zobrist hashing, using the Xoshiro256++
 /// pseudorandom number generator. These keys are used to hash different board states
@@ -59,9 +56,13 @@ pub fn generate_unique_u64_keys(seed: [u64; 4]) {
     print!("\npub const KEY_SIDE: u64 = {};", prng.next());
 }
 
-
 #[test]
 fn generate_zobrist() {
-    let seed: [u64; 4] = [0x1a2b3c4d5e6f7, 0x1122334455667788, 0x99aabbccddeeff00, 0x2233445566778899];
+    let seed: [u64; 4] = [
+        0x1a2b3c4d5e6f7,
+        0x1122334455667788,
+        0x99aabbccddeeff00,
+        0x2233445566778899,
+    ];
     generate_unique_u64_keys(seed);
 }

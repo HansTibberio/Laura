@@ -1,17 +1,14 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::color::Color;
-use crate::square::Square;
-use crate::file::File;
-
+use crate::{BitBoard, Color, File, MoveType, Square};
 
 /// `CastleRights` represents the castling rights of both players (White and Black)
 /// using a bitmask stored in a `u8`. It tracks the availability of kingside and queenside
 /// castling rights for both sides.
-/// 
+///
 /// From Carp: https://github.com/dede1751/carp/blob/main/chess/src/castle.rs
-/// 
+///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 pub struct CastleRights(u8);
 
@@ -21,8 +18,8 @@ impl FromStr for CastleRights {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut rights:u8 = 0;
-        
+        let mut rights: u8 = 0;
+
         for ch in s.chars() {
             match ch {
                 'K' => rights |= CASTLE_WK_MASK,
@@ -34,7 +31,7 @@ impl FromStr for CastleRights {
                         return Err("Invalid format for castling rights");
                     }
                     rights = 0;
-                },
+                }
                 _ => return Err("Invalid character in castling rights"),
             }
         }
@@ -69,7 +66,6 @@ impl fmt::Display for CastleRights {
     }
 }
 
-
 // Constants for castling bitmasks for both White and Black:
 /// - `CASTLE_WK_MASK`: White kingside castling (bit 3)
 const CASTLE_WK_MASK: u8 = 0b1000;
@@ -94,6 +90,103 @@ const NOT_BQ_RIGHTS: u8 = ALL_CASTLE ^ CASTLE_BQ_MASK;
 const NOT_WHITE_RIGHTS: u8 = NOT_WK_RIGHTS & NOT_WQ_RIGHTS;
 const NOT_BLACK_RIGHTS: u8 = NOT_BK_RIGHTS & NOT_BQ_RIGHTS;
 
+/// Index representing the king-side castle in arrays.
+pub const KING_SIDE: usize = 0;
+/// Index representing the queen-side castle in arrays.
+pub const QUEEN_SIDE: usize = 1;
+
+/// Array mapping castle types to their corresponding move types.
+pub const CASTLE_TYPE: [MoveType; 2] = [MoveType::KingCastle, MoveType::QueenCastle];
+
+/// Array defining the starting squares for castling moves for white and black.
+pub const SOURCE: [Square; 2] = [Square::E1, Square::E8];
+
+/// Array defining the intermediate squares crossed during castling.
+/// The first dimension represents the king-side (0) or queen-side (1).
+/// The second dimension represents white (0) or black (1).
+pub const MEDIUM: [[Square; 2]; 2] = [[Square::F1, Square::F8], [Square::D1, Square::D8]];
+
+/// Array defining the destination squares for castling moves.
+/// The structure mirrors that of `MEDIUM`.
+pub const DESTINATION: [[Square; 2]; 2] = [[Square::G1, Square::G8], [Square::C1, Square::C8]];
+
+/// Array defining bitboard representations of squares that must be empty
+/// for castling to be valid. The first dimension represents the king-side (0)
+/// or queen-side (1), and the second represents white (0) or black (1).
+pub const PRESENCE: [[BitBoard; 2]; 2] = [
+    [BitBoard(0x0000000000000060), BitBoard(0x6000000000000000)],
+    [BitBoard(0x000000000000000E), BitBoard(0x0E00000000000000)],
+];
+
+/// Array defining the castle rights mask for each square on the board.
+/// Each value specifies the valid castling rights for the corresponding square.
+const CASTLE_RIGHTS_MASK: [u8; Square::NUM_SQUARES] = [
+    NOT_WQ_RIGHTS,    //  A1
+    ALL_CASTLE,       //  B1
+    ALL_CASTLE,       //  C1
+    ALL_CASTLE,       //  D1
+    NOT_WHITE_RIGHTS, //  E1
+    ALL_CASTLE,       //  F1
+    ALL_CASTLE,       //  G1
+    NOT_WK_RIGHTS,    //  H1
+    ALL_CASTLE,       //  A2
+    ALL_CASTLE,       //  B2
+    ALL_CASTLE,       //  C2
+    ALL_CASTLE,       //  D2
+    ALL_CASTLE,       //  E2
+    ALL_CASTLE,       //  F2
+    ALL_CASTLE,       //  G2
+    ALL_CASTLE,       //  H2
+    ALL_CASTLE,       //  A3
+    ALL_CASTLE,       //  B3
+    ALL_CASTLE,       //  C3
+    ALL_CASTLE,       //  D3
+    ALL_CASTLE,       //  E3
+    ALL_CASTLE,       //  F3
+    ALL_CASTLE,       //  G3
+    ALL_CASTLE,       //  H3
+    ALL_CASTLE,       //  A4
+    ALL_CASTLE,       //  B4
+    ALL_CASTLE,       //  C4
+    ALL_CASTLE,       //  D4
+    ALL_CASTLE,       //  E4
+    ALL_CASTLE,       //  F4
+    ALL_CASTLE,       //  G4
+    ALL_CASTLE,       //  H4
+    ALL_CASTLE,       //  A5
+    ALL_CASTLE,       //  B5
+    ALL_CASTLE,       //  C5
+    ALL_CASTLE,       //  D5
+    ALL_CASTLE,       //  E5
+    ALL_CASTLE,       //  F5
+    ALL_CASTLE,       //  G5
+    ALL_CASTLE,       //  H5
+    ALL_CASTLE,       //  A6
+    ALL_CASTLE,       //  B6
+    ALL_CASTLE,       //  C6
+    ALL_CASTLE,       //  D6
+    ALL_CASTLE,       //  E6
+    ALL_CASTLE,       //  F6
+    ALL_CASTLE,       //  G6
+    ALL_CASTLE,       //  H6
+    ALL_CASTLE,       //  A7
+    ALL_CASTLE,       //  B7
+    ALL_CASTLE,       //  C7
+    ALL_CASTLE,       //  D7
+    ALL_CASTLE,       //  E7
+    ALL_CASTLE,       //  F7
+    ALL_CASTLE,       //  G7
+    ALL_CASTLE,       //  H7
+    NOT_BQ_RIGHTS,    //  A8
+    ALL_CASTLE,       //  B8
+    ALL_CASTLE,       //  C8
+    ALL_CASTLE,       //  D8
+    NOT_BLACK_RIGHTS, //  E8
+    ALL_CASTLE,       //  F8
+    ALL_CASTLE,       //  G8
+    NOT_BK_RIGHTS,    //  H8
+];
+
 /// Returns the starting and destination squares for a rook during a castling move
 /// based on the destination of the king (`dest`).
 ///
@@ -108,10 +201,9 @@ pub const fn get_rook_castling(dest: Square) -> (Square, Square) {
 }
 
 impl CastleRights {
-
     /// Total number of castling rights for all players.
     pub const NUM_CASTLING_RIGHTS: usize = 16;
-    
+
     /// Creates a new `CastleRights` object with no castling rights (i.e., all rights cleared).
     #[inline(always)]
     pub const fn null() -> Self {
@@ -140,25 +232,16 @@ impl CastleRights {
     ///
     /// The castling rights are updated based on the move, potentially clearing the castling
     /// rights if a rook or king has moved from its starting square.
+    #[inline]
     pub const fn update(self, src: Square, dest: Square) -> CastleRights {
-        const CASTLE_RIGHTS_MASK: [u8; Square::NUM_SQUARES] = [
-            NOT_WQ_RIGHTS, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, NOT_WHITE_RIGHTS, ALL_CASTLE, ALL_CASTLE, NOT_WK_RIGHTS,
-            ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE,
-            ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE,
-            ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE,
-            ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE,
-            ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE,
-            ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE,
-            NOT_BQ_RIGHTS, ALL_CASTLE, ALL_CASTLE, ALL_CASTLE, NOT_BLACK_RIGHTS, ALL_CASTLE, ALL_CASTLE, NOT_BK_RIGHTS
-        ];
-
-        let updated: u8 = self.0 & CASTLE_RIGHTS_MASK[src.to_index()] & CASTLE_RIGHTS_MASK[dest.to_index()];
-        CastleRights(updated)
+        CastleRights(
+            self.0 & CASTLE_RIGHTS_MASK[src.to_index()] & CASTLE_RIGHTS_MASK[dest.to_index()],
+        )
     }
 }
 
 #[test]
-fn castling_test(){
+fn castling_test() {
     let castle_rights: CastleRights = CastleRights(ALL_CASTLE);
     assert_eq!(castle_rights.has_kingside(Color::White), true);
     assert_eq!(castle_rights.has_queenside(Color::White), true);
@@ -175,13 +258,13 @@ fn castling_test(){
 }
 
 #[test]
-fn rook_castling_test(){
+fn rook_castling_test() {
     let mv: (Square, Square) = get_rook_castling(Square::C1);
     println!("{:?}", mv);
 }
 
 #[test]
-fn test_from_string(){
+fn test_from_string() {
     let castle_rights: CastleRights = CastleRights::from_str("Kk").unwrap();
     assert_eq!(castle_rights.has_kingside(Color::White), true);
     assert_eq!(castle_rights.has_queenside(Color::White), false);
