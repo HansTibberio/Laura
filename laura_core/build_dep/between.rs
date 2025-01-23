@@ -2,12 +2,12 @@ use std::io::Result;
 use std::io::Write;
 use std::mem::transmute;
 
-use super::types::{BitBoard, Square};
+use super::types::{BitBoard, File, Rank, Square};
 
 /// Calculates the `BitBoard` representing all squares between two squares on a chessboard.
 ///
 /// Given two squares, `start` and `end`, this function returns a `BitBoard` with all squares
-/// that lie between them in a straight line along a rank, file, or diagonal. If the squares are 
+/// that lie between them in a straight line along a rank, file, or diagonal. If the squares are
 /// not aligned or are the same, an empty `BitBoard` is returned.
 pub fn squares_between(start: Square, end: Square) -> BitBoard {
     if start == end {
@@ -30,8 +30,8 @@ pub fn squares_between(start: Square, end: Square) -> BitBoard {
     while (new_rank, new_file) != (end_rank, end_file) {
         if (0..8).contains(&new_rank) && (0..8).contains(&new_file) {
             let square: Square =
-                Square::from_file_rank(unsafe { transmute(new_file as u8) }, unsafe {
-                    transmute(new_rank as u8)
+                Square::from_file_rank(unsafe { transmute::<u8, File>(new_file as u8) }, unsafe {
+                    transmute::<u8, Rank>(new_rank as u8)
                 });
             bitboard = bitboard.set_square(square);
         } else {
@@ -46,15 +46,15 @@ pub fn squares_between(start: Square, end: Square) -> BitBoard {
 
 /// Generates a table of `BitBoard`s that represent the squares between any two squares on a chessboard.
 ///
-/// This function creates a 2D array where each entry contains a `BitBoard` representing the squares 
-/// lying between a pair of `Square`s. This is useful for precomputing move paths for sliding pieces 
+/// This function creates a 2D array where each entry contains a `BitBoard` representing the squares
+/// lying between a pair of `Square`s. This is useful for precomputing move paths for sliding pieces
 /// like rooks, bishops, and queens.
 pub fn gen_between() -> [[BitBoard; Square::NUM_SQUARES]; Square::NUM_SQUARES] {
     let mut table: [[BitBoard; 64]; 64] =
         [[BitBoard::EMPTY; Square::NUM_SQUARES]; Square::NUM_SQUARES];
     for start in 0..Square::NUM_SQUARES {
         for end in 0..Square::NUM_SQUARES {
-            let start_square = Square::from_index(start);
+            let start_square: Square = Square::from_index(start);
             let end_square: Square = Square::from_index(end);
             table[start][end] = squares_between(start_square, end_square);
         }
@@ -72,9 +72,9 @@ pub fn write_between(
     table: &[[BitBoard; Square::NUM_SQUARES]; Square::NUM_SQUARES],
     out: &mut impl Write,
 ) -> Result<()> {
-    write!(
+    writeln!(
         out,
-        "const {}_ARRAY: [[u64; {}]; {}] = [\n",
+        "const {}_ARRAY: [[u64; {}]; {}] = [",
         name,
         Square::NUM_SQUARES,
         Square::NUM_SQUARES
@@ -85,9 +85,9 @@ pub fn write_between(
         for entry in row {
             write!(out, "{}, ", entry.0)?;
         }
-        write!(out, "],\n")?;
+        writeln!(out, "],")?;
     }
 
-    write!(out, "];\n")?;
+    writeln!(out, "];")?;
     Ok(())
 }

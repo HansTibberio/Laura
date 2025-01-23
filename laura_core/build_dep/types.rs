@@ -57,26 +57,21 @@ impl std::ops::Not for BitBoard {
     }
 }
 
-/// Implements display formatting for the `BitBoard` struct.
-/// This allows for the `BitBoard` to be printed in a human-readable format,
-/// where filled squares are shown as '★' and empty squares as '·'.
-impl std::fmt::Display for BitBoard {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut s: String = format!("\n      Bitboard: {}\n", self.0);
+/// Implements `Iterator` for `BitBoard`, allowing iteration over the set squares.
+/// Each call to `next` returns the next `Square` that is set (i.e., the next '1' bit)
+impl Iterator for BitBoard {
+    type Item = Square;
 
-        for rank in (0..8).rev() {
-            s.push_str(format!("\n{}   ", rank + 1).as_str());
-            for file in 0..8 {
-                let square = rank * 8 + file;
-                if self.get_square(Square::from_index(square)) {
-                    s.push_str("★ ");
-                } else {
-                    s.push_str("· ");
-                }
-            }
+    #[inline(always)]
+    fn next(&mut self) -> Option<Square> {
+        if *self == Self::EMPTY {
+            None
+        } else {
+            let square: Square = self.to_square();
+            self.0 &= self.0 - 1;
+
+            Some(square)
         }
-        s.push_str("\n\n    A B C D E F G H");
-        write!(f, "{s}")
     }
 }
 
@@ -95,15 +90,94 @@ impl BitBoard {
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
+
+    pub const fn count_bits(self) -> u32 {
+        self.0.count_ones()
+    }
+
+    pub const fn to_square(self) -> Square {
+        unsafe { std::mem::transmute((self.0.trailing_zeros() as u8) & 63) }
+    }
+
+    pub fn set_blockers(self, index: usize) -> BitBoard {
+        self.into_iter()
+            .enumerate()
+            .filter(|(count, _)| index & (1 << count) != 0)
+            .fold(BitBoard::EMPTY, |bitboard: BitBoard, (_, square)| {
+                bitboard | square.to_bitboard()
+            })
+    }
 }
 
 /// Enum representing each square on a chessboard, from A1 to H8.
 /// The squares are ordered by rank (rows) and file (columns), with A1 as the bottom-left and H8 as the top-right.
 #[derive(PartialEq, Ord, Eq, PartialOrd, Copy, Clone, Debug, Hash)]
 #[repr(u8)]
-#[rustfmt::skip]
 pub enum Square {
-    A1, B1, C1, D1, E1, F1, G1, H1, A2, B2, C2, D2, E2, F2, G2, H2, A3, B3, C3, D3, E3, F3, G3, H3, A4, B4, C4, D4, E4, F4, G4, H4, A5, B5, C5, D5, E5, F5, G5, H5, A6, B6, C6, D6, E6, F6, G6, H6, A7, B7, C7, D7, E7, F7, G7, H7, A8, B8, C8, D8, E8, F8, G8, H8,
+    A1,
+    B1,
+    C1,
+    D1,
+    E1,
+    F1,
+    G1,
+    H1,
+    A2,
+    B2,
+    C2,
+    D2,
+    E2,
+    F2,
+    G2,
+    H2,
+    A3,
+    B3,
+    C3,
+    D3,
+    E3,
+    F3,
+    G3,
+    H3,
+    A4,
+    B4,
+    C4,
+    D4,
+    E4,
+    F4,
+    G4,
+    H4,
+    A5,
+    B5,
+    C5,
+    D5,
+    E5,
+    F5,
+    G5,
+    H5,
+    A6,
+    B6,
+    C6,
+    D6,
+    E6,
+    F6,
+    G6,
+    H6,
+    A7,
+    B7,
+    C7,
+    D7,
+    E7,
+    F7,
+    G7,
+    H7,
+    A8,
+    B8,
+    C8,
+    D8,
+    E8,
+    F8,
+    G8,
+    H8,
 }
 
 impl Square {
