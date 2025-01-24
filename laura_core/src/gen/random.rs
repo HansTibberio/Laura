@@ -11,16 +11,9 @@ pub struct Xoshiro256PlusPlus {
 }
 
 impl Xoshiro256PlusPlus {
-
     /// Initializes a new instance of `Xoshiro256PlusPlus` with a given seed.
     pub fn new(seed: [u64; 4]) -> Self {
         Self { state: seed }
-    }
-
-    /// Initializes a new instance of `Xoshiro256PlusPlus` with a default seed.
-    /// The seed is the first 64 bits of the decimal part of the square roots of the first prime numbers in the interval `[2, 7]`.
-    pub fn default() -> Self {
-        Self { state: [0x6a09e667f3bcc908, 0xbb67ae8584caa73b, 0x3c6ef372fe94f82b, 0xa54ff53a5f1d36f1] }
     }
 
     /// Rotates the bits of a 64-bit unsigned integer `x` to the left by `k` positions.
@@ -36,7 +29,8 @@ impl Xoshiro256PlusPlus {
     /// The algorithm applies a series of bitwise XOR, shifts, and rotations to produce
     /// a high-quality random number and ensure that the internal state evolves properly.
     pub fn next(&mut self) -> u64 {
-        let result: u64 = Self::rotl(self.state[0].wrapping_add(self.state[3]), 23).wrapping_add(self.state[0]);
+        let result: u64 =
+            Self::rotl(self.state[0].wrapping_add(self.state[3]), 23).wrapping_add(self.state[0]);
 
         let t: u64 = self.state[1] << 17;
 
@@ -50,11 +44,31 @@ impl Xoshiro256PlusPlus {
 
         result
     }
-}   
+}
+
+impl Default for Xoshiro256PlusPlus {
+    /// Initializes a new instance of `Xoshiro256PlusPlus` with a default seed.
+    /// The seed is the first 64 bits of the decimal part of the square roots of the first prime numbers in the interval `[2, 7]`.
+    fn default() -> Self {
+        Self {
+            state: [
+                0x6a09e667f3bcc908,
+                0xbb67ae8584caa73b,
+                0x3c6ef372fe94f82b,
+                0xa54ff53a5f1d36f1,
+            ],
+        }
+    }
+}
 
 #[test]
 fn test_prng_seed() {
-    let seed: [u64; 4] = [0x1a2b3c4d5e6f7, 0x1122334455667788, 0x99aabbccddeeff00, 0x2233445566778899];
+    let seed: [u64; 4] = [
+        0x1a2b3c4d5e6f7,
+        0x1122334455667788,
+        0x99aabbccddeeff00,
+        0x2233445566778899,
+    ];
     let mut prng: Xoshiro256PlusPlus = Xoshiro256PlusPlus::new(seed);
 
     for _ in 0..10 {
@@ -63,7 +77,7 @@ fn test_prng_seed() {
 }
 
 #[test]
-fn test_prng_default(){
+fn test_prng_default() {
     let mut prng: Xoshiro256PlusPlus = Xoshiro256PlusPlus::default();
 
     for _ in 0..10 {

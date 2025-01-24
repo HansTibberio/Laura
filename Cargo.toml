@@ -11,3 +11,17 @@ debug-assertions = false
 codegen-units = 1
 lto = true
 panic = "abort"
+strip = true
+
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.test]
+opt-level = 3
+debug = true
+debug-assertions = true
+codegen-units = 1
