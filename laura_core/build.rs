@@ -6,7 +6,15 @@ use std::io::BufWriter;
 use std::path::PathBuf;
 
 use build_dep::between::*;
-use build_dep::magics::*;
+#[cfg(not(feature = "bmi2"))]
+use build_dep::black_magics::*;
+#[cfg(feature = "bmi2")]
+use build_dep::pext::*;
+
+#[cfg(not(feature = "bmi2"))]
+use build_dep::sliders::BISHOP_SLIDER;
+#[cfg(not(feature = "bmi2"))]
+use build_dep::sliders::ROOK_SLIDER;
 use build_dep::types::BitBoard;
 
 /// Sets up a buffered writer for a given filename in the output directory specified by `OUT_DIR`.
@@ -16,37 +24,52 @@ fn create_out_file(filename: &str) -> BufWriter<File> {
     BufWriter::new(File::create(out_path).unwrap())
 }
 
-/// Main function to generate and write precomputed magic move tables for rooks and bishops.
+/// Main function for generating and writing the necessary bitboard data,
+/// including the black magic numbers for rooks and bishops, attacks for sliders,
+/// and between-square tables to corresponding output files.
 ///
-/// This function creates move tables for rook and bishop pieces by specifying their respective
-/// movement deltas, then uses `make_table` to populate the moves. It outputs each table to
-/// a `.rs` file using `write_table` to generate Rust source files containing the precomputed moves.
+/// The function first checks the feature flag `bmi2` to determine whether to use the BMI2
+/// instructions, or to use black magic numbers (for systems not supporting BMI2).
 fn main() {
-    // Directional deltas for rook movement (up, left, down, right).
-    const ROOK_DELTAS: [(i8, i8); 4] = [(1, 0), (0, -1), (-1, 0), (0, 1)];
+    #[cfg(not(feature = "bmi2"))]
+    {
+        // Generate attack bitboards and black magic numbers for non-BMI2 feature enabled systems
+        let mut attacks: [BitBoard; TABLE_SIZE] = [BitBoard::EMPTY; TABLE_SIZE];
+        let rook_bmagics: BlackMagics =
+            BlackMagics::gen(&mut attacks, ROOK_BLACK_MAGICS, ROOK_SHIFT, ROOK_SLIDER);
+        let bishop_bmagics: BlackMagics = BlackMagics::gen(
+            &mut attacks,
+            BISHOP_BLACK_MAGICS,
+            BISHOP_SHIFT,
+            BISHOP_SLIDER,
+        );
 
-    // Directional deltas for bishop movement (up-right, up-left, down-left, down-right).
-    const BISHOP_DELTAS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, -1), (-1, 1)];
+        // Create a file writer for rook black magic numbers and write them
+        let mut rook_bmagic_file: BufWriter<File> = create_out_file("rook_bmagics.rs");
+        write_bmagics(rook_bmagics, "ROOK", &mut rook_bmagic_file).unwrap();
 
-    // Generate rook and bishop magic move tables using specified deltas and magic numbers.
-    let rook_table: Vec<BitBoard> = make_table(ROOK_TABLE_SIZE, &ROOK_DELTAS, &ROOK_MAGICS);
-    let bishop_table: Vec<BitBoard> = make_table(BISHOP_TABLE_SIZE, &BISHOP_DELTAS, &BISHOP_MAGICS);
+        // Create a file writer for bishop black magic numbers and write them
+        let mut bishop_bmagic_file: BufWriter<File> = create_out_file("bishop_bmagics.rs");
+        write_bmagics(bishop_bmagics, "BISHOP", &mut bishop_bmagic_file).unwrap();
 
-    // Write rook magic numbers to "rook_magics.rs" file in OUT_DIR
-    let mut rook_magic_file: BufWriter<File> = create_out_file("rook_magics.rs");
-    write_magic("ROOK", &ROOK_MAGICS, &mut rook_magic_file).unwrap();
+        // Create a file writer for slider attack bitboards and write them
+        let mut sliders_attacks: BufWriter<File> = create_out_file("sliders_attacks.rs");
+        write_attacks(&attacks, &mut sliders_attacks).unwrap();
+    }
 
-    // Write bishop magic numbers to "bishop_magics.rs" file in OUT_DIR
-    let mut bishop_magic_file: BufWriter<File> = create_out_file("bishop_magics.rs");
-    write_magic("BISHOP", &BISHOP_MAGICS, &mut bishop_magic_file).unwrap();
+    #[cfg(feature = "bmi2")]
+    {
+        // Generate Pext data and attack bitboards for BMI2-optimized systems
+        let pext_data: PextIndexData = gen_pext();
+        let mut pext_writer: BufWriter<File> = create_out_file("pext_data.rs");
+        write_pext(pext_data, &mut pext_writer).unwrap();
 
-    // Write rook move table to "rook_attacks.rs" file in OUT_DIR
-    let mut rook_attacks_file: BufWriter<File> = create_out_file("rook_attacks.rs");
-    write_table("ROOK", &rook_table, &mut rook_attacks_file).unwrap();
-
-    // Write bishop move table to "bishop_attacks.rs" file in OUT_DIR
-    let mut bishop_attacks_file: BufWriter<File> = create_out_file("bishop_attacks.rs");
-    write_table("BISHOP", &bishop_table, &mut bishop_attacks_file).unwrap();
+        // Generate attack bitboards for sliders (rooks and bishops)
+        let mut attacks: [BitBoard; TABLE_SIZE] = [BitBoard::EMPTY; TABLE_SIZE];
+        gen_attacks(&mut attacks);
+        let mut sliders_attacks: BufWriter<File> = create_out_file("sliders_attacks.rs");
+        write_attacks(&attacks, &mut sliders_attacks).unwrap();
+    }
 
     // Generates a 2D table of `BitBoard`s for all pairs of squares on the chessboard,
     // representing the squares between them for straight-line moves.

@@ -6,10 +6,14 @@ authors = ["HansTibberio <hanstiberio@proton.me>"]
 description = "A WIP chess engine in Rust."
 license = "GPL-3.0"
 readme = "README.md"
-keywords = ["chess"]
+keywords = ["chess", "game"]
 categories = ["games"]
+repository = "https://github.com/HansTibberio/laura"
 
-include = ["src/*", "cargo.toml"]
+include = ["src/*", "cargo.toml", "build_dep/*"]
+
+[features]
+bmi2 = []
 
 [lib]
 name = "laura_core"
