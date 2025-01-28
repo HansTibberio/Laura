@@ -19,7 +19,7 @@ const KING_DELTAS: [(i8, i8); 8] = [
 /// Precomputed bitboards representing the possible king attacks from every square on the chessboard.
 /// Each element in the array corresponds to one square on the board (indexed by `Square`),
 /// and the bitboard marks all squares that are attacked by a king from that square.
-pub const KING_ATTACKS: [BitBoard; 64] = [
+pub const KING_ATTACKS: [BitBoard; Square::NUM_SQUARES] = [
     BitBoard(770),
     BitBoard(1797),
     BitBoard(3594),
@@ -124,11 +124,10 @@ pub fn gen_king_attacks(square: Square) -> BitBoard {
 /// Generates the entire attack table for a king, where each index corresponds to a square
 /// on the chessboard and stores the bitboard of attackable squares from that position.
 pub fn gen_king_attack_table() -> [BitBoard; 64] {
-    let mut table: [BitBoard; 64] = [BitBoard::EMPTY; Square::NUM_SQUARES];
+    let mut table: [BitBoard; Square::NUM_SQUARES] = [BitBoard::EMPTY; Square::NUM_SQUARES];
 
-    for square in 0..Square::NUM_SQUARES {
-        let sq: Square = Square::from_index(square);
-        table[square] = gen_king_attacks(sq);
+    for square in BitBoard::FULL {
+        table[square.to_index()] = gen_king_attacks(square);
     }
 
     table

@@ -18,7 +18,7 @@ const BLACK_PAWN_DELTAS: [(i8, i8); 2] = [(-1, -1), (-1, 1)];
 /// white, 1 for black) and the second dimension corresponds to the square
 /// index (0 to 63). Each entry in the array contains a BitBoard indicating
 /// the squares that the pawn can attack from that position.
-pub const PAWN_ATTACKS: [[BitBoard; 64]; 2] = [
+pub const PAWN_ATTACKS: [[BitBoard; Square::NUM_SQUARES]; 2] = [
     [
         BitBoard(512),
         BitBoard(1280),
@@ -176,8 +176,7 @@ pub fn get_pawn_attacks(color: Color, square: Square) -> BitBoard {
 pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut pawn_attacks: [[BitBoard; 64]; 2] = [[BitBoard::EMPTY; 64]; 2];
 
-    for sq in 0..Square::NUM_SQUARES {
-        let square: Square = Square::from_index(sq);
+    for square in BitBoard::FULL{
         let rank: i8 = square.rank() as i8;
         let file: i8 = square.file() as i8;
         let white: usize = Color::White as usize;
@@ -192,7 +191,7 @@ pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
                     unsafe { transmute::<u8, File>(new_file as u8) },
                     unsafe { transmute::<u8, Rank>(new_rank as u8) },
                 );
-                pawn_attacks[white][sq] = pawn_attacks[white][sq].set_square(new_square);
+                pawn_attacks[white][square.to_index()] = pawn_attacks[white][square.to_index()].set_square(new_square);
             }
         }
 
@@ -205,7 +204,7 @@ pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
                     unsafe { transmute::<u8, File>(new_file as u8) },
                     unsafe { transmute::<u8, Rank>(new_rank as u8) },
                 );
-                pawn_attacks[black][sq] = pawn_attacks[black][sq].set_square(new_square);
+                pawn_attacks[black][square.to_index()] = pawn_attacks[black][square.to_index()].set_square(new_square);
             }
         }
     }

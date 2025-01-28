@@ -18,7 +18,7 @@ const KNIGHT_DELTAS: [(i8, i8); 8] = [
 /// Precomputed knight attack bitboards for all 64 squares on a chessboard.
 /// Each element corresponds to a square, and the bitboard represents the knight's potential
 /// attacks from that square. This allows for fast lookups of knight attacks.
-pub const KNIGHT_ATTACKS: [BitBoard; 64] = [
+pub const KNIGHT_ATTACKS: [BitBoard; Square::NUM_SQUARES] = [
     BitBoard(132096),
     BitBoard(329728),
     BitBoard(659712),
@@ -124,11 +124,10 @@ pub fn gen_knight_attacks(square: Square) -> BitBoard {
 /// The table is an array where each index corresponds to a square, and the value is a
 /// precomputed `BitBoard` representing the knight's attack pattern from that square.
 pub fn gen_knight_attack_table() -> [BitBoard; 64] {
-    let mut table: [BitBoard; 64] = [BitBoard::EMPTY; Square::NUM_SQUARES];
+    let mut table: [BitBoard; Square::NUM_SQUARES] = [BitBoard::EMPTY; Square::NUM_SQUARES];
 
-    for square in 0..Square::NUM_SQUARES {
-        let sq: Square = Square::from_index(square);
-        table[square] = gen_knight_attacks(sq);
+    for square in BitBoard::FULL {
+        table[square.to_index()] = gen_knight_attacks(square);
     }
 
     table
