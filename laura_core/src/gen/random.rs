@@ -28,7 +28,7 @@ impl Xoshiro256PlusPlus {
     ///
     /// The algorithm applies a series of bitwise XOR, shifts, and rotations to produce
     /// a high-quality random number and ensure that the internal state evolves properly.
-    pub fn next(&mut self) -> u64 {
+    pub fn next_u64(&mut self) -> u64 {
         let result: u64 =
             Self::rotl(self.state[0].wrapping_add(self.state[3]), 23).wrapping_add(self.state[0]);
 
@@ -52,10 +52,10 @@ impl Default for Xoshiro256PlusPlus {
     fn default() -> Self {
         Self {
             state: [
-                0x6a09e667f3bcc908,
-                0xbb67ae8584caa73b,
-                0x3c6ef372fe94f82b,
-                0xa54ff53a5f1d36f1,
+                0x6A09_E667_F3BC_C908,
+                0xBB67_AE85_84CA_A73B,
+                0x3C6E_F372_FE94_F82B,
+                0xA54F_F53A_5F1D_36F1,
             ],
         }
     }
@@ -64,23 +64,32 @@ impl Default for Xoshiro256PlusPlus {
 #[test]
 fn test_prng_seed() {
     let seed: [u64; 4] = [
-        0x1a2b3c4d5e6f7,
-        0x1122334455667788,
-        0x99aabbccddeeff00,
-        0x2233445566778899,
+        0x0001_A2B3_C4D5_E6F7,
+        0x1122_3344_5566_7788,
+        0x99AA_BBCC_DDEE_FF00,
+        0x2233_4455_6677_8899,
     ];
     let mut prng: Xoshiro256PlusPlus = Xoshiro256PlusPlus::new(seed);
 
     for _ in 0..10 {
-        println!("{}", prng.next());
+        println!("{}", prng.next_u64());
     }
 }
 
 #[test]
 fn test_prng_default() {
+    let prng_test: [u64; 4] = [
+        0x3B33_5367_F044_75F5,
+        0x42BB_AF82_469E_8642,
+        0x258D_4A00_A40A_97E4,
+        0xA44A_415D_5AA2_F14D,
+    ];
+
     let mut prng: Xoshiro256PlusPlus = Xoshiro256PlusPlus::default();
 
-    for _ in 0..10 {
-        println!("{}", prng.next());
+    for random in prng_test {
+        let prng: u64 = prng.next_u64();
+        println!("{}", prng);
+        assert_eq!(random, prng);
     }
 }

@@ -50,13 +50,11 @@ pub fn squares_between(start: Square, end: Square) -> BitBoard {
 /// lying between a pair of `Square`s. This is useful for precomputing move paths for sliding pieces
 /// like rooks, bishops, and queens.
 pub fn gen_between() -> [[BitBoard; Square::NUM_SQUARES]; Square::NUM_SQUARES] {
-    let mut table: [[BitBoard; 64]; 64] =
+    let mut table: [[BitBoard; Square::NUM_SQUARES]; Square::NUM_SQUARES] =
         [[BitBoard::EMPTY; Square::NUM_SQUARES]; Square::NUM_SQUARES];
-    for start in 0..Square::NUM_SQUARES {
-        for end in 0..Square::NUM_SQUARES {
-            let start_square: Square = Square::from_index(start);
-            let end_square: Square = Square::from_index(end);
-            table[start][end] = squares_between(start_square, end_square);
+    for start in BitBoard::FULL {
+        for end in BitBoard::FULL  {
+            table[start.to_index()][end.to_index()] = squares_between(start, end);
         }
     }
 

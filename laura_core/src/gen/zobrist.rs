@@ -21,7 +21,7 @@ pub fn generate_unique_u64_keys(seed: [u64; 4]) {
     for _ in 0..Piece::NUM_PIECES {
         print!("    [");
         for j in 0..Square::NUM_SQUARES {
-            print!("{}", prng.next());
+            print!("{}", prng.next_u64());
             if j != 63 {
                 print!(", ");
             }
@@ -34,7 +34,7 @@ pub fn generate_unique_u64_keys(seed: [u64; 4]) {
     println!("\npub const KEY_ENPASSANT: [u64; Square::NUM_SQUARES] = [");
     print!("    ");
     for i in 0..Square::NUM_SQUARES {
-        print!("{}", prng.next());
+        print!("{}", prng.next_u64());
         if i != 63 {
             print!(", ");
         }
@@ -45,7 +45,7 @@ pub fn generate_unique_u64_keys(seed: [u64; 4]) {
     println!("\npub const KEY_CASTLE: [u64; CastleRights::NUM_CASTLING_RIGHTS] = [");
     print!("    ");
     for i in 0..CastleRights::NUM_CASTLING_RIGHTS {
-        print!("{}", prng.next());
+        print!("{}", prng.next_u64());
         if i != 15 {
             print!(", ");
         }
@@ -53,7 +53,7 @@ pub fn generate_unique_u64_keys(seed: [u64; 4]) {
     println!("\n];");
 
     // Generate the Zobrist key for the side to move and print it as a Rust constant.
-    print!("\npub const KEY_SIDE: u64 = {};", prng.next());
+    print!("\npub const KEY_SIDE: u64 = {};", prng.next_u64());
 }
 
 #[test]

@@ -78,6 +78,7 @@ impl Iterator for BitBoard {
 /// Methods for the `BitBoard` struct, including utilities for manipulating bits and interacting with squares.
 impl BitBoard {
     pub const EMPTY: BitBoard = BitBoard(0);
+    pub const FULL: BitBoard = BitBoard(0xFFFF_FFFF_FFFF_FFFF);
 
     pub const fn set_square(self, square: Square) -> Self {
         Self(self.0 | 1u64 << square.to_index())

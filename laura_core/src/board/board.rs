@@ -1,15 +1,11 @@
-use std::str::FromStr;
 use std::fmt;
+use std::str::FromStr;
 
-use crate::bitboard::BitBoard;
-use crate::castle_rights::CastleRights;
-use crate::piece::Piece;
-use crate::color::Color;
-use crate::file::File;
-use crate::rank::Rank;
-use crate::square::Square;
-use crate::zobrist::Zobrist;
+use crate::{BitBoard, CastleRights, Color, File, Piece, Rank, Square, Zobrist};
 
+// This implementation is inspired by Carp, particularly its straightforward design for  
+// managing the board and its data, which simplifies move generation and game logic.  
+// Source: https://github.com/dede1751/carp/blob/main/chess/src/board.rs  
 
 /// Represents a chess board, with bitboards for tracking piece positions,
 /// castling rights, en passant squares, the fifty-move rule counter, and
@@ -31,7 +27,7 @@ pub struct Board {
 
     /// The castling rights of the current board.
     pub castling: CastleRights,
-    
+
     /// Counter for the fifty-move rule, tracking half-moves since the last capture or pawn move.
     pub fifty_move: i16,
 
@@ -55,8 +51,8 @@ pub struct Board {
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut board_str: String = format!(
-            "\n FEN: {}\n Zobrist: {}\n\n\t┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓", 
-            self.to_fen(), 
+            "\n FEN: {}\n Zobrist: {}\n\n\t┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓",
+            self.to_fen(),
             self.zobrist
         );
 
@@ -65,8 +61,8 @@ impl fmt::Display for Board {
 
             for file in 0..File::NUM_FILES {
                 let square_index: usize = rank * 8 + file;
-                let piece_str: String = self.piece_map[square_index]
-                    .map_or(String::from(" "), |p|p.to_string());
+                let piece_str: String =
+                    self.piece_map[square_index].map_or(String::from(" "), |p| p.to_string());
                 board_str.push_str(&piece_str);
                 board_str.push_str(" ┃ ");
             }
@@ -75,8 +71,9 @@ impl fmt::Display for Board {
                 board_str.push_str("\n\t┣━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━┫");
             }
         }
-        
-        board_str.push_str("\n\t┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛\n\t  A   B   C   D   E   F   G   H\n");
+
+        board_str
+            .push_str("\n\t┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛\n\t  A   B   C   D   E   F   G   H\n");
 
         let enpassant_str = match self.enpassant_square {
             Some(square) => format!("{square}"),
@@ -90,12 +87,8 @@ impl fmt::Display for Board {
             Castling Rights     : {}
             En Passante square  : {}
             Fifty Rule          : {}
-            ", 
-            board_str, 
-            self.side, 
-            self.castling, 
-            enpassant_str, 
-            self.fifty_move,
+            ",
+            board_str, self.side, self.castling, enpassant_str, self.fifty_move,
         )
     }
 }
@@ -191,12 +184,13 @@ impl FromStr for Board {
 impl Default for Board {
     #[inline]
     fn default() -> Self {
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".parse().unwrap()
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            .parse()
+            .unwrap()
     }
 }
 
 impl Board {
-
     /// Creates a new empty board with no pieces. The bitboards are initialized as empty,
     /// and castling rights, en passant square, and other attributes are set to their
     /// default (empty or zero) values.
@@ -217,17 +211,17 @@ impl Board {
 
     /// Converts the current board state into a FEN (Forsyth-Edwards Notation) string.
     ///
-    /// FEN is a standard notation for describing a particular board position of a chess game. 
-    /// It includes information about the placement of pieces, which side is to move, castling rights, 
+    /// FEN is a standard notation for describing a particular board position of a chess game.
+    /// It includes information about the placement of pieces, which side is to move, castling rights,
     /// en passant target squares, the half-move clock (for the fifty-move rule), and the full-move number.
-    pub fn to_fen(&self)  -> String  {
+    pub fn to_fen(&self) -> String {
         let mut fen: String = String::new();
 
         for rank in (0..Rank::NUM_RANKS).rev() {
             let mut empty_squares: i32 = 0;
 
             for file in 0..File::NUM_FILES {
-                let square_index:usize  = rank * 8 + file;
+                let square_index: usize = rank * 8 + file;
 
                 if let Some(piece) = self.piece_map[square_index] {
                     if empty_squares > 0 {
@@ -285,8 +279,10 @@ impl Board {
 
     /// Removes a piece from a square and updates the corresponding bitboards and
     /// Zobrist hash.
+    /// This function will panic if no piece is present on the specified square,
+    /// as it calls `unwrap()` on an `Option`.
     pub fn remove_piece(&mut self, square: Square) {
-        let piece: Piece = self.piece_on(square);
+        let piece: Piece = self.piece_on(square).unwrap();
         let index: usize = piece.piece_index();
         let color: usize = piece.color() as usize;
 
@@ -297,11 +293,9 @@ impl Board {
     }
 
     /// Returns the piece located on the specified square.
-    /// /// This function will panic if no piece is present on the specified square,
-    /// as it calls `unwrap()` on an `Option`.
     #[inline]
-    pub fn piece_on(&self, square: Square) -> Piece {
-        self.piece_map[square.to_index()].unwrap()
+    pub fn piece_on(&self, square: Square) -> Option<Piece> {
+        self.piece_map[square.to_index()]
     }
 
     /// Returns the side to move (white or black).
@@ -310,13 +304,14 @@ impl Board {
         self.side
     }
 
+    /// Returns the castling rights of the current board.
     #[inline(always)]
     pub const fn castling_rights(&self) -> CastleRights {
         self.castling
     }
 
     /// Returns the Zobrist hash of the current board position.
-    /// 
+    ///
     /// The Zobrist hash is a unique value representing the current state of the board.
     /// It is used for hashing positions in transposition tables.
     #[inline(always)]
@@ -325,7 +320,7 @@ impl Board {
     }
 
     /// Returns the current value of the fifty-move counter.
-    /// 
+    ///
     /// The fifty-move rule in chess allows a draw to be claimed if no capture or pawn movement
     /// has occurred in the last fifty moves.
     #[inline(always)]
@@ -333,31 +328,32 @@ impl Board {
         self.fifty_move
     }
 
+    /// Returns the number of plies (half-moves) made since the start of the game.
     #[inline(always)]
     pub const fn ply(&self) -> u16 {
         self.ply
     }
-
-    
-
 }
 
 #[test]
-fn test_board(){
+fn test_board() {
     let board: Board = Board::new();
     println!("{}", board);
 }
 
 #[test]
-fn test_from_string(){
-    let board: Board = Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap();
+fn test_from_string() {
+    let board: Board =
+        Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+            .unwrap();
     println!("{}", board);
     println!("{}", board.to_fen());
 }
 
 #[test]
-fn test_default(){
-    let board: Board = Board::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+fn test_default() {
+    let board: Board =
+        Board::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
     let board_default: Board = Board::default();
     println!("{}", board);
     assert_eq!(board, board_default);

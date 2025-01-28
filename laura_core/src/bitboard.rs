@@ -136,7 +136,6 @@ impl BitBoard {
 
     pub const PROMOTION_RANKS: [BitBoard; 2] = [BitBoard(RANK_7), BitBoard(RANK_2)];
     pub const PAWN_START: [BitBoard; 2] = [BitBoard(RANK_2), BitBoard(RANK_7)];
-    pub const EN_PASSANT_RANKS: [BitBoard; 2] = [BitBoard(RANK_5), BitBoard(RANK_4)];
 
     pub const DARK_SQUARES: BitBoard = BitBoard(DARK_SQUARES);
     pub const LIGHT_SQUARES: BitBoard = BitBoard(LIGHT_SQUARES);

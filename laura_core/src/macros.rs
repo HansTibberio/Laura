@@ -1,9 +1,7 @@
 use std::ops::{BitAnd, BitOr, BitXor};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 
-use crate::bitboard::BitBoard;
-use crate::board::board::Board;
-
+use crate::{BitBoard, Board};
 
 /// Macro to implement bitwise operators for a type.
 ///
@@ -19,7 +17,7 @@ macro_rules! impl_bitwise_op {
                 Self($trait::$func(self.0, other.0))
             }
         }
-    }
+    };
 }
 
 /// Macro to implement bitwise assignment operators for a type.
@@ -29,7 +27,6 @@ macro_rules! impl_bitwise_op {
 macro_rules! impl_bitwise_assign_op {
     ($trait:ident, $func:ident) => {
         impl $trait for BitBoard {
-
             #[inline]
             fn $func(&mut self, other: Self) {
                 $trait::$func(&mut self.0, other.0)
@@ -48,18 +45,17 @@ impl_bitwise_assign_op!(BitAndAssign, bitand_assign);
 impl_bitwise_assign_op!(BitOrAssign, bitor_assign);
 impl_bitwise_assign_op!(BitXorAssign, bitxor_assign);
 
-/// A macro to create a `MagicEntry` instance with the provided parameters.
+/// A macro to create a `BlackMagicEntry` instance with the provided parameters.
 ///
-/// This macro simplifies the initialization of `MagicEntry` structs by directly
+/// This macro simplifies the initialization of `BlackMagicEntry` structs by directly
 /// mapping the values to the struct's fields, which represent various components
 /// of the magic bitboard setup for chess engines or similar applications.
 #[macro_export]
-macro_rules! Magic {
-    ($mk: expr, $mg: expr, $s: expr, $o: expr) => {
-        MagicEntry {
-            mask: $mk,
+macro_rules! BlackMagic {
+    ($mg: expr, $nm: expr, $o: expr) => {
+        BlackMagicEntry {
             magic: $mg,
-            shift: $s,
+            not_mask: $nm,
             offset: $o,
         }
     };
@@ -76,18 +72,18 @@ macro_rules! Magic {
 macro_rules! impl_piece_lookups {
     ($($piece_index:expr, $allied_fn:ident, $enemy_fn:ident, $total_fn:ident),*) => {
         impl Board {
-            $(  
-                #[inline]
+            $(
+                #[inline(always)]
                 pub const fn $allied_fn(&self) -> BitBoard {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize].0)
                 }
-                
-                #[inline]
+
+                #[inline(always)]
                 pub const fn $enemy_fn(&self) -> BitBoard {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize ^ 1].0)
                 }
-                
-                #[inline]
+
+                #[inline(always)]
                 pub const fn $total_fn(&self) -> BitBoard {
                     self.pieces_bitboard[$piece_index]
                 }

@@ -93,6 +93,7 @@ pub const PROM_PIECES: [[Piece; 4]; 2] = [
 ];
 
 impl Piece {
+    /// The number of unique pieces on chess.
     pub const COUNT: usize = 6;
 
     /// Total number of pieces on chess (6x2 = 12).
