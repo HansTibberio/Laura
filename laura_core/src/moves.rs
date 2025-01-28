@@ -32,8 +32,8 @@ const PROM_MASK: u16 = 0b10000000_00000000;
 const CAP_MASK: u16 = 0b01000000_00000000;
 
 /// Enum representing the different types of moves in chess, including promotions and special moves.
-/// https://www.chessprogramming.org/Encoding_Moves
 ///
+/// https://www.chessprogramming.org/Encoding_Moves
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum MoveType {

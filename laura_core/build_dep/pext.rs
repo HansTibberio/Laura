@@ -5,9 +5,9 @@ use super::{
 use std::io::Result;
 use std::io::Write;
 
-// This file contains code licensed under MIT.
+// This implementation of PEXT bitboards is inspired by and based on the work developed in Cozy-Chess, licensed under the MIT License.
 // Copyright (c) 2021 analog-hors
-// Taken from: (https://github.com/analog-hors/cozy-chess)
+// Source: https://github.com/analog-hors/cozy-chess/blob/master/types/src/sliders/pext.rs
 
 // This attribute ensures that the code is compiled only if the target architecture is x86_64
 // and the BMI2 instruction set is supported. If these conditions are not met, a compile-time error
@@ -158,7 +158,7 @@ pub struct PextIndexData {
 pub fn gen_pext() -> PextIndexData {
     let mut offset: usize = 0;
 
-    let mut rook_data: [PextEntry; 64] = [EMPTY_ENTRY; Square::NUM_SQUARES];
+    let mut rook_data: [PextEntry; Square::NUM_SQUARES] = [EMPTY_ENTRY; Square::NUM_SQUARES];
     let mut i: usize = 0;
     while i < rook_data.len() {
         let square: Square = Square::from_index(i);
@@ -168,7 +168,7 @@ pub fn gen_pext() -> PextIndexData {
         i += 1;
     }
 
-    let mut bishop_data: [PextEntry; 64] = [EMPTY_ENTRY; Square::NUM_SQUARES];
+    let mut bishop_data: [PextEntry; Square::NUM_SQUARES] = [EMPTY_ENTRY; Square::NUM_SQUARES];
     let mut i: usize = 0;
     while i < bishop_data.len() {
         let square: Square = Square::from_index(i);

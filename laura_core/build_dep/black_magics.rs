@@ -6,7 +6,7 @@ use super::types::{BitBoard, Square};
 
 //  All the magic numbers and offsets were published by Volker Annuss & Niklas Fiekas.
 //  Credits to the original creators.
-//  (https://www.talkchess.com/forum3/viewtopic.php?p=726160#p726160)
+//  Source: https://www.talkchess.com/forum/viewtopic.php?p=726160
 
 /// Defines a structure to store black magic bitboard entries.
 ///

@@ -1,5 +1,9 @@
 use crate::{BitBoard, Square};
 
+// This implementation of PEXT bitboards is based on the work developed in Cozy-Chess, licensed under the MIT License.
+// Copyright (c) 2021 analog-hors
+// Source: https://github.com/analog-hors/cozy-chess/blob/master/types/src/sliders/pext.rs
+
 // Includes pre-generated files containing the slider attack bitboards and the PEXT (Parallel Bit Extraction)
 // data. These files are created at build time and are dynamically included into the current module at compile-time.
 include!(concat!(env!("OUT_DIR"), "/sliders_attacks.rs"));

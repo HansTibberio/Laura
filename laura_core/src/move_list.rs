@@ -9,9 +9,13 @@ pub const MAX_MOVES: usize = 254;
 #[cfg(target_pointer_width = "16")]
 pub const MAX_MOVES: usize = 255;
 
+// This implementation is based on the `MoveList` structure from Pleco,
+// an efficient chess library, licensed under the MIT License.
+// Copyright (c) 2022 Pleco
+// Source: https://github.com/pleco-rs/Pleco/blob/main/pleco/src/core/move_list.rs
+
+
 /// A struct that holds a list of `Move` objects for a given position in a chess game.
-///
-/// From Pleco: https://github.com/pleco-rs/Pleco/blob/main/pleco/src/core/move_list.rs
 ///
 /// The `MoveList` allows storing and managing moves, and tracks the current number of moves.
 ///

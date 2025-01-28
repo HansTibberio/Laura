@@ -3,12 +3,12 @@ use std::str::FromStr;
 
 use crate::{BitBoard, Color, File, MoveType, Square};
 
+// This implementation is based on the approach used in Carp, which licensed under the GPLv3. 
+// Source: https://github.com/dede1751/carp/blob/main/chess/src/castle.rs 
+
 /// `CastleRights` represents the castling rights of both players (White and Black)
 /// using a bitmask stored in a `u8`. It tracks the availability of kingside and queenside
 /// castling rights for both sides.
-///
-/// From Carp: https://github.com/dede1751/carp/blob/main/chess/src/castle.rs
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 pub struct CastleRights(u8);
 
