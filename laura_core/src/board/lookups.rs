@@ -96,12 +96,10 @@ impl Board {
     /// Finds legal move in board from the uci-formatted move string
     #[inline]
     pub fn find_move(&self, move_str: &str) -> Option<Move> {
-        for mv in self.gen_moves::<true>().index {
-            if mv.to_string() == move_str {
-                return Some(mv);
-            }
-        }
-        None
+        self.gen_moves::<true>()
+            .index
+            .into_iter()
+            .find(|&mv| mv.to_string().eq(move_str))
     }
 }
 
