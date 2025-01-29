@@ -6,4 +6,5 @@ pub mod pawn;
 #[cfg(feature = "bmi2")]
 pub mod pext;
 pub mod random;
+pub mod rays;
 mod zobrist;
