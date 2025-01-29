@@ -77,11 +77,11 @@ impl Board {
         let attacks: BitBoard = get_king_attacks(src);
         let blockers: BitBoard = self.combined_bitboard().pop_square(src);
 
-        let mut enemy_targets: BitBoard = attacks & self.enemy_presence();
-        let mut quiet_targets: BitBoard = attacks & !self.combined_bitboard();
+        let enemy_targets: BitBoard = attacks & self.enemy_presence();
+        let quiet_targets: BitBoard = attacks & !self.combined_bitboard();
 
         // Process capture moves for the king: iterate over the enemy target squares
-        while let Some(dest) = enemy_targets.next() {
+        for dest in enemy_targets {
             if !self.attacked_square(dest, blockers) {
                 move_list.push(Move::new(src, dest, MoveType::Capture));
             }
@@ -89,7 +89,7 @@ impl Board {
 
         if ALL_MOVES {
             // Process quiet moves for the king: iterate over the quiet target squares
-            while let Some(dest) = quiet_targets.next() {
+            for dest in quiet_targets {
                 if !self.attacked_square(dest, blockers) {
                     move_list.push(Move::new(src, dest, MoveType::Quiet));
                 }
@@ -120,9 +120,9 @@ impl Board {
         move_list: &mut MoveList,
     ) {
         // Get the knight's positions, excluding pinned knights (they can't move)
-        let mut knights: BitBoard = self.allied_knights() & !pin_mask;
+        let knights: BitBoard = self.allied_knights() & !pin_mask;
 
-        while let Some(src) = knights.next() {
+        for src in knights {
             let attacks: BitBoard = get_knight_attacks(src) & check_mask;
 
             // Process capture moves for the knight
@@ -153,10 +153,10 @@ impl Board {
         move_list: &mut MoveList,
     ) {
         // Combine the bishops and queens bitboards, excluding pinned pieces
-        let mut bishops: BitBoard = (self.allied_bishops() | self.allied_queens()) & !pinned_mask;
+        let bishops: BitBoard = (self.allied_bishops() | self.allied_queens()) & !pinned_mask;
         let blockers: BitBoard = self.combined_bitboard();
 
-        while let Some(src) = bishops.next() {
+        for src in bishops {
             let mut attacks: BitBoard = get_bishop_attacks(src, blockers) & check_mask;
 
             // Apply the slide mask to restrict the bishop's (or queen's) movement
@@ -192,10 +192,10 @@ impl Board {
         move_list: &mut MoveList,
     ) {
         // Combine the rooks and queens and filter out pinned pieces that cannot move freely
-        let mut rooks: BitBoard = (self.allied_rooks() | self.allied_queens()) & !pinned_mask;
+        let rooks: BitBoard = (self.allied_rooks() | self.allied_queens()) & !pinned_mask;
         let blockers: BitBoard = self.combined_bitboard();
 
-        while let Some(src) = rooks.next() {
+        for src in rooks {
             let mut attacks: BitBoard = get_rook_attacks(src, blockers) & check_mask;
 
             // Apply the slide mask to restrict rook movement to valid squares, if applicable
@@ -245,10 +245,10 @@ impl Board {
         let empty: BitBoard = !self.combined_bitboard();
         let target: BitBoard = empty & check_mask;
         let single_push: BitBoard = pawns & target.forward(!self.side);
-        let mut promotion_mask: BitBoard =
+        let promotion_mask: BitBoard =
             single_push & BitBoard::PROMOTION_RANKS[self.side as usize];
 
-        while let Some(src) = promotion_mask.next() {
+        for src in promotion_mask {
             let dest: Square = src.forward(self.side);
             if !linear_pins.get_square(src) || linear_pins.get_square(dest) {
                 move_list.push(Move::new(src, dest, MoveType::PromotionQueen));
@@ -265,20 +265,20 @@ impl Board {
             return;
         }
 
-        let mut quiet_mask: BitBoard = single_push & !BitBoard::PROMOTION_RANKS[self.side as usize];
+        let quiet_mask: BitBoard = single_push & !BitBoard::PROMOTION_RANKS[self.side as usize];
 
-        while let Some(src) = quiet_mask.next() {
+        for src in quiet_mask {
             let dest: Square = src.forward(self.side);
             if !linear_pins.get_square(src) || linear_pins.get_square(dest) {
                 move_list.push(Move::new(src, dest, MoveType::Quiet));
             }
         }
 
-        let mut double_push: BitBoard = pawns
+        let double_push: BitBoard = pawns
             & (empty & target.forward(!self.side)).forward(!self.side)
             & BitBoard::PAWN_START[self.side as usize];
 
-        while let Some(src) = double_push.next() {
+        for src in double_push {
             let dest: Square = src.forward(self.side).forward(self.side);
             if !linear_pins.get_square(src) || linear_pins.get_square(dest) {
                 move_list.push(Move::new(src, dest, MoveType::DoublePawn));
@@ -371,19 +371,19 @@ impl Board {
         let diagonal_pinned_removed: BitBoard = blockers_mask & !diagonal_pinned;
         let linear_pinned_removed: BitBoard = blockers_mask & !linnear_pinned;
 
-        let mut diagonal_attackers: BitBoard =
+        let diagonal_attackers: BitBoard =
             get_bishop_attacks(king_square, diagonal_pinned_removed) & self.enemy_queen_bishops();
-        let mut linear_attackers: BitBoard =
+        let linear_attackers: BitBoard =
             get_rook_attacks(king_square, linear_pinned_removed) & self.enemy_queen_rooks();
 
         let mut diagonal_pins: BitBoard = BitBoard::EMPTY;
-        while let Some(attacker) = diagonal_attackers.next() {
+        for attacker in diagonal_attackers {
             let pin: BitBoard = get_between(king_square, attacker);
             diagonal_pins |= pin;
         }
 
         let mut linear_pins: BitBoard = BitBoard::EMPTY;
-        while let Some(attacker) = linear_attackers.next() {
+        for attacker in linear_attackers {
             let pin: BitBoard = get_between(king_square, attacker);
             linear_pins |= pin;
         }
