@@ -1,5 +1,5 @@
 use crate::{
-    castle_rights::get_rook_castling, BitBoard, Board, CastleRights, Move, MoveType, Piece,
+    castle_rights::get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece,
     PieceType, Square,
 };
 
@@ -40,6 +40,10 @@ impl Board {
         } else {
             board.fifty_move + 1
         };
+
+        if board.side == Color::Black {
+            board.full_move = board.full_move.saturating_add(1);
+        }
 
         // Handle special move types (En Passant, Castling, Captures)
         match move_type {
@@ -125,7 +129,7 @@ impl Board {
         // Clear the checkers state.
         board.checkers = BitBoard::EMPTY;
 
-         // Return the new board state after the null move.
+        // Return the new board state after the null move.
         board
     }
 }
@@ -133,14 +137,31 @@ impl Board {
 #[test]
 fn test_move() {
     let board: Board = Board::default();
+    assert_eq!(
+        board.to_fen(),
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    );
+    println!("{}", board);
+    let mv: Move = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
+    let board: Board = board.make_move(mv);
+    assert_eq!(
+        board.to_fen(),
+        "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    );
+    println!("{}", board);
+    let mv: Move = Move::new(Square::C7, Square::C5, MoveType::DoublePawn);
+    let board: Board = board.make_move(mv);
+    assert_eq!(
+        board.to_fen(),
+        "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
+    );
+    println!("{}", board);
     let mv: Move = Move::new(Square::G1, Square::F3, MoveType::Quiet);
     let board: Board = board.make_move(mv);
-    println!("{}", board);
-    let mv: Move = Move::new(Square::E7, Square::E6, MoveType::Quiet);
-    let board: Board = board.make_move(mv);
-    println!("{}", board);
-    let mv: Move = Move::new(Square::B1, Square::C3, MoveType::Quiet);
-    let board: Board = board.make_move(mv);
+    assert_eq!(
+        board.to_fen(),
+        "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+    );
     println!("{}", board);
 }
 

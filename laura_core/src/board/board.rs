@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 use crate::{BitBoard, CastleRights, Color, File, Piece, Rank, Square, Zobrist};
 
-// This implementation is inspired by Carp, particularly its straightforward design for  
-// managing the board and its data, which simplifies move generation and game logic.  
-// Source: https://github.com/dede1751/carp/blob/main/chess/src/board.rs  
+// This implementation is inspired by Carp, particularly its straightforward design for
+// managing the board and its data, which simplifies move generation and game logic.
+// Source: https://github.com/dede1751/carp/blob/main/chess/src/board.rs
 
 /// Represents a chess board, with bitboards for tracking piece positions,
 /// castling rights, en passant squares, the fifty-move rule counter, and
@@ -29,10 +29,10 @@ pub struct Board {
     pub castling: CastleRights,
 
     /// Counter for the fifty-move rule, tracking half-moves since the last capture or pawn move.
-    pub fifty_move: i16,
+    pub fifty_move: u8,
 
-    /// The number of plies (half-moves) made since the start of the game.
-    pub ply: u16,
+    /// The number of the full moves. It starts at 1 and is incremented after Black's move.
+    pub full_move: u16,
 
     /// The Zobrist hash representing the current board state.
     pub zobrist: Zobrist,
@@ -100,10 +100,10 @@ impl FromStr for Board {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let fen: Vec<&str> = s.split_whitespace().take(6).collect();
+        let fen: Vec<&str> = s.split_whitespace().collect();
 
         if fen.len() != 6 {
-            return Err("Invalid FEN!");
+            return Err("FEN string has an invalid length.");
         }
 
         let mut board: Board = Self::new();
@@ -115,7 +115,7 @@ impl FromStr for Board {
             match token {
                 '/' => {
                     if count != 8 {
-                        return Err("Invalid FEN!");
+                        return Err("FEN string contains invalid delimiters.");
                     };
 
                     rank = rank.down();
@@ -136,7 +136,7 @@ impl FromStr for Board {
         }
 
         if count != 8 {
-            return Err("Invalid FEN!");
+            return Err("The board layout is invalid.");
         }
 
         match fen[1] {
@@ -145,7 +145,7 @@ impl FromStr for Board {
                 board.zobrist.hash_side();
             }
             "b" => board.side = Color::Black,
-            _ => return Err("Invalid FEN!"),
+            _ => return Err("Invalid side to move, should be 'w' or 'b'."),
         }
 
         let castle_rights: CastleRights = fen[2].parse()?;
@@ -156,20 +156,25 @@ impl FromStr for Board {
             "-" => board.enpassant_square = None,
             _ => {
                 let ep_square: Square = fen[3].parse()?;
+                if ep_square.rank() != Rank::Three && ep_square.rank() != Rank::Six {
+                    return Err("En passant square is invalid.");
+                }
 
                 board.enpassant_square = Some(ep_square);
                 board.zobrist.hash_enpassant(ep_square);
             }
         }
 
-        match fen[4].parse::<i16>() {
-            Ok(half_move) => board.fifty_move = half_move,
-            Err(_) => return Err("Invalid Halfmove Clock!"),
+        match fen[4].parse::<u8>() {
+            Ok(half_move) if half_move <= 100 => board.fifty_move = half_move,
+            Ok(_) => return Err("Halfmove Clock exceeds the maximum allowed value."),
+            Err(_) => return Err("Invalid Halfmove Clock"),
         }
 
         match fen[5].parse::<u16>() {
-            Ok(full_move) => board.ply = full_move,
-            Err(_) => return Err("Invalid Fullmove Number!"),
+            Ok(full_move) if full_move > 0 => board.full_move = full_move,
+            Ok(_) => return Err("Fullmove number must be positive"),
+            Err(_) => return Err("Invalid Fullmove Number"),
         }
 
         board.checkers = board.checkers();
@@ -202,7 +207,7 @@ impl Board {
             enpassant_square: None,
             castling: CastleRights::null(),
             fifty_move: 0,
-            ply: 0,
+            full_move: 1,
             zobrist: Zobrist::null(),
             side: Color::White,
             checkers: BitBoard::EMPTY,
@@ -259,7 +264,7 @@ impl Board {
             fen.push('-');
         }
 
-        fen.push_str(&format!(" {} {}", self.fifty_move, self.ply));
+        fen.push_str(&format!(" {} {}", self.fifty_move, self.full_move));
 
         fen
     }
@@ -324,14 +329,14 @@ impl Board {
     /// The fifty-move rule in chess allows a draw to be claimed if no capture or pawn movement
     /// has occurred in the last fifty moves.
     #[inline(always)]
-    pub const fn fifty_move(&self) -> i16 {
+    pub const fn fifty_move(&self) -> u8 {
         self.fifty_move
     }
 
-    /// Returns the number of plies (half-moves) made since the start of the game.
+    /// Returns the full number of moves made since the start of the game.
     #[inline(always)]
-    pub const fn ply(&self) -> u16 {
-        self.ply
+    pub const fn full_move(&self) -> u16 {
+        self.full_move
     }
 }
 
