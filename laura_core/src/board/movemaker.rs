@@ -132,6 +132,13 @@ impl Board {
         // Return the new board state after the null move.
         board
     }
+
+    /// Attempts to make a move on the board using the UCI (Universal Chess Interface) notation.
+    pub fn make_uci_move(&self, uci_move: &str)  -> Result<Board, &str>  {
+        self.find_move(uci_move)
+        .map(|mv| self.make_move(mv))
+        .ok_or("Ilegal UCI move from the current board")
+    }
 }
 
 #[test]
@@ -170,5 +177,12 @@ fn test_null() {
     let board: Board = Board::default();
     println!("{}", board);
     let board: Board = board.null_move();
+    println!("{}", board);
+}
+
+#[test]
+fn test_uci_move(){
+    let board: Board = Board::default();
+    let board: Board = board.make_uci_move("e2e4").unwrap();
     println!("{}", board);
 }
