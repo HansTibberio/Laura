@@ -180,7 +180,7 @@ impl Board {
     }
 
     /// Generates rook moves (and queen moves, as they share movement logic) for the board.
-    /// 
+    ///
     /// This function checks for sliding attacks, considering blockers and pinned pieces,
     /// and adds legal moves to the `move_list` based on the `ALL_MOVES` parameter.
     #[inline(always)]
@@ -209,7 +209,7 @@ impl Board {
                 move_list.push(Move::new(src, dest, MoveType::Capture));
             }
 
-             // If `ALL_MOVES` is enabled, add quiet moves as well
+            // If `ALL_MOVES` is enabled, add quiet moves as well
             if ALL_MOVES {
                 for dest in attacks & !self.combined_bitboard() {
                     move_list.push(Move::new(src, dest, MoveType::Quiet));
@@ -218,6 +218,11 @@ impl Board {
         }
     }
 
+    /// Generates castling moves for the given side (kingside or queenside).
+    ///
+    /// This function checks whether castling is possible by verifying that:
+    /// 1. The squares between the king and the rook are unoccupied.
+    /// 2. The king does not move through or end up in an attacked square.
     #[inline(always)]
     fn gen_castle_moves<const KING_SIDE: usize>(&self, move_list: &mut MoveList) {
         let side: usize = self.side as usize;
@@ -225,14 +230,26 @@ impl Board {
         let dest: Square = DESTINATION[KING_SIDE][side];
         let move_type: MoveType = CASTLE_TYPE[KING_SIDE];
 
+        // Ensure that the squares between the king and rook are empty.
         if (self.combined_bitboard() & PRESENCE[KING_SIDE][side]).is_empty()
+
+            // Ensure the king does not move through an attacked square.
             && !self.attacked_square(MEDIUM[KING_SIDE][side], self.combined_bitboard())
+
+            // Ensure the final destination is not attacked.
             && !self.attacked_square(dest, self.combined_bitboard())
         {
+            // Add the castling move to the move list.
             move_list.push(Move::new(src, dest, move_type));
         }
     }
 
+    /// Generates all legal pawn moves, including single and double pushes, captures, and promotions.
+    ///
+    /// This function considers various movement constraints such as:
+    /// - Check mask: Ensures the move does not leave the king in check.
+    /// - Pins: Prevents movement if the pawn is pinned.
+    /// - Promotion: Detects when a pawn reaches the promotion rank.
     #[inline(always)]
     fn gen_pawn_moves<const ALL_MOVES: bool>(
         &self,
@@ -245,11 +262,13 @@ impl Board {
         let empty: BitBoard = !self.combined_bitboard();
         let target: BitBoard = empty & check_mask;
         let single_push: BitBoard = pawns & target.forward(!self.side);
-        let promotion_mask: BitBoard =
-            single_push & BitBoard::PROMOTION_RANKS[self.side as usize];
+        let promotion_mask: BitBoard = single_push & BitBoard::PROMOTION_RANKS[self.side as usize];
 
+        // Handle promotions (if a pawn reaches the last rank).
         for src in promotion_mask {
             let dest: Square = src.forward(self.side);
+
+            // Ensure the move is legal even if pinned.
             if !linear_pins.get_square(src) || linear_pins.get_square(dest) {
                 move_list.push(Move::new(src, dest, MoveType::PromotionQueen));
 
@@ -261,10 +280,12 @@ impl Board {
             }
         }
 
+        // If only tacticals moves are needed, return early.
         if !ALL_MOVES {
             return;
         }
 
+        // Handle non-promotion single pawn pushes.
         let quiet_mask: BitBoard = single_push & !BitBoard::PROMOTION_RANKS[self.side as usize];
 
         for src in quiet_mask {
@@ -274,18 +295,28 @@ impl Board {
             }
         }
 
+        // Handle double pawn pushes from the starting rank.
         let double_push: BitBoard = pawns
             & (empty & target.forward(!self.side)).forward(!self.side)
             & BitBoard::PAWN_START[self.side as usize];
 
         for src in double_push {
             let dest: Square = src.forward(self.side).forward(self.side);
+
+            // Ensure the move is legal even if pinned.
             if !linear_pins.get_square(src) || linear_pins.get_square(dest) {
                 move_list.push(Move::new(src, dest, MoveType::DoublePawn));
             }
         }
     }
 
+    /// Generates all legal pawn attack moves, including standard captures,
+    /// promotion captures, and en passant captures.
+    ///
+    /// This function takes into account:
+    /// - Check restrictions (`check_mask`) to ensure the move doesn't leave the king in check.
+    /// - Pinned pieces (`diagonal_pins` and `linear_pins`) to restrict illegal movements.
+    /// - En passant captures, ensuring they are only performed if legal.
     #[inline(always)]
     fn gen_pawn_attacks(
         &self,
@@ -298,13 +329,16 @@ impl Board {
         let targets: BitBoard = self.enemy_presence() & check_mask;
         let king_square: Square = self.allied_king().to_square();
 
+        // Handle promotion captures
         for src in pawns & BitBoard::PROMOTION_RANKS[self.side as usize] {
             let mut attacks: BitBoard = get_pawn_attacks(self.side, src);
 
+            // Ensure that diagonally pinned pawns can only move along the pin's direction.
             if diagonal_pins.get_square(src) {
                 attacks &= diagonal_pins
             }
 
+            // If the destination is an enemy piece, generate promotion captures.
             for dest in attacks & targets {
                 move_list.push(Move::new(src, dest, MoveType::CapPromoQueen));
                 move_list.push(Move::new(src, dest, MoveType::CapPromoRook));
@@ -313,16 +347,19 @@ impl Board {
             }
         }
 
-        // En Pasant
+        // Handle en passant captures
         if let Some(en_passant) = self.enpassant_square {
             let dest: Square = en_passant;
             let victim: Square = en_passant.forward(!self.side);
 
+            // Check which pawns can capture en passant.
             for src in pawns & get_pawn_attacks(!self.side, dest) {
+                // Simulate the board after en passant capture.
                 let blockers: BitBoard =
                     self.combined_bitboard() ^ victim.to_bitboard() ^ src.to_bitboard()
                         | dest.to_bitboard();
 
+                // Ensure en passant does not expose the king to a rook or queen attack.
                 let king_ray: bool =
                     !(rook_rays(king_square) & self.enemy_queen_rooks()).is_empty();
                 if king_ray
@@ -332,6 +369,7 @@ impl Board {
                     continue;
                 }
 
+                // Ensure en passant does not expose the king to a bishop or queen attack.
                 let king_ray: bool =
                     !(bishop_rays(king_square) & self.enemy_queen_bishops()).is_empty();
                 if king_ray
@@ -345,43 +383,62 @@ impl Board {
             }
         }
 
+        // Handle standard pawn captures
         for src in pawns & !BitBoard::PROMOTION_RANKS[self.side as usize] {
             let mut attacks: BitBoard = get_pawn_attacks(self.side, src);
 
+            // Ensure that diagonally pinned pawns can only move along the pin's direction.
             if diagonal_pins.get_square(src) {
                 attacks &= diagonal_pins
             }
 
+            // If the destination is an enemy piece, generate a normal capture.
             for dest in attacks & targets {
                 move_list.push(Move::new(src, dest, MoveType::Capture));
             }
         }
     }
 
+    /// Identifies all possible squares where a piece could be pinned to the king.
+    ///
+    /// This function determines squares that are along a potential pinning line
+    /// between the king and an enemy sliding piece (bishop, rook, or queen). It does **not**
+    /// return the pinned pieces directly, but rather the bitboard of squares where a piece
+    /// could be pinned.
+    ///
+    /// ### How it works:
+    /// 1. Determines which squares could potentially contain pinned pieces.
+    /// 2. Simulates removing those pieces to check if an enemy piece is attacking the king.
+    /// 3. Collects all such pinning paths and returns them as bitboards.
     #[inline(always)]
     fn pinners(&self) -> (BitBoard, BitBoard) {
         let king_square: Square = self.allied_king().to_square();
         let blockers_mask: BitBoard = self.combined_bitboard();
 
+        // Identify squares along potential pinning paths (diagonal and linear).
         let diagonal_pinned: BitBoard =
             get_bishop_attacks(king_square, blockers_mask) & self.allied_presence();
         let linnear_pinned: BitBoard =
             get_rook_attacks(king_square, blockers_mask) & self.allied_presence();
 
+        // Simulate removing those pieces to check if the king would be attacked.
         let diagonal_pinned_removed: BitBoard = blockers_mask & !diagonal_pinned;
         let linear_pinned_removed: BitBoard = blockers_mask & !linnear_pinned;
 
+        // Find enemy attackers that could be pinning a piece along diagonal or linear paths.
         let diagonal_attackers: BitBoard =
             get_bishop_attacks(king_square, diagonal_pinned_removed) & self.enemy_queen_bishops();
         let linear_attackers: BitBoard =
             get_rook_attacks(king_square, linear_pinned_removed) & self.enemy_queen_rooks();
 
+        // Get squares along the diagonal pinning line.
         let mut diagonal_pins: BitBoard = BitBoard::EMPTY;
         for attacker in diagonal_attackers {
             let pin: BitBoard = get_between(king_square, attacker);
             diagonal_pins |= pin;
         }
 
+        // Get squares along the linear (orthogonal) pinning line.
         let mut linear_pins: BitBoard = BitBoard::EMPTY;
         for attacker in linear_attackers {
             let pin: BitBoard = get_between(king_square, attacker);
