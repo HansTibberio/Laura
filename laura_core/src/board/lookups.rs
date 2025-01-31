@@ -97,7 +97,7 @@ impl Board {
     #[inline]
     pub fn find_move(&self, move_str: &str) -> Option<Move> {
         self.gen_moves::<true>()
-            .index
+            .moves
             .into_iter()
             .find(|&mv| mv.to_string().eq(move_str))
     }

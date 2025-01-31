@@ -1,7 +1,7 @@
 use std::time::Duration;
 use std::time::Instant;
 
-use crate::{Board, Move, MoveList};
+use crate::{Board, MoveList};
 
 /// A collection of standardized perft test positions for the Laura-Core move generation.
 /// These positions are used to validate move generation correctness and measure performance.
@@ -103,11 +103,10 @@ pub fn divided_perft(board: &Board, depth: usize) -> usize {
     let mut total_nodes: usize = 0;
     let move_list: MoveList = board.gen_moves::<true>();
 
-    for m in 0..move_list.len() {
+    for mv in move_list {
         if depth == 0 {
             return 1;
         } else {
-            let mv: Move = move_list.index[m];
             let board_result: Board = board.make_move(mv);
             let inner_nodes: usize = inner_perft(&board_result, depth - 1);
             total_nodes += inner_nodes;
@@ -127,20 +126,19 @@ pub fn divided_perft(board: &Board, depth: usize) -> usize {
 /// For deeper levels, it recursively calls itself to count all possible move sequences.
 fn inner_perft(board: &Board, depth: usize) -> usize {
     let move_list: MoveList = board.gen_moves::<true>();
-    let len: usize = move_list.len();
 
-    let mut result: usize = 0;
     if depth == 0 {
         1
     } else if depth == 1 {
-        len
+        move_list.len()
     } else {
-        for m in 0..len {
-            let mv: Move = move_list.index[m];
-            let board_result: Board = board.make_move(mv);
-            result += inner_perft(&board_result, depth - 1);
-        }
-        result
+        move_list
+            .into_iter()
+            .map(|mv| {
+                let board_result: Board = board.make_move(mv);
+                inner_perft(&board_result, depth - 1)
+            })
+            .sum()
     }
 }
 
