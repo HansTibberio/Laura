@@ -6,7 +6,7 @@
 
 </div>
 
-**Laura Core** a fast and efficient move generator for chess engines using bitboards.
+**Laura-Core** a fast and efficient move generator for chess engines.
 
 ## Features
 - **Bitboards** for efficient board representation.  
@@ -40,7 +40,7 @@ fn main() {
 use laura_core::{Board, MoveList};
 
 fn main() {
-	let board: Board = Board::default();
+    let board: Board = Board::default();
     let moves: MoveList = board.gen_moves::<true>();
     
     for mv in moves {
