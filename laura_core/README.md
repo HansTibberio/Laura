@@ -9,15 +9,15 @@
 **Laura Core** a fast and efficient move generator for chess engines using bitboards.
 
 ## Features
-**Bitboards** for efficient board representation.  
-**Zobrist Hashing** 
-**Black Magic Bitboards** for rapid move generation of rooks, bishops, and queens.  
-**PEXT Bitboards** as an alternative for efficient sliding piece move generation.  
-**Full legal or only tactical move generation** depending on requirements.  
-**FEN support**: Initialize the board from a FEN string.  
-**Move execution** to update the board state dynamically.  
-**Null move support** for search optimizations like quiescence search.  
-**UCI move execution**: Apply moves directly from a UCI-compliant string.
+- **Bitboards** for efficient board representation.  
+- **Zobrist Hashing** 
+- **Black Magic Bitboards** for rapid move generation of rooks, bishops, and queens.  
+- **PEXT Bitboards** as an alternative for efficient sliding piece move generation.  
+- **Full legal or only tactical move generation** depending on requirements.  
+- **FEN support**: Initialize the board from a FEN string.  
+- **Move execution** to update the board state dynamically.  
+- **Null move support** for search optimizations like quiescence search.  
+- **UCI move execution**: Apply moves directly from a UCI-compliant string.
 
 ## **Usage**
 
@@ -63,7 +63,7 @@ fn main() {
 
 ## **License**
 
-This project is licensed under **GPLv3**. See the `LICENSE` file for details.
+This project is licensed under **GPLv3**. See the [LICENSE][license-link] file for details.
 
 [license-link]:https://github.com/hanstibberio/Laura/blob/master/LICENSE
 
