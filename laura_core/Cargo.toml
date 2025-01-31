@@ -10,7 +10,7 @@ keywords = ["chess", "game"]
 categories = ["games"]
 repository = "https://github.com/HansTibberio/laura"
 
-include = ["src/*", "cargo.toml", "build_dep/*"]
+include = ["src/*", "cargo.toml", "build_dep/*", "build.rs", "README.md"]
 
 [features]
 bmi2 = []
