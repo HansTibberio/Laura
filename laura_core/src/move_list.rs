@@ -77,8 +77,8 @@ impl Default for MoveList {
 /// it displays "MoveList: (0) []" to indicate no moves are present.
 impl fmt::Display for MoveList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.moves.is_empty() {
-            return write!(f, "MoveList: (0) []");
+        if self.is_empty() {
+            return write!(f, "MoveList: (0 moves)");
         }
 
         writeln!(f, "MoveList ({} moves):", self.len)?;
@@ -95,8 +95,10 @@ impl MoveList {
     /// If the list is already at maximum capacity, the move is not added.
     #[inline(always)]
     pub fn push(&mut self, mv: Move) {
-        self.moves[self.len] = mv;
-        self.len += 1;
+        if self.len < MAX_MOVES {
+            self.moves[self.len] = mv;
+            self.len += 1;
+        }
     }
 
     /// Returns the number of moves currently stored in the list.
