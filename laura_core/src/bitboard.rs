@@ -105,7 +105,7 @@ impl fmt::Display for BitBoard {
 impl Not for BitBoard {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn not(self) -> Self::Output {
         Self(!self.0)
     }
@@ -169,7 +169,7 @@ impl BitBoard {
     }
 
     /// Sets a given `Square` on the `BitBoard`, turning the bit at the square's position to '1'.
-    #[inline]
+    #[inline(always)]
     pub const fn set_square(self, square: Square) -> Self {
         Self(self.0 | 1u64 << square.to_index())
     }
@@ -177,31 +177,31 @@ impl BitBoard {
     /// Checks if a specific `Square` is set on the `BitBoard`.
     ///
     /// `true` if the square is set, otherwise `false`.
-    #[inline]
+    #[inline(always)]
     pub const fn get_square(self, square: Square) -> bool {
         self.0 & (1u64 << square.to_index()) != 0
     }
 
     /// Clears a specific `Square` on the `BitBoard`, turning the bit at the square's position to '0'.
-    #[inline]
+    #[inline(always)]
     pub const fn pop_square(self, square: Square) -> Self {
         Self(self.0 & !(1u64 << square.to_index()))
     }
 
     /// Counts the number of set bits (i.e., the number of squares occupied) on the `BitBoard`.
-    #[inline]
+    #[inline(always)]
     pub const fn count_bits(self) -> u32 {
         self.0.count_ones()
     }
 
     /// Flips the bitboard vertically, swapping rows (ranks) across the horizontal axis.
-    #[inline]
+    #[inline(always)]
     pub const fn flip(self) -> Self {
         Self(self.0.swap_bytes())
     }
 
     /// Shift the bitboard one rank forward for the side to move.
-    #[inline]
+    #[inline(always)]
     pub const fn forward(self, side: Color) -> Self {
         match side {
             Color::White => Self(self.0 << 8),
@@ -209,11 +209,31 @@ impl BitBoard {
         }
     }
 
+    /// Returns a new BitBoard representing the squares diagonally up-left  
+    /// from the current position, considering the given side's perspective.
+    #[inline(always)]
+    pub const fn up_left(self, side: Color) -> Self {
+        match side {
+            Color::White => Self((self.0 & !BitBoard::FILE_A.0) << 7),
+            Color::Black => Self((self.0 & !BitBoard::FILE_H.0) >> 7),
+        }
+    }
+
+    /// Returns a new BitBoard representing the squares diagonally up-right  
+    /// from the current position, considering the given side's perspective.
+    #[inline(always)]
+    pub const fn up_right(self, side: Color) -> Self {
+        match side {
+            Color::White => Self((self.0 & !BitBoard::FILE_H.0) << 9),
+            Color::Black => Self((self.0 & !BitBoard::FILE_A.0) >> 9),
+        }
+    }
+
     /// Checks if the bitboard is empty.
     ///
     /// An empty bitboard means that there are no pieces present (all bits are 0).
     /// Returns `true` if the bitboard is empty, otherwise `false`.
-    #[inline]
+    #[inline(always)]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }

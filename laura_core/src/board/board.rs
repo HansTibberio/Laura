@@ -59,7 +59,7 @@ pub struct Board {
     /// The side to move (either White or Black).
     pub side: Color,
 
-    /// Bitboard representing squares that are currently in check.
+    /// Bitboard representing all enemy pieces that are directly checking the allied king.
     pub checkers: BitBoard,
 }
 

@@ -71,72 +71,72 @@ impl Square {
 
     /// Create a `Square` from a `File` (column) and `Rank` (row).
     /// The index is calculated by shifting the rank and XORing with the file.
-    #[inline]
+    #[inline(always)]
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
         let index: u8 = (rank as u8) << 3 ^ (file as u8);
         unsafe { transmute(index & 63) }
     }
 
     /// Convert an index (0-63) to a `Square`.
-    #[inline]
+    #[inline(always)]
     pub const fn from_index(index: usize) -> Self {
         unsafe { transmute(index as u8 & 63) }
     }
 
     /// Convert a `Square` to its index (0 for A1, 63 for H8).
-    #[inline]
+    #[inline(always)]
     pub const fn to_index(self) -> usize {
         self as usize
     }
 
     /// Convert a `Square` to `Bitboard`
-    #[inline]
+    #[inline(always)]
     pub const fn to_bitboard(self) -> BitBoard {
         BitBoard(1u64 << self.to_index())
     }
 
     /// Get the rank (row) of the square.
-    #[inline]
+    #[inline(always)]
     pub const fn rank(self) -> Rank {
         unsafe { transmute((self as u8 >> 3) & 7) }
     }
 
     /// Get the file (column) of the square.
-    #[inline]
+    #[inline(always)]
     pub const fn file(self) -> File {
         unsafe { transmute(self as u8 & 7) }
     }
 
     /// Get the square one rank down from original (towards rank 1).
     /// Wrap linear over the Square enum (H1.down() = H8)
-    #[inline]
+    #[inline(always)]
     pub const fn down(self) -> Self {
         unsafe { transmute((self as u8).wrapping_sub(8) & 63) }
     }
 
     /// Get the square one rank up from original (towards rank 8).
     /// Wrap linear over the Square enum (A8.up() = A1)
-    #[inline]
+    #[inline(always)]
     pub const fn up(self) -> Self {
         unsafe { transmute((self as u8 + 8) & 63) }
     }
 
     /// Get the square one file to the left from original (towards file A).
     /// Wrap linear over the Square enum (A4.left() = H3)
-    #[inline]
+    #[inline(always)]
     pub const fn left(self) -> Self {
         unsafe { transmute((self as u8).wrapping_sub(1) & 63) }
     }
 
     /// Get the square one file to the right from original (towards file H).
     /// Wrap linear over the Square enum (H4.right() = A5)
-    #[inline]
+    #[inline(always)]
     pub const fn right(self) -> Self {
         unsafe { transmute((self as u8 + 1) & 63) }
     }
 
     /// Get the square forwards depending on the color (White moves up, Black moves down).
-    #[inline]
+    #[inline(always)]
     pub const fn forward(self, color: Color) -> Self {
         match color {
             Color::White => self.up(),
@@ -145,11 +145,31 @@ impl Square {
     }
 
     /// Get the square backwards depending on the color (White moves down, Black moves up).
-    #[inline]
+    #[inline(always)]
     pub const fn backward(self, color: Color) -> Self {
         match color {
             Color::White => self.down(),
             Color::Black => self.up(),
+        }
+    }
+
+    /// Get the square one file to the right from original.
+    /// Considering the given side's perspective.
+    #[inline(always)]
+    pub const fn right_color(self, color: Color) -> Self {
+        match color {
+            Color::White => self.right(),
+            Color::Black => self.left(),
+        }
+    }
+
+    /// Get the square one file to the left from original.
+    /// Considering the given side's perspective.
+    #[inline(always)]
+    pub const fn left_color(self, color: Color) -> Self {
+        match color {
+            Color::White => self.left(),
+            Color::Black => self.right(),
         }
     }
 
