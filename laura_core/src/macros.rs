@@ -120,3 +120,50 @@ impl_piece_lookups! {
     4, allied_queens, enemy_queens, queens,
     5, allied_king, enemy_king, kings
 }
+
+/// Calls the provided move handler function with a newly created move.
+/// This macro simplifies move generation by constructing a `Move`
+/// with the given source, destination, and move type, then passing it to the handler.
+#[macro_export]
+macro_rules! Call_Handler {
+    ($handler:expr, $src:expr, $dest:expr, $move_type:ident) => {
+        $handler(Move::new($src, $dest, MoveType::$move_type))
+    };
+}
+
+/// Enumerates all possible moves for different piece types.
+/// This macro calls specific move generation functions for pawns, knights, bishops, rooks, and queens.
+/// Considering check conditions, pinned pieces, and the provided move handler.
+#[macro_export]
+macro_rules! Enumerate_Moves {
+    ($check:expr, $board:expr, $diagonal_pins:expr, $linear_pins:expr, $handler:expr) => {
+        enumerate_pawn_moves::<$check, ALL_MOVES, F>(
+            $board,
+            $board.allied_pawns(),
+            $diagonal_pins,
+            $linear_pins,
+            &mut $handler,
+        );
+        enumerate_knight_moves::<$check, ALL_MOVES, F>(
+            $board,
+            $board.allied_knights(),
+            $diagonal_pins,
+            $linear_pins,
+            &mut $handler,
+        );
+        enumerate_bishop_moves::<$check, ALL_MOVES, F>(
+            $board,
+            $board.allied_bishops() | $board.allied_queens(),
+            $diagonal_pins,
+            $linear_pins,
+            &mut $handler,
+        );
+        enumerate_rook_moves::<$check, ALL_MOVES, F>(
+            $board,
+            $board.allied_rooks() | $board.allied_queens(),
+            $diagonal_pins,
+            $linear_pins,
+            &mut $handler,
+        );
+    };
+}
