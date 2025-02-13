@@ -79,9 +79,8 @@ impl std::ops::Not for BitBoard {
 impl Iterator for BitBoard {
     type Item = Square;
 
-    #[inline(always)]
     fn next(&mut self) -> Option<Square> {
-        if *self == Self::EMPTY {
+        if self.0 == 0 {
             None
         } else {
             let square: Square = self.to_square();
