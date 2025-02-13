@@ -17,9 +17,9 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::mem::transmute;
-use std::ops::Not;
+use core::fmt;
+use core::mem::transmute;
+use core::ops::Not;
 
 use crate::{Color, Square};
 

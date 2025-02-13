@@ -17,7 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
+use core::fmt;
 
 use crate::Color;
 
@@ -60,7 +60,7 @@ impl PieceType {
     /// This is an unsafe operation as it directly converts the index to `PieceType`.
     #[inline]
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
-        std::mem::transmute(index)
+        core::mem::transmute(index)
     }
 }
 
@@ -76,7 +76,7 @@ pub enum Piece {
 
 /// Implementing `Display` for `Piece` to print the piece as a single character.
 impl fmt::Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.to_char())
     }
 }
@@ -123,7 +123,7 @@ impl Piece {
     #[inline(always)]
     pub const fn new(piece_type: PieceType, color: Color) -> Self {
         let index: u8 = color as u8 * 6 + piece_type as u8;
-        unsafe { std::mem::transmute(index) }
+        unsafe { core::mem::transmute(index) }
     }
 
     /// Returns the `PieceType` index of the `Piece` as a usize.
@@ -144,7 +144,7 @@ impl Piece {
     #[inline(always)]
     pub const fn from_index(index: usize) -> Option<Self> {
         if index < 12 {
-            Some(unsafe { std::mem::transmute::<u8, Piece>(index as u8 & 15) })
+            Some(unsafe { core::mem::transmute::<u8, Piece>(index as u8 & 15) })
         } else {
             None
         }

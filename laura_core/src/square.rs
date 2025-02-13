@@ -17,9 +17,9 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::mem::transmute;
-use std::str::FromStr;
+use core::fmt;
+use core::mem::transmute;
+use core::str::FromStr;
 
 use crate::{BitBoard, Color, File, Rank};
 
@@ -78,6 +78,12 @@ impl Square {
     }
 
     /// Convert an index (0-63) to a `Square`.
+    /// # Example
+    /// ```
+    /// # use laura_core::*;
+    /// let square = Square::from_index(42);
+    /// assert_eq!(square, Square::C6);
+    /// ```
     #[inline(always)]
     pub const fn from_index(index: usize) -> Self {
         unsafe { transmute(index as u8 & 63) }
@@ -90,6 +96,12 @@ impl Square {
     }
 
     /// Convert a `Square` to `Bitboard`
+    /// # Example
+    /// ```
+    /// # use laura_core::*;
+    /// let square = Square::C6;
+    /// assert_eq!(square.to_bitboard(), BitBoard(4398046511104));
+    /// ```
     #[inline(always)]
     pub const fn to_bitboard(self) -> BitBoard {
         BitBoard(1u64 << self.to_index())
@@ -204,11 +216,4 @@ fn test() {
         square.forward(Color::White),
         square.backward(Color::White)
     );
-}
-
-#[test]
-fn c6_square_to_bitboard() {
-    let square = Square::from_index(42);
-    assert_eq!(square, Square::C6);
-    println!("{}", square.to_bitboard())
 }

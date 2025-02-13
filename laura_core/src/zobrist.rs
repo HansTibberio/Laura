@@ -17,7 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
+use core::fmt;
 
 use crate::{CastleRights, Piece, Square};
 
@@ -138,10 +138,4 @@ impl Zobrist {
     pub fn hash_side(&mut self) {
         self.0 ^= KEY_SIDE;
     }
-}
-
-#[test]
-fn test_zobrist() {
-    let zobrist: Zobrist = Zobrist::null();
-    println!("{}", zobrist);
 }

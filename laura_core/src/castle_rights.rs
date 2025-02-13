@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::str::FromStr;
+use core::fmt;
+use core::str::FromStr;
 
 use crate::{BitBoard, Color, File, MoveType, Square};
 
@@ -230,19 +230,19 @@ impl CastleRights {
     }
 
     /// Converts the castling rights to an index that can be used for array lookups.
-    #[inline]
+    #[inline(always)]
     pub const fn to_index(self) -> usize {
         self.0 as usize
     }
 
     /// Checks if kingside castling is available for a given color (`Color`).
-    #[inline]
+    #[inline(always)]
     pub const fn has_kingside(self, color: Color) -> bool {
         self.0 & KINGSIDE_CASTLE[color as usize] != 0
     }
 
     /// Checks if queenside castling is available for a given color (`Color`).
-    #[inline]
+    #[inline(always)]
     pub const fn has_queenside(self, color: Color) -> bool {
         self.0 & QUEENSIDE_CASTLE[color as usize] != 0
     }
@@ -251,7 +251,7 @@ impl CastleRights {
     ///
     /// The castling rights are updated based on the move, potentially clearing the castling
     /// rights if a rook or king has moved from its starting square.
-    #[inline]
+    #[inline(always)]
     pub const fn update(self, src: Square, dest: Square) -> CastleRights {
         CastleRights(
             self.0 & CASTLE_RIGHTS_MASK[src.to_index()] & CASTLE_RIGHTS_MASK[dest.to_index()],

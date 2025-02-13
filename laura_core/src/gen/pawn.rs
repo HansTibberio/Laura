@@ -17,7 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::mem::transmute;
+use core::mem::transmute;
 
 use crate::{BitBoard, Color, File, Rank, Square};
 

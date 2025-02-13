@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::ops::{BitAnd, BitOr, BitXor};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
+use core::ops::{BitAnd, BitOr, BitXor};
+use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 
 use crate::{BitBoard, Board};
 

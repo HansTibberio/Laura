@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::mem::transmute;
+use core::fmt;
+use core::mem::transmute;
 
 /// Enum representing the ranks (rows) on a chessboard.
 /// Ranks are numbered from 'One' (1) to 'Eight' (8).

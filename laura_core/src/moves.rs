@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::mem::transmute;
+use core::fmt;
+use core::mem::transmute;
 
 use crate::{piece::PROM_PIECES, Color, Piece, Square};
 
@@ -34,11 +34,16 @@ pub struct Move(pub u16);
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s: String = format!("{}{}", self.get_src(), self.get_dest());
         if self.is_promotion() {
-            write!(f, "{}{}", s, self.get_prom(Color::Black).to_char())
+            write!(
+                f,
+                "{}{}{}",
+                self.get_src(),
+                self.get_dest(),
+                self.get_prom(Color::Black).to_char()
+            )
         } else {
-            write!(f, "{s}")
+            write!(f, "{}{}", self.get_src(), self.get_dest())
         }
     }
 }
@@ -80,14 +85,21 @@ impl Move {
     }
 
     /// Returns `true` if the move is a null move.
+    /// # Example
+    /// ```
+    /// # use laura_core::*;
+    /// let mv: Move = Move::null();
+    /// assert_eq!(mv.is_null(), true);
+    /// ```
     #[inline]
     pub const fn is_null(self) -> bool {
         self.0 == 0
     }
 
     /// Creates a new move given the source and destination squares, and the move type.
-    /// ### Example
+    /// # Example
     /// ```
+    /// # use laura_core::*;
     /// let mv = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
     /// assert_eq!(mv.get_src(), Square::E2);
     /// assert_eq!(mv.get_dest(), Square::E4);
@@ -124,6 +136,13 @@ impl Move {
     }
 
     /// Returns `true` if the move is a promotion.
+    /// # Example
+    /// ```
+    /// # use laura_core::*;
+    /// let mv: Move = Move::new(Square::B7, Square::C8, MoveType::CapPromoQueen);
+    /// assert_eq!(mv.get_prom(Color::White), Piece::WQ);
+    /// assert_eq!(mv.is_promotion(), true);
+    /// assert_eq!(mv.is_underpromotion(), false);
     #[inline(always)]
     pub const fn is_promotion(self) -> bool {
         (self.0 & PROM_MASK) != 0
@@ -136,12 +155,29 @@ impl Move {
     }
 
     /// Returns `true` if the move is a capture.
+    /// # Example
+    /// ```
+    /// # use laura_core::*;
+    /// let mv: Move = Move::new(Square::C1, Square::C8, MoveType::Capture);
+    /// assert_eq!(mv.get_type(), MoveType::Capture);
+    /// assert_eq!(mv.is_promotion(), false);
+    /// assert_eq!(mv.is_capture(), true);
+    /// assert_eq!(mv.is_quiet(), false);
+    /// ```
     #[inline(always)]
     pub const fn is_capture(self) -> bool {
         ((self.0 & CAP_MASK) >> 14) == 1
     }
 
     /// Returns `true` if the move is a quiet move (no capture, promotion, castle or double pawn push).
+    /// # Example
+    /// ```
+    /// # use laura_core::*;
+    /// let mv: Move = Move::new(Square::A2, Square::A4, MoveType::Quiet);
+    /// assert_eq!(mv.is_promotion(), false);
+    /// assert_eq!(mv.is_capture(), false);
+    /// assert_eq!(mv.is_quiet(), true);
+    /// ```
     #[inline(always)]
     pub const fn is_quiet(self) -> bool {
         self.flag() == 0
@@ -152,52 +188,4 @@ impl Move {
     pub const fn flag(self) -> u16 {
         self.0 >> 12
     }
-}
-
-#[test]
-fn null_move() {
-    let mv: Move = Move::null();
-
-    assert_eq!(mv.is_null(), true);
-}
-
-#[test]
-fn test_quiet() {
-    let mv: Move = Move::new(Square::A2, Square::A4, MoveType::Quiet);
-
-    assert_eq!(mv.get_src(), Square::A2);
-    assert_eq!(mv.get_dest(), Square::A4);
-    assert_eq!(mv.get_type(), MoveType::Quiet);
-    assert_eq!(mv.is_promotion(), false);
-    assert_eq!(mv.is_capture(), false);
-    assert_eq!(mv.is_quiet(), true);
-    println!("{}", mv);
-}
-
-#[test]
-fn test_capture() {
-    let mv: Move = Move::new(Square::C1, Square::C8, MoveType::Capture);
-
-    assert_eq!(mv.get_src(), Square::C1);
-    assert_eq!(mv.get_dest(), Square::C8);
-    assert_eq!(mv.get_type(), MoveType::Capture);
-    assert_eq!(mv.is_promotion(), false);
-    assert_eq!(mv.is_capture(), true);
-    assert_eq!(mv.is_quiet(), false);
-    println!("{}", mv);
-}
-
-#[test]
-fn test_promotion() {
-    let mv: Move = Move::new(Square::B7, Square::C8, MoveType::CapPromoQueen);
-
-    assert_eq!(mv.get_src(), Square::B7);
-    assert_eq!(mv.get_dest(), Square::C8);
-    assert_eq!(mv.get_type(), MoveType::CapPromoQueen);
-    assert_eq!(mv.get_prom(Color::White), Piece::WQ);
-    assert_eq!(mv.is_promotion(), true);
-    assert_eq!(mv.is_underpromotion(), false);
-    assert_eq!(mv.is_capture(), true);
-    assert_eq!(mv.is_quiet(), false);
-    println!("{}", mv);
 }

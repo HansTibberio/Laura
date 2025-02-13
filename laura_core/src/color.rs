@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::ops::Not;
+use core::fmt;
+use core::ops::Not;
 
 /// Enum representing the color of a piece/player in a chess game.
 /// It can either be `White` or `Black`.

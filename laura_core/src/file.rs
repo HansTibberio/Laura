@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::mem::transmute;
+use core::fmt;
+use core::mem::transmute;
 
 /// Enum representing the files (columns) on a chessboard.
 /// Files are labeled from 'A' to 'H'.
