@@ -17,8 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::array::IntoIter;
-use std::fmt;
+use core::array::IntoIter;
+use core::fmt;
 
 use crate::Move;
 
@@ -49,7 +49,7 @@ pub struct MoveList {
 
 impl IntoIterator for MoveList {
     type Item = Move;
-    type IntoIter = std::iter::Take<IntoIter<Move, MAX_MOVES>>;
+    type IntoIter = core::iter::Take<IntoIter<Move, MAX_MOVES>>;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIterator::into_iter(self.moves).take(self.len)
@@ -132,10 +132,11 @@ fn test_list() {
 
 #[test]
 fn test_movelist_iter() {
+    use crate::movegen::*;
     use crate::{Board, MoveList};
 
     let board: Board = Board::default();
-    let moves: MoveList = board.gen_moves::<true>();
+    let moves: MoveList = gen_moves::<ALL_MOVES>(&board);
 
     for mv in moves {
         println!("{}", mv);

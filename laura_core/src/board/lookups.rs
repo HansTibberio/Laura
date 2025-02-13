@@ -28,6 +28,8 @@ use crate::gen::pext::{get_bishop_attacks, get_rook_attacks};
 
 use crate::{BitBoard, Board, Color, Move, Piece, Square};
 
+use super::movegen::*;
+
 impl Board {
     /// Returns the bitboard representing all pieces for the white side.
     #[inline(always)]
@@ -115,7 +117,7 @@ impl Board {
     /// Finds legal move in board from the uci-formatted move string
     #[inline]
     pub fn find_move(&self, move_str: &str) -> Option<Move> {
-        self.gen_moves::<true>()
+        gen_moves::<ALL_MOVES>(&*self)
             .moves
             .into_iter()
             .find(|&mv| mv.to_string().eq(move_str))
@@ -125,7 +127,6 @@ impl Board {
 #[test]
 fn test_find_move() {
     let board: Board = Board::default();
-    board.gen_moves::<true>();
     let mv: &str = "d2d4";
     println!("{}", board.find_move(mv).unwrap());
 }

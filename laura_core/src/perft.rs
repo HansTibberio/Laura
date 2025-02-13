@@ -17,10 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::time::Duration;
-use std::time::Instant;
-
-use crate::{Board, MoveList};
+use crate::{movegen::*, Board};
 
 /// A collection of standardized perft test positions for the Laura-Core move generation.
 /// These positions are used to validate move generation correctness and measure performance.
@@ -102,40 +99,16 @@ pub const PERFT_TEST: [(&str, u64, usize); 34] = [
 
 /// Performs a Perft (performance test) for the given board at the specified depth.
 /// This function generates all possible moves, counts the total number of nodes, and measures the time taken.
-/// It prints the total number of nodes, the duration, and the performance in million nodes per second (Mnodes/s).
-pub fn perft(board: &Board, depth: usize) -> usize {
-    let start: Instant = Instant::now();
-    let total_nodes: usize = inner_perft(board, depth);
-    let duration: Duration = start.elapsed();
+///
+/// It prints the total number of nodes, the duration, and the performance in nodes per second.
+/// If `DIV` is true, it divides the search into individual moves and counts the nodes for each move.
+pub fn perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
+    let start: std::time::Instant = std::time::Instant::now();
+    let total_nodes: usize = inner_perft::<DIV>(board, depth);
+    let duration: std::time::Duration = start.elapsed();
 
-    let perft: u128 = total_nodes as u128 / duration.as_micros();
-    println!("{total_nodes} nodes in {duration:?} - {perft}Mnodes/s\n");
-
-    total_nodes
-}
-
-/// Performs a Perft test by recursively generating moves for each possible move at the given depth.
-/// It divides the search into individual moves, counts the nodes for each move, and measures the total time.
-/// The performance is printed for each move and the overall test, including the total number of nodes and performance in Mnodes/s.
-pub fn divided_perft(board: &Board, depth: usize) -> usize {
-    let start: Instant = Instant::now();
-    let mut total_nodes: usize = 0;
-    let move_list: MoveList = board.gen_moves::<true>();
-
-    for mv in move_list {
-        if depth == 0 {
-            return 1;
-        } else {
-            let board_result: Board = board.make_move(mv);
-            let inner_nodes: usize = inner_perft(&board_result, depth - 1);
-            total_nodes += inner_nodes;
-            println!("{mv} -> {inner_nodes}");
-        }
-    }
-    let duration: Duration = start.elapsed();
-
-    let perft: u128 = total_nodes as u128 / duration.as_micros();
-    println!("\n{total_nodes} nodes in {duration:?} -> {perft} Mnodes/s");
+    let nps: f64 = total_nodes as f64 / duration.as_secs_f64();
+    println!("{total_nodes} nodes in {duration:?} -> {nps:.0} nodes/s");
 
     total_nodes
 }
@@ -143,22 +116,41 @@ pub fn divided_perft(board: &Board, depth: usize) -> usize {
 /// A helper function that performs the core Perft test recursively.
 /// It generates all possible moves for the board at the current depth and counts the number of nodes.
 /// For deeper levels, it recursively calls itself to count all possible move sequences.
-fn inner_perft(board: &Board, depth: usize) -> usize {
-    let move_list: MoveList = board.gen_moves::<true>();
+#[allow(unused_assignments)]
+pub fn inner_perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
+    let mut total: usize = 0;
 
-    if depth == 0 {
-        1
-    } else if depth == 1 {
-        move_list.len()
-    } else {
-        move_list
-            .into_iter()
-            .map(|mv| {
-                let board_result: Board = board.make_move(mv);
-                inner_perft(&board_result, depth - 1)
-            })
-            .sum()
+    if !DIV && depth <= 1 {
+        enumerate_legal_moves::<ALL_MOVES, _>(board, |_| -> bool {
+            total += 1;
+            true
+        });
+        return total;
     }
+
+    enumerate_legal_moves::<ALL_MOVES, _>(board, |mv| -> bool {
+        let mut nodes: usize = 0;
+        if DIV && depth == 1 {
+            nodes = 1;
+        } else {
+            let board_res: Board = board.make_move(mv);
+            nodes = if depth == 1 {
+                1
+            } else {
+                inner_perft::<false>(&board_res, depth - 1)
+            };
+        }
+
+        total += nodes;
+
+        if DIV && nodes > 0 {
+            println!("{} -> {}", mv, nodes);
+        }
+
+        true
+    });
+
+    total
 }
 
 #[test]
@@ -169,7 +161,7 @@ fn test_perft() {
         let board: Board = Board::from_str(fen).unwrap();
         println!("{fen}");
 
-        let nodes: usize = perft(&board, depth);
+        let nodes: usize = perft::<false>(&board, depth);
         assert_eq!(
             nodes,
             correct_count.try_into().unwrap(),
@@ -184,6 +176,6 @@ fn test_divide_perft() {
     let depth: usize = 6;
     let correct: usize = 119060324;
     println!("{board}");
-    let nodes: usize = divided_perft(&board, depth);
+    let nodes: usize = perft::<true>(&board, depth);
     assert_eq!(nodes, correct);
 }
