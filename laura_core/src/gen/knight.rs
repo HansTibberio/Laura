@@ -151,21 +151,3 @@ pub fn gen_knight_attack_table() -> [BitBoard; 64] {
 
     table
 }
-
-#[test]
-fn test_gen_attacks() {
-    let attack: BitBoard = gen_knight_attacks(Square::C1);
-    println!("{}", attack);
-}
-
-#[test]
-fn test_get_attacks() {
-    let attack: BitBoard = get_knight_attacks(Square::C1);
-    println!("{}", attack);
-}
-
-#[test]
-fn gen_attacks() {
-    let attacks: [BitBoard; 64] = gen_knight_attack_table();
-    println!("{:?}", attacks);
-}

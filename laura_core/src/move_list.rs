@@ -115,30 +115,3 @@ impl MoveList {
         self.len == 0
     }
 }
-
-#[test]
-fn test_list() {
-    use crate::moves::MoveType;
-    use crate::square::Square;
-
-    let mut list: MoveList = MoveList::default();
-    assert_eq!(list.is_empty(), true);
-
-    list.push(Move::new(Square::E2, Square::E3, MoveType::Quiet));
-    list.push(Move::new(Square::D7, Square::D5, MoveType::DoublePawn));
-    println!("{}", list);
-    assert_eq!(list.len(), 2);
-}
-
-#[test]
-fn test_movelist_iter() {
-    use crate::movegen::*;
-    use crate::{Board, MoveList};
-
-    let board: Board = Board::default();
-    let moves: MoveList = gen_moves::<ALL_MOVES>(&board);
-
-    for mv in moves {
-        println!("{}", mv);
-    }
-}

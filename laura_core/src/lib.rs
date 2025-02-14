@@ -26,7 +26,6 @@ pub mod gen;
 pub mod macros;
 pub mod move_list;
 pub mod moves;
-pub mod perft;
 pub mod piece;
 pub mod rank;
 pub mod square;

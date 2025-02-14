@@ -90,10 +90,3 @@ impl Rank {
         unsafe { transmute((self as u8).wrapping_sub(1) & 7) }
     }
 }
-
-#[test]
-fn test() {
-    let rank: Rank = Rank::from_index(6);
-    println!("Rank: {}, Index: {}", rank, rank.to_index());
-    println!("Down: {}, Up: {}", rank.down(), rank.up());
-}

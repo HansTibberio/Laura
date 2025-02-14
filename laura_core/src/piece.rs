@@ -55,7 +55,7 @@ impl PieceType {
     pub const KING: usize = 5;
 
     /// Returns a `PieceType` from a given index without bounds checking.
-    /// 
+    ///
     /// ### Safety
     /// This is an unsafe operation as it directly converts the index to `PieceType`.
     #[inline]
@@ -186,36 +186,4 @@ impl Piece {
             Self::BK => 'k',
         }
     }
-}
-
-#[test]
-fn test() {
-    let piece: Piece = Piece::new(PieceType::King, Color::White);
-    println!(
-        "Char: '{}' Color: {}, Type: {}",
-        piece,
-        piece.color(),
-        piece.piece_type()
-    );
-
-    let piece: Option<Piece> = Piece::from_index(12);
-    println!("{:?}", piece);
-}
-
-#[test]
-fn test_from() {
-    let c: char = 'N';
-    let piece: Piece = Piece::try_from(c).unwrap();
-    println!(
-        "Char: '{}' Color: {}, Type: {}",
-        piece,
-        piece.color(),
-        piece.piece_type()
-    );
-}
-
-#[test]
-fn test_piece() {
-    let piece: usize = Piece::piece_index(Piece::WN);
-    println!("{}", piece)
 }

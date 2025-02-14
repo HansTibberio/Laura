@@ -90,10 +90,3 @@ impl File {
         unsafe { transmute((self as u8).wrapping_sub(1) & 7) }
     }
 }
-
-#[test]
-fn test() {
-    let file: File = File::from_index(4);
-    println!("File: {}, Index: {}", file, file.to_index());
-    println!("Left: {}, Right: {}", file.left(), file.right())
-}

@@ -162,7 +162,7 @@ pub const ROOK_RAYS: [BitBoard; Square::NUM_SQUARES] = [
     BitBoard(9187484529235886208),
 ];
 
-/// Retrieves the BitBoard representing all the squares between the source and destination squares, 
+/// Retrieves the BitBoard representing all the squares between the source and destination squares,
 /// based on the precomputed between table for rooks, bishops, or queens.
 pub fn get_between(src: Square, dest: Square) -> BitBoard {
     unsafe {
@@ -182,18 +182,4 @@ pub fn bishop_rays(square: Square) -> BitBoard {
 /// Retrieves the BitBoard representing the rays a rook can attack from a given square.
 pub fn rook_rays(square: Square) -> BitBoard {
     unsafe { *ROOK_RAYS.get_unchecked(square.to_index()) }
-}
-
-#[test]
-fn test_bishop_ray() {
-    let square: Square = Square::B6;
-    let king_ray: BitBoard = bishop_rays(square);
-    println!("{}", king_ray);
-}
-
-#[test]
-fn test_rook_ray() {
-    let square: Square = Square::B6;
-    let king_ray: BitBoard = rook_rays(square);
-    println!("{}", king_ray);
 }

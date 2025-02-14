@@ -195,7 +195,7 @@ pub fn get_pawn_attacks(color: Color, square: Square) -> BitBoard {
 pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut pawn_attacks: [[BitBoard; 64]; 2] = [[BitBoard::EMPTY; 64]; 2];
 
-    for square in BitBoard::FULL{
+    for square in BitBoard::FULL {
         let rank: i8 = square.rank() as i8;
         let file: i8 = square.file() as i8;
         let white: usize = Color::White as usize;
@@ -210,7 +210,8 @@ pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
                     unsafe { transmute::<u8, File>(new_file as u8) },
                     unsafe { transmute::<u8, Rank>(new_rank as u8) },
                 );
-                pawn_attacks[white][square.to_index()] = pawn_attacks[white][square.to_index()].set_square(new_square);
+                pawn_attacks[white][square.to_index()] =
+                    pawn_attacks[white][square.to_index()].set_square(new_square);
             }
         }
 
@@ -223,43 +224,11 @@ pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
                     unsafe { transmute::<u8, File>(new_file as u8) },
                     unsafe { transmute::<u8, Rank>(new_rank as u8) },
                 );
-                pawn_attacks[black][square.to_index()] = pawn_attacks[black][square.to_index()].set_square(new_square);
+                pawn_attacks[black][square.to_index()] =
+                    pawn_attacks[black][square.to_index()].set_square(new_square);
             }
         }
     }
 
     pawn_attacks
-}
-
-#[test]
-fn test_gen_attacks() {
-    let pawn_attacks: [[BitBoard; 64]; 2] = gen_pawn_attacks();
-
-    let square: usize = Square::E3.to_index();
-    let color: Color = Color::White;
-    println!(
-        "Pawn attacks ({}) from E3: {}",
-        color, pawn_attacks[color as usize][square]
-    );
-
-    let square: usize = Square::D5.to_index();
-    let color: Color = Color::Black;
-    println!(
-        "Pawn attacks ({}) from D5: {}",
-        color, pawn_attacks[color as usize][square]
-    );
-}
-
-#[test]
-fn test_get_attacks() {
-    let square: Square = Square::E3;
-    let color: Color = Color::White;
-    let pawn_attack: BitBoard = get_pawn_attacks(color, square);
-    println!("Pawn attacks ({}) from E3: {}", color, pawn_attack);
-}
-
-#[test]
-fn gen_attacks() {
-    let attacks: [[BitBoard; 64]; 2] = gen_pawn_attacks();
-    println!("{:?}", attacks);
 }

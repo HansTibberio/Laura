@@ -151,21 +151,3 @@ pub fn gen_king_attack_table() -> [BitBoard; 64] {
 
     table
 }
-
-#[test]
-fn test_gen_attacks() {
-    let attack: BitBoard = gen_king_attacks(Square::A2);
-    println!("{}", attack);
-}
-
-#[test]
-fn test_get_attacks() {
-    let attack: BitBoard = get_king_attacks(Square::A2);
-    println!("{}", attack);
-}
-
-#[test]
-fn gen_attacks() {
-    let attacks: [BitBoard; 64] = gen_king_attack_table();
-    println!("{:?}", attacks);
-}

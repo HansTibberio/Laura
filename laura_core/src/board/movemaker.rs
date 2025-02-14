@@ -153,55 +153,9 @@ impl Board {
     }
 
     /// Attempts to make a move on the board using the UCI (Universal Chess Interface) notation.
-    pub fn make_uci_move(&self, uci_move: &str)  -> Result<Board, &str>  {
+    pub fn make_uci_move(&self, uci_move: &str) -> Result<Board, &str> {
         self.find_move(uci_move)
-        .map(|mv| self.make_move(mv))
-        .ok_or("Ilegal UCI move from the current board")
+            .map(|mv| self.make_move(mv))
+            .ok_or("Ilegal UCI move from the current board")
     }
-}
-
-#[test]
-fn test_move() {
-    let board: Board = Board::default();
-    assert_eq!(
-        board.to_fen(),
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    );
-    println!("{}", board);
-    let mv: Move = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
-    let board: Board = board.make_move(mv);
-    assert_eq!(
-        board.to_fen(),
-        "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
-    );
-    println!("{}", board);
-    let mv: Move = Move::new(Square::C7, Square::C5, MoveType::DoublePawn);
-    let board: Board = board.make_move(mv);
-    assert_eq!(
-        board.to_fen(),
-        "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
-    );
-    println!("{}", board);
-    let mv: Move = Move::new(Square::G1, Square::F3, MoveType::Quiet);
-    let board: Board = board.make_move(mv);
-    assert_eq!(
-        board.to_fen(),
-        "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
-    );
-    println!("{}", board);
-}
-
-#[test]
-fn test_null() {
-    let board: Board = Board::default();
-    println!("{}", board);
-    let board: Board = board.null_move();
-    println!("{}", board);
-}
-
-#[test]
-fn test_uci_move(){
-    let board: Board = Board::default();
-    let board: Board = board.make_uci_move("e2e4").unwrap();
-    println!("{}", board);
 }

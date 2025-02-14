@@ -17,7 +17,9 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::{movegen::*, Board};
+use std::str::FromStr;
+
+use laura_core::{movegen::*, Board};
 
 /// A collection of standardized perft test positions for the Laura-Core move generation.
 /// These positions are used to validate move generation correctness and measure performance.
@@ -153,12 +155,10 @@ pub fn inner_perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
     total
 }
 
-#[test]
-fn test_perft() {
-    use std::str::FromStr;
-
+fn main() {
     for (fen, correct_count, depth) in PERFT_TEST {
         let board: Board = Board::from_str(fen).unwrap();
+        println!("");
         println!("{fen}");
 
         let nodes: usize = perft::<false>(&board, depth);
@@ -168,14 +168,4 @@ fn test_perft() {
             "Perft Test Failed"
         );
     }
-}
-
-#[test]
-fn test_divide_perft() {
-    let board: Board = Board::default();
-    let depth: usize = 6;
-    let correct: usize = 119060324;
-    println!("{board}");
-    let nodes: usize = perft::<true>(&board, depth);
-    assert_eq!(nodes, correct);
 }

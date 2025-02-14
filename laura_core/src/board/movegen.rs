@@ -704,38 +704,3 @@ fn check_mask<const IN_CHECK: bool>(board: &Board) -> BitBoard {
         BitBoard::FULL
     }
 }
-
-#[test]
-fn test_default_moves() {
-    let board: Board = Board::default();
-    let move_list: MoveList = gen_moves::<ALL_MOVES>(&board);
-    println!("{} \n {}", board, move_list);
-}
-
-#[test]
-fn test_quiet_moves() {
-    use std::str::FromStr;
-
-    let board: Board =
-        Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
-    let move_list: MoveList = gen_moves::<QUIET_MOVES>(&board);
-    println!("{board}");
-    for mv in move_list {
-        println!("{mv} -> {:?}", mv.get_type());
-    }
-}
-
-#[test]
-fn test_tactical_moves() {
-    use std::str::FromStr;
-
-    let board: Board =
-        Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
-    let move_list: MoveList = gen_moves::<TACTICAL_MOVES>(&board);
-    println!("{board}");
-    for mv in move_list {
-        println!("{mv} -> {:?}", mv.get_type());
-    }
-}

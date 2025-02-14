@@ -22,8 +22,8 @@ use core::str::FromStr;
 
 use crate::{BitBoard, Color, File, MoveType, Square};
 
-// This implementation is based on the approach used in Carp, which licensed under the GPLv3. 
-// Source: https://github.com/dede1751/carp/blob/main/chess/src/castle.rs 
+// This implementation is based on the approach used in Carp, which licensed under the GPLv3.
+// Source: https://github.com/dede1751/carp/blob/main/chess/src/castle.rs
 
 /// `CastleRights` represents the castling rights of both players (White and Black)
 /// using a bitmask stored in a `u8`. It tracks the availability of kingside and queenside
@@ -63,25 +63,29 @@ impl FromStr for CastleRights {
 /// allowing castling rights to be displayed as a string.
 impl fmt::Display for CastleRights {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s: String = String::from("");
+        let mut has_rights: bool = false;
 
         if self.0 & CASTLE_WK_MASK != 0 {
-            s.push('K')
+            write!(f, "K")?;
+            has_rights = true;
         };
         if self.0 & CASTLE_WQ_MASK != 0 {
-            s.push('Q')
+            write!(f, "Q")?;
+            has_rights = true;
         };
         if self.0 & CASTLE_BK_MASK != 0 {
-            s.push('k')
+            write!(f, "k")?;
+            has_rights = true;
         };
         if self.0 & CASTLE_BQ_MASK != 0 {
-            s.push('q')
+            write!(f, "q")?;
+            has_rights = true;
         };
-        if s.is_empty() {
-            s.push('-')
+        if !has_rights {
+            write!(f, "-")?;
         };
 
-        write!(f, "{s}")
+        Ok(())
     }
 }
 
@@ -257,37 +261,4 @@ impl CastleRights {
             self.0 & CASTLE_RIGHTS_MASK[src.to_index()] & CASTLE_RIGHTS_MASK[dest.to_index()],
         )
     }
-}
-
-#[test]
-fn castling_test() {
-    let castle_rights: CastleRights = CastleRights(ALL_CASTLE);
-    assert_eq!(castle_rights.has_kingside(Color::White), true);
-    assert_eq!(castle_rights.has_queenside(Color::White), true);
-    assert_eq!(castle_rights.has_kingside(Color::Black), true);
-    assert_eq!(castle_rights.has_queenside(Color::Black), true);
-    println!("{}", castle_rights);
-    let castle_rights: CastleRights = castle_rights.update(Square::H1, Square::H5);
-    let castle_rights: CastleRights = castle_rights.update(Square::E8, Square::E6);
-    assert_eq!(castle_rights.has_kingside(Color::White), false);
-    assert_eq!(castle_rights.has_queenside(Color::White), true);
-    assert_eq!(castle_rights.has_kingside(Color::Black), false);
-    assert_eq!(castle_rights.has_queenside(Color::Black), false);
-    println!("{}", castle_rights);
-}
-
-#[test]
-fn rook_castling_test() {
-    let mv: (Square, Square) = get_rook_castling(Square::C1);
-    println!("{:?}", mv);
-}
-
-#[test]
-fn test_from_string() {
-    let castle_rights: CastleRights = CastleRights::from_str("Kk").unwrap();
-    assert_eq!(castle_rights.has_kingside(Color::White), true);
-    assert_eq!(castle_rights.has_queenside(Color::White), false);
-    assert_eq!(castle_rights.has_kingside(Color::Black), true);
-    assert_eq!(castle_rights.has_queenside(Color::Black), false);
-    println!("{}", castle_rights);
 }

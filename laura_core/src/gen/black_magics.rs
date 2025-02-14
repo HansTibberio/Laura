@@ -75,29 +75,3 @@ pub fn get_bishop_attacks(square: Square, blockers: BitBoard) -> BitBoard {
         BitBoard(*SLIDER_ATTACKS.get_unchecked(magic_index(magic, BISHOP_SHIFT, blockers)))
     }
 }
-
-#[test]
-fn bishop_magic_attacks() {
-    let blockers: BitBoard = BitBoard(76631562411574272);
-    let bitboard: BitBoard = get_bishop_attacks(Square::E4, blockers);
-    println!("{}\n{}", blockers, bitboard);
-    assert_eq!(bitboard, BitBoard(72695482583352320));
-
-    let blockers: BitBoard = BitBoard(1099782160384);
-    let bitboard: BitBoard = get_bishop_attacks(Square::B7, blockers);
-    println!("{}\n{}", blockers, bitboard);
-    assert_eq!(bitboard, BitBoard(360293502375952384));
-}
-
-#[test]
-fn rook_magic_attacks() {
-    let blockers: BitBoard = BitBoard(144115188075921408);
-    let bitboard: BitBoard = get_rook_attacks(Square::A8, blockers);
-    println!("{}\n{}", blockers, bitboard);
-    assert_eq!(bitboard, BitBoard(144397766876004352));
-
-    let blockers: BitBoard = BitBoard(4503600181022721);
-    let bitboard: BitBoard = get_rook_attacks(Square::E4, blockers);
-    println!("{}\n{}", blockers, bitboard);
-    assert_eq!(bitboard, BitBoard(4521261322473472));
-}

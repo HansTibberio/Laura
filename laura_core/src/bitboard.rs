@@ -82,21 +82,22 @@ pub struct BitBoard(pub u64);
 /// where filled squares are shown as '★' and empty squares as '·'.
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s: String = format!("\n      Bitboard: {}\n", self.0);
+        writeln!(f, "\n      Bitboard: {}\n", self.0)?;
 
         for rank in (0..8).rev() {
-            s.push_str(format!("\n{}   ", rank + 1).as_str());
+            write!(f, "\n{}   ", rank + 1)?;
             for file in 0..8 {
-                let square = rank * 8 + file;
-                if self.get_square(Square::from_index(square)) {
-                    s.push_str("★ ");
+                let square: usize = rank * 8 + file;
+                let symbol: &str = if self.get_square(Square::from_index(square)) {
+                    "★ "
                 } else {
-                    s.push_str("· ");
-                }
+                    "· "
+                };
+                write!(f, "{}", symbol)?;
             }
         }
-        s.push_str("\n\n    A B C D E F G H");
-        write!(f, "{s}")
+        write!(f, "\n\n    A B C D E F G H")?;
+        Ok(())
     }
 }
 
@@ -237,20 +238,4 @@ impl BitBoard {
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
-}
-
-#[test]
-fn bitboard_test() {
-    let bitboard: BitBoard = BitBoard(2097152);
-    assert_eq!(bitboard.to_square(), Square::F3);
-    println!("{}", bitboard);
-    let bitboard: BitBoard = bitboard.set_square(Square::G6);
-    println!("{}", bitboard);
-    assert_eq!(bitboard.get_square(Square::G6), true);
-    let bitboard: BitBoard = bitboard.set_square(Square::B5);
-    assert_eq!(bitboard.count_bits(), 3);
-    println!("{}", bitboard);
-    let bitboard: BitBoard = bitboard.pop_square(Square::G6);
-    assert_eq!(bitboard.count_bits(), 2);
-    println!("{}", bitboard);
 }

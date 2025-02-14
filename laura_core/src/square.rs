@@ -60,8 +60,8 @@ impl FromStr for Square {
 /// Implement `Display` to allow squares to be printed in their standard format (e.g., "e4").
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let square: String = String::from(Self::SQUARE_NAMES[*self as usize]);
-        write!(f, "{square}")
+        write!(f, "{}", Self::SQUARE_NAMES[*self as usize])?;
+        Ok(())
     }
 }
 
@@ -192,28 +192,4 @@ impl Square {
         "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8",
         "e8", "f8", "g8", "h8",
     ];
-}
-
-#[test]
-fn test() {
-    let square: Square = Square::from_str("f5").unwrap();
-    println!(
-        "Square: {}, File: {}, Rank: {}, Index: {}",
-        square,
-        square.file(),
-        square.rank(),
-        square.to_index()
-    );
-    println!(
-        "Up: {}, Down: {}, Left: {}, Right: {}",
-        square.up(),
-        square.down(),
-        square.left(),
-        square.right()
-    );
-    println!(
-        "Forward: {}, Backward: {}",
-        square.forward(Color::White),
-        square.backward(Color::White)
-    );
 }

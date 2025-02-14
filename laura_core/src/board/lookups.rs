@@ -123,10 +123,3 @@ impl Board {
             .find(|&mv| mv.to_string().eq(move_str))
     }
 }
-
-#[test]
-fn test_find_move() {
-    let board: Board = Board::default();
-    let mv: &str = "d2d4";
-    println!("{}", board.find_move(mv).unwrap());
-}
