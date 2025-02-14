@@ -100,7 +100,7 @@ impl TryFrom<char> for Piece {
             'r' => Ok(Piece::BR),
             'q' => Ok(Piece::BQ),
             'k' => Ok(Piece::BK),
-            _ => Err("Invalid character for chess piece"),
+            _ => Err("Invalid piece character"),
         }
     }
 }

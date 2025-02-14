@@ -124,14 +124,16 @@ impl FromStr for Board {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let fen: Vec<&str> = s.split_whitespace().collect();
+        let mut fen_iter: core::str::SplitWhitespace<'_> = s.split_whitespace();
 
-        if fen.len() != 6 {
-            return Err("FEN string has an invalid length.");
-        }
+        let board_str: &str = fen_iter.next().ok_or("FEN string is too short")?;
+        let side_str: &str = fen_iter.next().ok_or("Missing side to move")?;
+        let castling_str: &str = fen_iter.next().ok_or("Missing castling rights")?;
+        let enpassant_str: &str = fen_iter.next().ok_or("Missing en passant square")?;
+        let halfmove_str: &str = fen_iter.next().ok_or("Missing halfmove clock")?;
+        let fullmove_str: &str = fen_iter.next().ok_or("Missing fullmove number")?;
 
         let mut board: Board = Self::new();
-        let board_str: &str = fen[0];
         let mut count: i32 = 0;
 
         let (mut file, mut rank) = (File::A, Rank::Eight);
@@ -139,7 +141,7 @@ impl FromStr for Board {
             match token {
                 '/' => {
                     if count != 8 {
-                        return Err("FEN string contains invalid delimiters.");
+                        return Err("FEN row does not contain exactly 8 squares.");
                     };
 
                     rank = rank.down();
@@ -163,42 +165,45 @@ impl FromStr for Board {
             return Err("The board layout is invalid.");
         }
 
-        match fen[1] {
+        board.side = match side_str {
             "w" => {
-                board.side = Color::White;
                 board.zobrist.hash_side();
+                Color::White
             }
-            "b" => board.side = Color::Black,
+            "b" => Color::Black,
             _ => return Err("Invalid side to move, should be 'w' or 'b'."),
-        }
+        };
 
-        let castle_rights: CastleRights = fen[2].parse()?;
+        let castle_rights: CastleRights = castling_str.parse()?;
         board.castling = castle_rights;
         board.zobrist.hash_castle(castle_rights);
 
-        match fen[3] {
-            "-" => board.enpassant_square = None,
+        board.enpassant_square = match enpassant_str {
+            "-" => None,
             _ => {
-                let ep_square: Square = fen[3].parse()?;
-                if ep_square.rank() != Rank::Three && ep_square.rank() != Rank::Six {
-                    return Err("En passant square is invalid.");
+                let ep_square: Square = enpassant_str
+                    .parse()
+                    .map_err(|_| "Invalid en passant square")?;
+                if !matches!(ep_square.rank(), Rank::Three | Rank::Six) {
+                    return Err("Invalid en passant rank.");
                 }
-
-                board.enpassant_square = Some(ep_square);
                 board.zobrist.hash_enpassant(ep_square);
+                Some(ep_square)
             }
+        };
+
+        board.fifty_move = halfmove_str
+            .parse::<u8>()
+            .map_err(|_| "Invalid halfmove clock")?;
+        if board.fifty_move > 100 {
+            return Err("Halfmove Clock exceeds the maximum allowed value.");
         }
 
-        match fen[4].parse::<u8>() {
-            Ok(half_move) if half_move <= 100 => board.fifty_move = half_move,
-            Ok(_) => return Err("Halfmove Clock exceeds the maximum allowed value."),
-            Err(_) => return Err("Invalid Halfmove Clock"),
-        }
-
-        match fen[5].parse::<u16>() {
-            Ok(full_move) if full_move > 0 => board.full_move = full_move,
-            Ok(_) => return Err("Fullmove number must be positive"),
-            Err(_) => return Err("Invalid Fullmove Number"),
+        board.full_move = fullmove_str
+            .parse::<u16>()
+            .map_err(|_| "Invalid fullmove number")?;
+        if board.full_move == 0 {
+            return Err("Fullmove number must be positive.");
         }
 
         board.checkers = board.checkers();

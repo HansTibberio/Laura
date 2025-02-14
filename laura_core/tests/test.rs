@@ -3,7 +3,7 @@ use std::str::FromStr;
 use laura_core::*;
 
 #[test]
-fn bitboard_test() {
+fn test_bitboard() {
     let bitboard: BitBoard = BitBoard(2097152);
     assert_eq!(bitboard.to_square(), Square::F3);
     println!("{}", bitboard);

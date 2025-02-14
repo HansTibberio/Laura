@@ -17,6 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#![no_std]
+
 pub mod bitboard;
 pub mod board;
 pub mod castle_rights;
