@@ -17,10 +17,12 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::fmt;
-use std::str::FromStr;
+use core::fmt::Write;
+use core::str::FromStr;
 
 use crate::{BitBoard, CastleRights, Color, File, Piece, Rank, Square, Zobrist};
+
+use super::FenBuffer;
 
 // This implementation is inspired by Carp, particularly its straightforward design for
 // managing the board and its data, which simplifies move generation and game logic.
@@ -67,48 +69,51 @@ pub struct Board {
 /// FEN notation, Zobrist hash, and a grid representation of the board.
 ///
 /// The board is displayed using Unicode characters for better visual clarity.
-impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut board_str: String = format!(
+impl core::fmt::Display for Board {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
             "\n FEN: {}\n Zobrist: {}\n\n\t┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓",
             self.to_fen(),
             self.zobrist
-        );
+        )?;
 
         for rank in (0..Rank::NUM_RANKS).rev() {
-            board_str.push_str(format!("\n      {} ┃ ", rank + 1).as_str());
+            write!(f, "\n     {}  ┃ ", rank + 1)?;
 
             for file in 0..File::NUM_FILES {
                 let square_index: usize = rank * 8 + file;
-                let piece_str: String =
-                    self.piece_map[square_index].map_or(String::from(" "), |p| p.to_string());
-                board_str.push_str(&piece_str);
-                board_str.push_str(" ┃ ");
+                let piece = self.piece_map[square_index]
+                    .map(|p| p.to_char())
+                    .unwrap_or(' ');
+                write!(f, "{}", piece)?;
+                write!(f, " ┃ ")?;
             }
 
-            if rank != Rank::One.to_index() {
-                board_str.push_str("\n\t┣━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━┫");
+            if rank != 0 {
+                write!(f, "\n\t┣━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━┫")?;
             }
         }
 
-        board_str
-            .push_str("\n\t┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛\n\t  A   B   C   D   E   F   G   H\n");
-
-        let enpassant_str = match self.enpassant_square {
-            Some(square) => format!("{square}"),
-            None => String::from("-"),
-        };
-
         write!(
             f,
-            "{}
-            Side to move        : {}
-            Castling Rights     : {}
-            En Passante square  : {}
-            Fifty Rule          : {}
-            ",
-            board_str, self.side, self.castling, enpassant_str, self.fifty_move,
-        )
+            "\n\t┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛\n\t  A   B   C   D   E   F   G   H\n\n"
+        )?;
+
+        write!(f, "\t    Side to move        : ")?;
+        match self.side {
+            Color::White => writeln!(f, "White")?,
+            Color::Black => writeln!(f, "Black")?,
+        }
+        writeln!(f, "\t    Castling Rights     : {}", self.castling)?;
+        write!(f, "\t    En Passante square  : ")?;
+        if let Some(square) = self.enpassant_square {
+            writeln!(f, "{}", square)?;
+        } else {
+            writeln!(f, "-")?;
+        }
+        writeln!(f, "\t    Fifty Rule          : {}", self.fifty_move)?;
+        Ok(())
     }
 }
 
@@ -238,9 +243,8 @@ impl Board {
     /// FEN is a standard notation for describing a particular board position of a chess game.
     /// It includes information about the placement of pieces, which side is to move, castling rights,
     /// en passant target squares, the half-move clock (for the fifty-move rule), and the full-move number.
-    pub fn to_fen(&self) -> String {
-        let mut fen: String = String::new();
-
+    pub fn to_fen(&self) -> FenBuffer {
+        let mut fen: FenBuffer = FenBuffer::new();
         for rank in (0..Rank::NUM_RANKS).rev() {
             let mut empty_squares: i32 = 0;
 
@@ -249,41 +253,35 @@ impl Board {
 
                 if let Some(piece) = self.piece_map[square_index] {
                     if empty_squares > 0 {
-                        fen.push_str(&empty_squares.to_string());
+                        let _ = write!(fen, "{}", empty_squares);
                         empty_squares = 0;
                     }
-                    fen.push(piece.to_char());
+                    let _ = write!(fen, "{}", piece.to_char());
                 } else {
                     empty_squares += 1;
                 }
             }
 
             if empty_squares > 0 {
-                fen.push_str(&empty_squares.to_string());
+                let _ = write!(fen, "{}", empty_squares);
             }
 
             if rank != Rank::One.to_index() {
-                fen.push('/');
+                let _ = write!(fen, "/");
             }
         }
 
-        fen.push(' ');
-        fen.push(match self.side {
-            Color::White => 'w',
-            Color::Black => 'b',
-        });
-        fen.push(' ');
+        let _ = write!(fen, " {} ", self.side);
 
-        fen.push_str(&self.castling.to_string());
-        fen.push(' ');
+        let _ = write!(fen, "{} ", self.castling);
 
         if let Some(enpassant_square) = self.enpassant_square {
-            fen.push_str(&enpassant_square.to_string());
+            let _ = write!(fen, "{}", enpassant_square);
         } else {
-            fen.push('-');
+            let _ = write!(fen, "-");
         }
 
-        fen.push_str(&format!(" {} {}", self.fifty_move, self.full_move));
+        let _ = write!(fen, " {} {}", self.fifty_move, self.full_move);
 
         fen
     }
@@ -357,28 +355,4 @@ impl Board {
     pub const fn full_move(&self) -> u16 {
         self.full_move
     }
-}
-
-#[test]
-fn test_board() {
-    let board: Board = Board::new();
-    println!("{}", board);
-}
-
-#[test]
-fn test_from_string() {
-    let board: Board =
-        Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
-    println!("{}", board);
-    println!("{}", board.to_fen());
-}
-
-#[test]
-fn test_default() {
-    let board: Board =
-        Board::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-    let board_default: Board = Board::default();
-    println!("{}", board);
-    assert_eq!(board, board_default);
 }

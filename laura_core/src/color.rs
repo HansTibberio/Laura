@@ -50,8 +50,8 @@ impl fmt::Display for Color {
             f,
             "{}",
             match self {
-                Color::White => "White",
-                Color::Black => "Black",
+                Color::White => "w",
+                Color::Black => "b",
             }
         )
     }

@@ -17,8 +17,58 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use core::fmt;
+
 #[allow(clippy::module_inception)]
 pub mod board;
 pub mod lookups;
 pub mod movegen;
 pub mod movemaker;
+
+const MAX_FEN_LENGTH: usize = 128;
+
+#[derive(Debug)]
+pub struct FenBuffer {
+    buf: [u8; MAX_FEN_LENGTH],
+    pos: usize,
+}
+
+impl FenBuffer {
+    fn new() -> Self {
+        Self {
+            buf: [0; MAX_FEN_LENGTH],
+            pos: 0,
+        }
+    }
+
+    fn to_str(&self) -> &str {
+        core::str::from_utf8(&self.buf[..self.pos]).unwrap_or("")
+    }
+}
+
+impl fmt::Write for FenBuffer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let bytes: &[u8] = s.as_bytes();
+        let len: usize = bytes.len();
+
+        if self.pos + len > MAX_FEN_LENGTH {
+            return Err(core::fmt::Error);
+        }
+
+        self.buf[self.pos..self.pos + len].copy_from_slice(bytes);
+        self.pos += len;
+        Ok(())
+    }
+}
+
+impl fmt::Display for FenBuffer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_str())
+    }
+}
+
+impl PartialEq<&str> for FenBuffer {
+    fn eq(&self, other: &&str) -> bool {
+        self.to_str() == *other
+    }
+}

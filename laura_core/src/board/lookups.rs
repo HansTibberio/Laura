@@ -120,6 +120,6 @@ impl Board {
         gen_moves::<ALL_MOVES>(&*self)
             .moves
             .into_iter()
-            .find(|&mv| mv.to_string().eq(move_str))
+            .find(|&mv| mv == move_str)
     }
 }

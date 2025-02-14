@@ -1,0 +1,5 @@
+[build]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "target-feature=+bmi2"
+]

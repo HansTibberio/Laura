@@ -322,7 +322,6 @@ fn test_board_from_string() {
     assert_eq!(board.enpassant_square, None);
     assert_eq!(board.zobrist(), Zobrist(0x9076b588b1b0450a));
     println!("{}", board);
-    println!("{}", board.to_fen());
 }
 
 #[test]

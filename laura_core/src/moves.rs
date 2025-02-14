@@ -48,6 +48,30 @@ impl fmt::Display for Move {
     }
 }
 
+impl PartialEq<&str> for Move {
+    fn eq(&self, other: &&str) -> bool {
+        let mut move_str: [u8; 6] = [0u8; 6];
+        let mut pos: usize = 0;
+
+        let src: &str = self.get_src().to_str();
+        let dest: &str = self.get_dest().to_str();
+
+        move_str[pos..pos + src.len()].copy_from_slice(src.as_bytes());
+        pos += src.len();
+
+        move_str[pos..pos + dest.len()].copy_from_slice(dest.as_bytes());
+        pos += dest.len();
+
+        if self.is_promotion() {
+            move_str[pos] = self.get_prom(Color::Black).to_char() as u8;
+            pos += 1;
+        }
+
+        let move_as_str: &str = core::str::from_utf8(&move_str[..pos]).unwrap_or("");
+        move_as_str == *other
+    }
+}
+
 // Bit masks to extract parts of the move from the 16-bit representation.
 const SRC_MASK: u16 = 0b00000000_00111111;
 const DEST_MASK: u16 = 0b00001111_11000000;
