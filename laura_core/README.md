@@ -13,15 +13,16 @@
 - **Zobrist Hashing** 
 - **Black Magic Bitboards** for rapid move generation of rooks, bishops, and queens.  
 - **PEXT Bitboards** as an alternative for efficient sliding piece move generation.  
-- **Full legal or only tactical move generation** depending on requirements.  
+- **Supports full legal move generation or selective move filtering (quiet or tactical moves)**  
 - **FEN support**: Initialize the board from a FEN string.  
 - **Move execution** to update the board state dynamically.  
-- **Null move support** for search optimizations like quiescence search.  
+- **Null move support** for search optimizations like null move pruning.  
 - **UCI move execution**: Apply moves directly from a UCI-compliant string.
+- **Fully `#![no_std]` compatible**
 
 ## **Usage**
 
-### **Seting up the initial board**
+### **Setting up the initial board**
 
 ```rust
 use laura_core::Board;
@@ -51,9 +52,9 @@ fn main() {
 
 To generate moves from a given position, use the gen_moves function along with one of the predefined constants:
 
-- ALL_MOVES: Generates all legal moves.
-- QUIET_MOVES: Generates only quiet moves (non-capturing moves).
-- TACTICAL_MOVES: Generates tactical moves (captures and queen promotions).
+- `ALL_MOVES`: Generates all legal moves.
+- `QUIET_MOVES`: Generates only quiet moves (non-capturing moves).
+- `TACTICAL_MOVES`: Generates tactical moves (captures and queen promotions).
 
 **Example: Generating all legal moves**
 
@@ -107,7 +108,7 @@ fn main() {
 }
 ```
 
-This executes the move e2e4 (pawn to e4) and assert the updated board position.
+This executes the move e2e4 (pawn to e4) and asserts the updated board position.
 
 ## **License**
 
