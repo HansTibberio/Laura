@@ -40,6 +40,7 @@ pub use castle_rights::CastleRights;
 pub use color::Color;
 pub use file::File;
 pub use move_list::MoveList;
+pub use movegen::*;
 pub use moves::{Move, MoveType};
 pub use piece::{Piece, PieceType};
 pub use rank::Rank;
