@@ -8,7 +8,8 @@ license = "GPL-3.0"
 readme = "README.md"
 keywords = ["chess", "game"]
 categories = ["games"]
-repository = "https://github.com/HansTibberio/laura"
+homepage = "https://github.com/HansTibberio/laura"
+repository = "https://github.com/HansTibberio/Laura/tree/master/laura_core"
 
 include = ["src/*", "cargo.toml", "build_dep/*", "build.rs", "README.md"]
 
