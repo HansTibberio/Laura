@@ -67,19 +67,17 @@ pub struct Board {
 
 /// Displays the current state of the chess board in a readable format, including
 /// FEN notation, Zobrist hash, and a grid representation of the board.
-///
-/// The board is displayed using Unicode characters for better visual clarity.
 impl core::fmt::Display for Board {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "\n FEN: {}\n Zobrist: {}\n\n\t┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓",
+            "\n FEN: {}\n Zobrist: {}\n\n\t+---+---+---+---+---+---+---+---+",
             self.to_fen(),
             self.zobrist
         )?;
 
         for rank in (0..Rank::NUM_RANKS).rev() {
-            write!(f, "\n     {}  ┃ ", rank + 1)?;
+            write!(f, "\n     {}  | ", rank + 1)?;
 
             for file in 0..File::NUM_FILES {
                 let square_index: usize = rank * 8 + file;
@@ -87,17 +85,17 @@ impl core::fmt::Display for Board {
                     .map(|p| p.to_char())
                     .unwrap_or(' ');
                 write!(f, "{}", piece)?;
-                write!(f, " ┃ ")?;
+                write!(f, " | ")?;
             }
 
             if rank != 0 {
-                write!(f, "\n\t┣━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━╋━━━┫")?;
+                write!(f, "\n\t+---+---+---+---+---+---+---+---+")?;
             }
         }
 
         write!(
             f,
-            "\n\t┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛\n\t  A   B   C   D   E   F   G   H\n\n"
+            "\n\t+---+---+---+---+---+---+---+---+\n\t  A   B   C   D   E   F   G   H\n\n"
         )?;
 
         write!(f, "\t    Side to move        : ")?;
