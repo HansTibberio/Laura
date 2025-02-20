@@ -24,7 +24,7 @@
 
 If your processor supports **BMI2** (e.g., **Intel Haswell** (2013+) or **AMD Zen 3** (Nov 2020+)), it is recommended to compile with `RUSTFLAGS="-C target-cpu=native"` and enable the `bmi2` feature for better performance.
  
-**Laura-Core*** provides a feature called **`bmi2`**, which enables the use of the **`pext`** instruction for more efficient bit manipulation.
+**Laura-Core** provides a feature called **`bmi2`**, which enables the use of the **`pext`** instruction for more efficient bit manipulation.
 
 For older processors **without** BMI2 support, only `RUSTFLAGS="-C target-cpu=native"` should be used, as the `bmi2` feature will not work on unsupported hardware.
 
