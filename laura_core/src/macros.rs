@@ -69,6 +69,7 @@ impl_bitwise_assign_op!(BitXorAssign, bitxor_assign);
 /// This macro simplifies the initialization of `BlackMagicEntry` structs by directly
 /// mapping the values to the struct's fields, which represent various components
 /// of the magic bitboard setup for chess engines or similar applications.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! BlackMagic {
     ($mg: expr, $nm: expr, $o: expr) => {
@@ -124,6 +125,7 @@ impl_piece_lookups! {
 /// Calls the provided move handler function with a newly created move.
 /// This macro simplifies move generation by constructing a `Move`
 /// with the given source, destination, and move type, then passing it to the handler.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! Call_Handler {
     ($handler:expr, $src:expr, $dest:expr, $move_type:ident) => {
@@ -134,6 +136,7 @@ macro_rules! Call_Handler {
 /// Enumerates all possible moves for different piece types.
 /// This macro calls specific move generation functions for pawns, knights, bishops, rooks, and queens.
 /// Considering check conditions, pinned pieces, and the provided move handler.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! Enumerate_Moves {
     ($check:expr, $board:expr, $diagonal_pins:expr, $linear_pins:expr, $handler:expr) => {

@@ -18,15 +18,15 @@
 */
 
 use crate::castle_rights::*;
-use crate::gen::king::get_king_attacks;
-use crate::gen::knight::get_knight_attacks;
-use crate::gen::pawn::get_pawn_attacks;
-use crate::gen::rays::{bishop_rays, get_between, rook_rays};
+use crate::get_king_attacks;
+use crate::get_knight_attacks;
+use crate::get_pawn_attacks;
+use crate::{get_between, get_bishop_rays, get_rook_rays};
 
 #[cfg(not(feature = "bmi2"))]
-use crate::gen::black_magics::{get_bishop_attacks, get_rook_attacks};
+use crate::{get_bishop_attacks, get_rook_attacks};
 #[cfg(feature = "bmi2")]
-use crate::gen::pext::{get_bishop_attacks, get_rook_attacks};
+use crate::{get_bishop_attacks, get_rook_attacks};
 
 use crate::{BitBoard, Board, Call_Handler, Enumerate_Moves, Move, MoveList, MoveType, Square};
 
@@ -308,7 +308,8 @@ where
                     | dest.to_bitboard();
 
             // Ensure en passant does not expose the king to a rook or queen attack.
-            let king_ray: bool = !(rook_rays(king_square) & board.enemy_queen_rooks()).is_empty();
+            let king_ray: bool =
+                !(get_rook_rays(king_square) & board.enemy_queen_rooks()).is_empty();
             if king_ray
                 && !(get_rook_attacks(king_square, blockers) & board.enemy_queen_rooks()).is_empty()
             {
@@ -317,7 +318,7 @@ where
 
             // Ensure en passant does not expose the king to a bishop or queen attack.
             let king_ray: bool =
-                !(bishop_rays(king_square) & board.enemy_queen_bishops()).is_empty();
+                !(get_bishop_rays(king_square) & board.enemy_queen_bishops()).is_empty();
             if king_ray
                 && !(get_bishop_attacks(king_square, blockers) & board.enemy_queen_bishops())
                     .is_empty()
@@ -651,7 +652,7 @@ fn pinners(board: &Board) -> (BitBoard, BitBoard) {
     let king_square: Square = board.allied_king().to_square();
     let blockers_mask: BitBoard = board.combined_bitboard();
 
-    let probe: BitBoard = (bishop_rays(king_square) | rook_rays(king_square))
+    let probe: BitBoard = (get_bishop_rays(king_square) | get_rook_rays(king_square))
         & (board.enemy_queen_bishops() | board.enemy_queen_rooks());
 
     if probe.is_empty() {

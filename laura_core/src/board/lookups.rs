@@ -17,14 +17,14 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::gen::king::get_king_attacks;
-use crate::gen::knight::get_knight_attacks;
-use crate::gen::pawn::get_pawn_attacks;
+use crate::get_king_attacks;
+use crate::get_knight_attacks;
+use crate::get_pawn_attacks;
 
 #[cfg(not(feature = "bmi2"))]
-use crate::gen::black_magics::{get_bishop_attacks, get_rook_attacks};
+use crate::{get_bishop_attacks, get_rook_attacks};
 #[cfg(feature = "bmi2")]
-use crate::gen::pext::{get_bishop_attacks, get_rook_attacks};
+use crate::{get_bishop_attacks, get_rook_attacks};
 
 use crate::{BitBoard, Board, Color, Move, Piece, Square};
 

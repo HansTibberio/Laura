@@ -18,8 +18,8 @@
 */
 
 use crate::{
-    castle_rights::get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece,
-    PieceType, Square,
+    get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece, PieceType,
+    Square,
 };
 
 // This implementation is based on the approach used in Carp,
