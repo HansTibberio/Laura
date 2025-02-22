@@ -2,6 +2,8 @@
 
 <div  align="center"> 
 
+[![Crates.io Version][crates-badge]][crates-link]
+
 [![License][license-badge]][license-link]
 
 </div>
@@ -136,3 +138,7 @@ This project is licensed under **GPLv3**. See the [LICENSE][license-link] file f
 [license-link]:https://github.com/hanstibberio/Laura/blob/master/LICENSE
 
 [license-badge]:https://img.shields.io/github/license/hanstibberio/laura?style=for-the-badge&label=license&color=success
+
+[crates-link]:https://crates.io/crates/laura_core
+
+[crates-badge]:https://img.shields.io/crates/v/laura_core?style=for-the-badge
