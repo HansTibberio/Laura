@@ -85,19 +85,46 @@ const CAP_MASK: u16 = 0b01000000_00000000;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum MoveType {
+    /// A standard, non-capturing move (e.g., moving a piece to an empty square).
     Quiet = 0b0000,
+
+    /// A double pawn move, where a pawn advances two squares on its first move.
     DoublePawn = 0b0001,
+
+    /// King-side castling move.
     KingCastle = 0b0010,
+
+    /// Queen-side castling move.
     QueenCastle = 0b0011,
+
+    /// A capture move, where a piece takes an opponent's piece.
     Capture = 0b0100,
+
+    /// En passant capture, a special pawn capture move.
     EnPassant = 0b0101,
+
+    /// Promotion to a Knight after a pawn reaches the last rank.
     PromotionKnight = 0b1000,
+
+    /// Promotion to a Bishop after a pawn reaches the last rank.
     PromotionBishop = 0b1001,
+
+    /// Promotion to a Rook after a pawn reaches the last rank.
     PromotionRook = 0b1010,
+
+    /// Promotion to a Queen after a pawn reaches the last rank.
     PromotionQueen = 0b1011,
+
+    /// A capture move combined with a promotion to a Knight.
     CapPromoKnight = 0b1100,
+
+    /// A capture move combined with a promotion to a Bishop.
     CapPromoBishop = 0b1101,
+
+    /// A capture move combined with a promotion to a Rook.
     CapPromoRook = 0b1110,
+
+    /// A capture move combined with a promotion to a Queen.
     CapPromoQueen = 0b1111,
 }
 

@@ -17,6 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 #![no_std]
 
 mod bitboard;

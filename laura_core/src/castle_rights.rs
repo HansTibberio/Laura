@@ -90,13 +90,13 @@ impl fmt::Display for CastleRights {
 }
 
 // Constants for castling bitmasks for both White and Black:
-/// - `CASTLE_WK_MASK`: White kingside castling (bit 3)
+/// `CASTLE_WK_MASK`: White kingside castling (bit 3)
 const CASTLE_WK_MASK: u8 = 0b1000;
-/// - `CASTLE_WQ_MASK`: White queenside castling (bit 2)
+/// `CASTLE_WQ_MASK`: White queenside castling (bit 2)
 const CASTLE_WQ_MASK: u8 = 0b0100;
-/// - `CASTLE_BK_MASK`: Black kingside castling (bit 1)
+/// `CASTLE_BK_MASK`: Black kingside castling (bit 1)
 const CASTLE_BK_MASK: u8 = 0b0010;
-/// - `CASTLE_BQ_MASK`: Black queenside castling (bit 0)
+/// `CASTLE_BQ_MASK`: Black queenside castling (bit 0)
 const CASTLE_BQ_MASK: u8 = 0b0001;
 
 // Arrays to simplify indexing for kingside and queenside castling rights
@@ -214,7 +214,7 @@ const CASTLE_RIGHTS_MASK: [u8; Square::NUM_SQUARES] = [
 ///
 /// - Kingside castling (king moves to G-file): returns (H-file, F-file)
 /// - Queenside castling (king moves to C-file): returns (A-file, D-file)
-pub const fn get_rook_castling(dest: Square) -> (Square, Square) {
+pub(crate) const fn get_rook_castling(dest: Square) -> (Square, Square) {
     match dest.file() {
         File::C => (dest.left().left(), dest.right()),
         File::G => (dest.right(), dest.left()),

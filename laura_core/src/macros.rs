@@ -16,7 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
-
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 
@@ -64,6 +63,36 @@ impl_bitwise_assign_op!(BitAndAssign, bitand_assign);
 impl_bitwise_assign_op!(BitOrAssign, bitor_assign);
 impl_bitwise_assign_op!(BitXorAssign, bitxor_assign);
 
+/// Macro to generate the docs for the BitBoard constants
+#[macro_export]
+macro_rules! BitBoardConsts {
+    ($($name:ident > $value:expr),* $(,)?) => {
+        $(
+            #[doc = concat!("BitBoard representing `", stringify!($name), "`.")]
+            pub const $name: BitBoard = BitBoard($value);
+        )*
+    };
+}
+
+
+/// Macro to generate the Square enum and the documentation for each square.
+#[macro_export]
+macro_rules! SquareDocs {
+    ($($square:ident),*) => {
+        /// Enum representing each square on a chessboard, from A1 to H8.
+        /// The squares are ordered by rank (rows) and file (columns),
+        /// with A1 as the bottom-left and H8 as the top-right.
+        #[derive(PartialEq, Ord, Eq, PartialOrd, Copy, Clone, Debug, Hash)]
+        #[repr(u8)]
+        pub enum Square {
+            $(
+                #[doc = concat!("The square `", stringify!($square), "`.")]
+                $square,
+            )*
+        }
+    };
+}
+
 /// A macro to create a `BlackMagicEntry` instance with the provided parameters.
 ///
 /// This macro simplifies the initialization of `BlackMagicEntry` structs by directly
@@ -93,16 +122,25 @@ macro_rules! impl_piece_lookups {
     ($($piece_index:expr, $allied_fn:ident, $enemy_fn:ident, $total_fn:ident),*) => {
         impl Board {
             $(
+                /// Returns the positions of the current player's (allied)
+                #[doc = stringify!($total_fn)]
+                /// pieces.
                 #[inline(always)]
                 pub const fn $allied_fn(&self) -> BitBoard {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize].0)
                 }
 
+                /// Returns the positions of the opponent's (enemy)
+                #[doc = stringify!($total_fn)]
+                /// pieces.
                 #[inline(always)]
                 pub const fn $enemy_fn(&self) -> BitBoard {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize ^ 1].0)
                 }
 
+                /// Returns the positions of all
+                #[doc = stringify!($total_fn)]
+                /// pieces, regardless of side.
                 #[inline(always)]
                 pub const fn $total_fn(&self) -> BitBoard {
                     self.pieces_bitboard[$piece_index]

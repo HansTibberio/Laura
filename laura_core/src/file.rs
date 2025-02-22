@@ -21,17 +21,33 @@ use core::fmt;
 use core::mem::transmute;
 
 /// Enum representing the files (columns) on a chessboard.
-/// Files are labeled from 'A' to 'H'.
+/// Files are labeled from 'A' to 'H', with 'A' being the leftmost column and 'H' the rightmost.
+/// The `File` enum is used to identify the specific column a piece resides on during the game.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum File {
+    /// The 'A' file, the leftmost column on the chessboard.
     A,
+
+    /// The 'B' file.
     B,
+
+    /// The 'C' file.
     C,
+
+    /// The 'D' file.
     D,
+
+    /// The 'E' file.
     E,
+
+    /// The 'F' file.
     F,
+
+    /// The 'G' file.
     G,
+
+    /// The 'H' file, the rightmost column on the chessboard.
     H,
 }
 
@@ -54,6 +70,7 @@ impl fmt::Display for File {
 impl File {
     /// Total number of files (8 in standard chess).
     pub const NUM_FILES: usize = 8;
+
     /// Array containing all possible files (A to H).
     pub const ALL: [Self; Self::NUM_FILES] = [
         Self::A,

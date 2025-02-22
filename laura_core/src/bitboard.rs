@@ -21,39 +21,7 @@ use core::fmt;
 use core::mem::transmute;
 use core::ops::Not;
 
-use crate::{Color, Square};
-
-// Constants representing various positions and sections of the chessboard as `u64` bitboards.
-// These constants use specific bit patterns to represent different files, ranks, and sides on the board.
-const WHITE_SIDE: u64 = 0x0000_0000_FFFF_FFFF;
-const BLACK_SIDE: u64 = 0xFFFF_FFFF_0000_0000;
-
-// File bitboards (columns on the chessboard)
-const FILE_A: u64 = 0x0101_0101_0101_0101;
-const FILE_B: u64 = 0x0202_0202_0202_0202;
-const FILE_C: u64 = 0x0404_0404_0404_0404;
-const FILE_D: u64 = 0x0808_0808_0808_0808;
-const FILE_E: u64 = 0x1010_1010_1010_1010;
-const FILE_F: u64 = 0x2020_2020_2020_2020;
-const FILE_G: u64 = 0x4040_4040_4040_4040;
-const FILE_H: u64 = 0x8080_8080_8080_8080;
-
-// Rank bitboards (rows on the chessboard)
-const RANK_1: u64 = 0x0000_0000_0000_00FF;
-const RANK_2: u64 = 0x0000_0000_0000_FF00;
-const RANK_3: u64 = 0x0000_0000_00FF_0000;
-const RANK_4: u64 = 0x0000_0000_FF00_0000;
-const RANK_5: u64 = 0x0000_00FF_0000_0000;
-const RANK_6: u64 = 0x0000_FF00_0000_0000;
-const RANK_7: u64 = 0x00FF_0000_0000_0000;
-const RANK_8: u64 = 0xFF00_0000_0000_0000;
-
-// Bitboards representing dark and light squares
-const DARK_SQUARES: u64 = 0xAA55_AA55_AA55_AA55;
-const LIGHT_SQUARES: u64 = 0x55AA_55AA_55AA_55AA;
-
-// Full bitboard (all squares occupied)
-const FULL: u64 = 0xFFFF_FFFF_FFFF_FFFF;
+use crate::{BitBoardConsts, Color, Square};
 
 /// A `BitBoard` represents a 64-bit chessboard where each bit corresponds to a square.
 /// It is useful for efficiently representing and manipulating chess positions.
@@ -133,35 +101,30 @@ impl Iterator for BitBoard {
 /// Methods for the `BitBoard` struct, including utilities for manipulating bits and interacting with squares.
 impl BitBoard {
     // Predefined `BitBoard` constants for sides, files, and ranks
-    pub const WHITE_SIDE: BitBoard = BitBoard(WHITE_SIDE);
-    pub const BLACK_SIDE: BitBoard = BitBoard(BLACK_SIDE);
-
-    pub const FILE_A: BitBoard = BitBoard(FILE_A);
-    pub const FILE_B: BitBoard = BitBoard(FILE_B);
-    pub const FILE_C: BitBoard = BitBoard(FILE_C);
-    pub const FILE_D: BitBoard = BitBoard(FILE_D);
-    pub const FILE_E: BitBoard = BitBoard(FILE_E);
-    pub const FILE_F: BitBoard = BitBoard(FILE_F);
-    pub const FILE_G: BitBoard = BitBoard(FILE_G);
-    pub const FILE_H: BitBoard = BitBoard(FILE_H);
-
-    pub const RANK_1: BitBoard = BitBoard(RANK_1);
-    pub const RANK_2: BitBoard = BitBoard(RANK_2);
-    pub const RANK_3: BitBoard = BitBoard(RANK_3);
-    pub const RANK_4: BitBoard = BitBoard(RANK_4);
-    pub const RANK_5: BitBoard = BitBoard(RANK_5);
-    pub const RANK_6: BitBoard = BitBoard(RANK_6);
-    pub const RANK_7: BitBoard = BitBoard(RANK_7);
-    pub const RANK_8: BitBoard = BitBoard(RANK_8);
-
-    pub const PROMOTION_RANKS: [BitBoard; 2] = [BitBoard(RANK_7), BitBoard(RANK_2)];
-    pub const PAWN_START: [BitBoard; 2] = [BitBoard(RANK_2), BitBoard(RANK_7)];
-
-    pub const DARK_SQUARES: BitBoard = BitBoard(DARK_SQUARES);
-    pub const LIGHT_SQUARES: BitBoard = BitBoard(LIGHT_SQUARES);
-
-    pub const EMPTY: BitBoard = BitBoard(0);
-    pub const FULL: BitBoard = BitBoard(FULL);
+    BitBoardConsts! {
+        WHITE_SIDE > 0x0000_0000_FFFF_FFFF,
+        BLACK_SIDE > 0xFFFF_FFFF_0000_0000,
+        FILE_A > 0x0101_0101_0101_0101,
+        FILE_B > 0x0202_0202_0202_0202,
+        FILE_C > 0x0404_0404_0404_0404,
+        FILE_D > 0x0808_0808_0808_0808,
+        FILE_E > 0x1010_1010_1010_1010,
+        FILE_F > 0x2020_2020_2020_2020,
+        FILE_G > 0x4040_4040_4040_4040,
+        FILE_H > 0x8080_8080_8080_8080,
+        RANK_1 > 0x0000_0000_0000_00FF,
+        RANK_2 > 0x0000_0000_0000_FF00,
+        RANK_3 > 0x0000_0000_00FF_0000,
+        RANK_4 > 0x0000_0000_FF00_0000,
+        RANK_5 > 0x0000_00FF_0000_0000,
+        RANK_6 > 0x0000_FF00_0000_0000,
+        RANK_7 > 0x00FF_0000_0000_0000,
+        RANK_8 > 0xFF00_0000_0000_0000,
+        DARK_SQUARES > 0xAA55_AA55_AA55_AA55,
+        LIGHT_SQUARES > 0x55AA_55AA_55AA_55AA,
+        EMPTY > 0,
+        FULL > 0xFFFF_FFFF_FFFF_FFFF,
+    }
 
     /// Converts the `BitBoard` to a `Square`, returning the square that corresponds to the least significant '1' bit.
     #[inline(always)]
