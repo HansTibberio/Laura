@@ -3,7 +3,6 @@
 <div  align="center"> 
 
 [![Crates.io Version][crates-badge]][crates-link]
-
 [![License][license-badge]][license-link]
 
 </div>
