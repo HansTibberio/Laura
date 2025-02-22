@@ -23,11 +23,11 @@ use core::fmt;
 use crate::Move;
 
 #[cfg(target_pointer_width = "64")]
-pub const MAX_MOVES: usize = 252;
+const MAX_MOVES: usize = 252;
 #[cfg(target_pointer_width = "32")]
-pub const MAX_MOVES: usize = 254;
+const MAX_MOVES: usize = 254;
 #[cfg(target_pointer_width = "16")]
-pub const MAX_MOVES: usize = 255;
+const MAX_MOVES: usize = 255;
 
 // This implementation is based on the `MoveList` structure from Pleco,
 // an efficient chess library, licensed under the MIT License.

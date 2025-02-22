@@ -31,7 +31,7 @@ include!(concat!(env!("OUT_DIR"), "/bishop_bmagics.rs"));
 const ROOK_SHIFT: usize = 12;
 
 /// The shift constant used for bishop magic numbers.
-pub const BISHOP_SHIFT: usize = 9;
+const BISHOP_SHIFT: usize = 9;
 
 /// Struct representing a single black magic entry for a slider piece (rook or bishop).
 ///

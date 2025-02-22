@@ -20,7 +20,7 @@
 use core::fmt;
 use core::str::FromStr;
 
-use crate::{BitBoard, Color, File, MoveType, Square};
+use crate::{BitBoard, Color, File, Square};
 
 // This implementation is based on the approach used in Carp, which licensed under the GPLv3.
 // Source: https://github.com/dede1751/carp/blob/main/chess/src/castle.rs
@@ -114,29 +114,28 @@ const NOT_WHITE_RIGHTS: u8 = NOT_WK_RIGHTS & NOT_WQ_RIGHTS;
 const NOT_BLACK_RIGHTS: u8 = NOT_BK_RIGHTS & NOT_BQ_RIGHTS;
 
 /// Index representing the king-side castle in arrays.
-pub const KING_SIDE: usize = 0;
-/// Index representing the queen-side castle in arrays.
-pub const QUEEN_SIDE: usize = 1;
+pub(crate) const KING_SIDE: usize = 0;
 
-/// Array mapping castle types to their corresponding move types.
-pub const CASTLE_TYPE: [MoveType; 2] = [MoveType::KingCastle, MoveType::QueenCastle];
+/// Index representing the queen-side castle in arrays.
+pub(crate) const QUEEN_SIDE: usize = 1;
 
 /// Array defining the starting squares for castling moves for white and black.
-pub const SOURCE: [Square; 2] = [Square::E1, Square::E8];
+pub(crate) const SOURCE: [Square; 2] = [Square::E1, Square::E8];
 
 /// Array defining the intermediate squares crossed during castling.
 /// The first dimension represents the king-side (0) or queen-side (1).
 /// The second dimension represents white (0) or black (1).
-pub const MEDIUM: [[Square; 2]; 2] = [[Square::F1, Square::F8], [Square::D1, Square::D8]];
+pub(crate) const MEDIUM: [[Square; 2]; 2] = [[Square::F1, Square::F8], [Square::D1, Square::D8]];
 
 /// Array defining the destination squares for castling moves.
 /// The structure mirrors that of `MEDIUM`.
-pub const DESTINATION: [[Square; 2]; 2] = [[Square::G1, Square::G8], [Square::C1, Square::C8]];
+pub(crate) const DESTINATION: [[Square; 2]; 2] =
+    [[Square::G1, Square::G8], [Square::C1, Square::C8]];
 
 /// Array defining bitboard representations of squares that must be empty
 /// for castling to be valid. The first dimension represents the king-side (0)
 /// or queen-side (1), and the second represents white (0) or black (1).
-pub const PRESENCE: [[BitBoard; 2]; 2] = [
+pub(crate) const PRESENCE: [[BitBoard; 2]; 2] = [
     [BitBoard(0x0000000000000060), BitBoard(0x6000000000000000)],
     [BitBoard(0x000000000000000E), BitBoard(0x0E00000000000000)],
 ];

@@ -106,7 +106,7 @@ impl TryFrom<char> for Piece {
 }
 
 /// A 2D array representing the pieces available for promotion in chess.
-pub const PROM_PIECES: [[Piece; 4]; 2] = [
+pub(crate) const PROM_PIECES: [[Piece; 4]; 2] = [
     [Piece::WN, Piece::WB, Piece::WR, Piece::WQ],
     [Piece::BN, Piece::BB, Piece::BR, Piece::BQ],
 ];

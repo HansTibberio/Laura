@@ -37,7 +37,7 @@ const BLACK_PAWN_DELTAS: [(i8, i8); 2] = [(-1, -1), (-1, 1)];
 /// white, 1 for black) and the second dimension corresponds to the square
 /// index (0 to 63). Each entry in the array contains a BitBoard indicating
 /// the squares that the pawn can attack from that position.
-pub const PAWN_ATTACKS: [[BitBoard; Square::NUM_SQUARES]; 2] = [
+pub(crate) const PAWN_ATTACKS: [[BitBoard; Square::NUM_SQUARES]; 2] = [
     [
         BitBoard(512),
         BitBoard(1280),
@@ -192,7 +192,7 @@ pub fn get_pawn_attacks(color: Color, square: Square) -> BitBoard {
 ///
 /// This function iterates over all squares (0 to 63) and calculates the possible
 /// attack moves for both white and black pawns based on their movement deltas.
-pub fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
+fn gen_pawn_attacks() -> [[BitBoard; 64]; 2] {
     let mut pawn_attacks: [[BitBoard; 64]; 2] = [[BitBoard::EMPTY; 64]; 2];
 
     for square in BitBoard::FULL {

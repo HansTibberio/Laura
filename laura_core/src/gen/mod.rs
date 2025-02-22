@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
+#![allow(dead_code)]
 
 #[cfg(not(feature = "bmi2"))]
 pub mod black_magics;
