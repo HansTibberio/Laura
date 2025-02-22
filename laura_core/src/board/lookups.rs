@@ -117,9 +117,9 @@ impl Board {
     /// Finds legal move in board from the uci-formatted move string
     #[inline]
     pub fn find_move(&self, move_str: &str) -> Option<Move> {
-        gen_moves::<ALL_MOVES>(&*self)
-            .moves
-            .into_iter()
-            .find(|&mv| mv == move_str)
+        gen_moves::<ALL_MOVES>(self)
+            .moves()
+            .iter()
+            .find(|&mv| *mv == move_str).copied()
     }
 }

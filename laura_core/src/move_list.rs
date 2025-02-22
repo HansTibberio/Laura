@@ -43,7 +43,7 @@ pub const MAX_MOVES: usize = 255;
 /// - `len`: The current number of moves stored in the list.
 #[derive(Clone, Debug)]
 pub struct MoveList {
-    pub moves: [Move; MAX_MOVES],
+    moves: [Move; MAX_MOVES],
     len: usize,
 }
 
@@ -99,6 +99,12 @@ impl MoveList {
             self.moves[self.len] = mv;
             self.len += 1;
         }
+    }
+    
+    /// Returns a reference to the stored moves, limited by `len`.
+    #[inline(always)]
+    pub fn moves(&self) -> &[Move] {
+        &self.moves[..self.len]
     }
 
     /// Returns the number of moves currently stored in the list.

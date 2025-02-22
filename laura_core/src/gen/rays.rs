@@ -175,11 +175,11 @@ pub fn get_between(src: Square, dest: Square) -> BitBoard {
 }
 
 /// Retrieves the BitBoard representing the rays a bishop can attack from a given square.
-pub fn bishop_rays(square: Square) -> BitBoard {
+pub fn get_bishop_rays(square: Square) -> BitBoard {
     unsafe { *BISHOP_RAYS.get_unchecked(square.to_index()) }
 }
 
 /// Retrieves the BitBoard representing the rays a rook can attack from a given square.
-pub fn rook_rays(square: Square) -> BitBoard {
+pub fn get_rook_rays(square: Square) -> BitBoard {
     unsafe { *ROOK_RAYS.get_unchecked(square.to_index()) }
 }
