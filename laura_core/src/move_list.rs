@@ -100,7 +100,7 @@ impl MoveList {
             self.len += 1;
         }
     }
-    
+
     /// Returns a reference to the stored moves, limited by `len`.
     #[inline(always)]
     pub fn moves(&self) -> &[Move] {

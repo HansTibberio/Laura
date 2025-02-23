@@ -120,6 +120,7 @@ impl Board {
         gen_moves::<ALL_MOVES>(self)
             .moves()
             .iter()
-            .find(|&mv| *mv == move_str).copied()
+            .find(|&mv| *mv == move_str)
+            .copied()
     }
 }

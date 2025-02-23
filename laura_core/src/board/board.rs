@@ -359,7 +359,7 @@ impl Board {
         self.full_move
     }
 
-    /// Constructs the classic "Kiwipete" position (Peter McKenzie), 
+    /// Constructs the classic "Kiwipete" position (Peter McKenzie),
     /// a well-known test position for perft.
     #[inline]
     pub fn kiwipete() -> Self {

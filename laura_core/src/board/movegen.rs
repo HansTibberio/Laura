@@ -22,10 +22,6 @@ use crate::get_king_attacks;
 use crate::get_knight_attacks;
 use crate::get_pawn_attacks;
 use crate::{get_between, get_bishop_rays, get_rook_rays};
-
-#[cfg(not(feature = "bmi2"))]
-use crate::{get_bishop_attacks, get_rook_attacks};
-#[cfg(feature = "bmi2")]
 use crate::{get_bishop_attacks, get_rook_attacks};
 
 use crate::{BitBoard, Board, Call_Handler, Enumerate_Moves, Move, MoveList, MoveType, Square};

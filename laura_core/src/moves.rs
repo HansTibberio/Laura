@@ -25,10 +25,11 @@ use crate::{piece::PROM_PIECES, Color, Piece, Square};
 /// Represents a chess move using a 16-bit integer.
 /// The move encodes the source square, destination square, move type, and any promotion.
 ///
-///     0000 0000 0011 1111    source        0x003F
-///     0000 1111 1100 0000    destination   0x0FC0
-///     1111 0000 0000 0000    MoveType      0xF000
-///
+/// ```ignore
+/// 0000 0000 0011 1111    source        0x003F
+/// 0000 1111 1100 0000    destination   0x0FC0
+/// 1111 0000 0000 0000    MoveType      0xF000
+/// ```
 #[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Debug, Default, Hash)]
 pub struct Move(pub u16);
 

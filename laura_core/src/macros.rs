@@ -64,9 +64,10 @@ impl_bitwise_assign_op!(BitOrAssign, bitor_assign);
 impl_bitwise_assign_op!(BitXorAssign, bitxor_assign);
 
 /// Macro to generate the docs for the BitBoard constants
+#[doc(hidden)]
 #[macro_export]
 macro_rules! BitBoardConsts {
-    ($($name:ident > $value:expr),* $(,)?) => {
+    ($($name:ident = $value:expr),* $(,)?) => {
         $(
             #[doc = concat!("BitBoard representing `", stringify!($name), "`.")]
             pub const $name: BitBoard = BitBoard($value);
@@ -74,8 +75,8 @@ macro_rules! BitBoardConsts {
     };
 }
 
-
 /// Macro to generate the Square enum and the documentation for each square.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! SquareDocs {
     ($($square:ident),*) => {
