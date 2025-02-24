@@ -36,7 +36,7 @@ const BISHOP_SHIFT: usize = 9;
 /// Struct representing a single black magic entry for a slider piece (rook or bishop).
 ///
 /// This entry is used in combination with a blocker bitboard to quickly compute valid attacks for the slider.
-pub struct BlackMagicEntry {
+struct BlackMagicEntry {
     magic: u64,
     not_mask: u64,
     offset: usize,

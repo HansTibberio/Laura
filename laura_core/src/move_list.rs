@@ -59,7 +59,7 @@ impl IntoIterator for MoveList {
 impl Default for MoveList {
     /// Creates a new, empty `MoveList` initialized with the default values.
     ///
-    /// ### Returns
+    /// # Returns
     /// A `MoveList` with all moves set to `Move::null()` and length set to 0.
     #[inline]
     fn default() -> Self {
