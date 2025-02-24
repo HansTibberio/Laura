@@ -72,7 +72,7 @@ pub fn gen_between() -> [[BitBoard; Square::NUM_SQUARES]; Square::NUM_SQUARES] {
     let mut table: [[BitBoard; Square::NUM_SQUARES]; Square::NUM_SQUARES] =
         [[BitBoard::EMPTY; Square::NUM_SQUARES]; Square::NUM_SQUARES];
     for start in BitBoard::FULL {
-        for end in BitBoard::FULL  {
+        for end in BitBoard::FULL {
             table[start.to_index()][end.to_index()] = squares_between(start, end);
         }
     }

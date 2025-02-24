@@ -17,7 +17,6 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
-
 #![allow(clippy::zero_prefixed_literal)]
 
 pub mod between;
