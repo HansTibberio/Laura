@@ -304,7 +304,7 @@ impl Board {
 
     /// Removes a piece from a square and updates the corresponding bitboards and
     /// Zobrist hash.
-    /// 
+    ///
     /// # Panics
     /// This function will panic if no piece is present on the specified square,
     /// as it calls `unwrap()` on an `Option`.
