@@ -189,6 +189,7 @@ impl Square {
     ///
     /// # Example
     /// ```
+    /// # use laura_core::*;
     /// let square = Square::A1;
     /// assert_eq!(square.to_str(), "a1");
     /// ```
