@@ -21,11 +21,17 @@ use core::fmt;
 use core::ops::Not;
 
 /// Enum representing the color of a piece/player in a chess game.
-/// It can either be `White` or `Black`.
+/// It can either be `White` or `Black`, corresponding to the two players in a chess game.
+///
+/// The `Color` enum is used to distinguish between the two sides in a chess game,
+/// where one player controls the white pieces and the other controls the black pieces.
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 pub enum Color {
+    /// Represents the White side.
     White,
+
+    /// Represents the Black side.
     Black,
 }
 

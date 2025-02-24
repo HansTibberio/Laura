@@ -24,11 +24,25 @@ use crate::Color;
 /// Enum representing the different types of chess pieces.
 #[derive(PartialEq, Eq, Ord, PartialOrd, Copy, Clone, Debug, Hash)]
 pub enum PieceType {
+    /// The pawn piece. Typically moves forward one square at a time, but captures diagonally.
     Pawn,
+
+    /// The knight piece. Moves in an "L" shape: two squares in one direction and one square
+    /// perpendicular, or vice versa. The knight can jump over other pieces.
     Knight,
+
+    /// The bishop piece. Moves diagonally any number of squares, but only on one color of square.
     Bishop,
+
+    /// The rook piece. Moves horizontally or vertically any number of squares.
     Rook,
+
+    /// The queen piece. Combines the moves of both the rook and bishop, moving horizontally,
+    /// vertically, or diagonally any number of squares.
     Queen,
+
+    /// The king piece. Moves one square in any direction: horizontally, vertically, or diagonally.
+    /// It is the most important piece, and its capture (checkmate) ends the game.
     King,
 }
 
@@ -47,16 +61,27 @@ impl fmt::Display for PieceType {
 }
 
 impl PieceType {
+    /// Represents the pawn piece index (0).
     pub const PAWN: usize = 0;
+
+    /// Represents the knight piece index (1).
     pub const KNIGHT: usize = 1;
+
+    /// Represents the bishop piece index (2).
     pub const BISHOP: usize = 2;
+
+    /// Represents the rook piece index (3).
     pub const ROOK: usize = 3;
+
+    /// Represents the queen piece index (4).
     pub const QUEEN: usize = 4;
+
+    /// Represents the king piece index (5).
     pub const KING: usize = 5;
 
     /// Returns a `PieceType` from a given index without bounds checking.
     ///
-    /// ### Safety
+    /// # Safety
     /// This is an unsafe operation as it directly converts the index to `PieceType`.
     #[inline]
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
@@ -66,12 +91,44 @@ impl PieceType {
 
 /// Enum representing all possible chess pieces, combining both color and piece type.
 /// The first six are White pieces, and the last six are Black pieces.
-#[rustfmt::skip]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(u8)]
 pub enum Piece {
-    WP, WN, WB, WR, WQ, WK,
-    BP, BN, BB, BR, BQ, BK,
+    /// `WP` represents a White Pawn.
+    WP,
+
+    /// `WN` represents a White Knight.
+    WN,
+
+    /// `WB` represents a White Bishop.
+    WB,
+
+    /// `WR` represents a White Rook.
+    WR,
+
+    /// `WQ` represents a White Queen.
+    WQ,
+
+    /// `WK` represents a White King.
+    WK,
+
+    /// `BP` represents a Black Pawn.
+    BP,
+
+    /// `BN` represents a Black Knight.
+    BN,
+
+    /// `BB` represents a Black Bishop.
+    BB,
+
+    /// `BR` represents a Black Rook.
+    BR,
+
+    /// `BQ` represents a Black Queen.
+    BQ,
+
+    /// `BK` represents a Black King.
+    BK,
 }
 
 /// Implementing `Display` for `Piece` to print the piece as a single character.
@@ -106,7 +163,7 @@ impl TryFrom<char> for Piece {
 }
 
 /// A 2D array representing the pieces available for promotion in chess.
-pub const PROM_PIECES: [[Piece; 4]; 2] = [
+pub(crate) const PROM_PIECES: [[Piece; 4]; 2] = [
     [Piece::WN, Piece::WB, Piece::WR, Piece::WQ],
     [Piece::BN, Piece::BB, Piece::BR, Piece::BQ],
 ];

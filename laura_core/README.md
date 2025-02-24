@@ -2,6 +2,7 @@
 
 <div  align="center"> 
 
+[![Crates.io Version][crates-badge]][crates-link]
 [![License][license-badge]][license-link]
 
 </div>
@@ -35,10 +36,8 @@ For older processors **without** BMI2 support, only `RUSTFLAGS="-C target-cpu=na
 ```rust
 use laura_core::Board;
 
-fn main() {
-    let board: Board = Board::default();
-    assert_eq!(board.to_fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-}
+let board: Board = Board::default();
+assert_eq!(board.to_fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 ```
 
 ### **Initialize a board from a FEN string**
@@ -49,11 +48,9 @@ You can create a `Board` from a FEN (Forsyth-Edwards Notation) string using the 
 use std::str::FromStr;
 use laura_core::Board;
 
-fn main() {
-    let fen: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
-    let board: Board = Board::from_str(fen).unwrap();
-    assert_eq!(board, Board::kiwipete());
-}
+let fen: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+let board: Board = Board::from_str(fen).unwrap();
+assert_eq!(board, Board::kiwipete());
 ```
 
 ### **Generate all legal moves**
@@ -71,11 +68,9 @@ This example starts from the default position and generate all legal moves.
 ```rust 
 use laura_core::{gen_moves, Board, MoveList, ALL_MOVES};
 
-fn main() {
-    let board: Board = Board::default();
-    let moves: MoveList = gen_moves::<ALL_MOVES>(&board);
-    assert_eq!(moves.len(), 20);
-}
+let board: Board = Board::default();
+let moves: MoveList = gen_moves::<ALL_MOVES>(&board);
+assert_eq!(moves.len(), 20);
 ```
 
 **Example: Generating only quiet moves**
@@ -83,11 +78,9 @@ fn main() {
 ```rust 
 use laura_core::{gen_moves, Board, MoveList, QUIET_MOVES};
 
-fn main() {
-    let board: Board = Board::kiwipete();
-    let moves: MoveList = gen_moves::<QUIET_MOVES>(&board);
-    assert_eq!(moves.len(), 40);
-}
+let board: Board = Board::kiwipete();
+let moves: MoveList = gen_moves::<QUIET_MOVES>(&board);
+assert_eq!(moves.len(), 40);
 ```
 
 **Example: Generating only tactical moves**
@@ -95,11 +88,9 @@ fn main() {
 ```rust 
 use laura_core::{gen_moves, Board, MoveList, TACTICAL_MOVES};
 
-fn main() {
-    let board: Board = Board::kiwipete();
-    let moves: MoveList = gen_moves::<TACTICAL_MOVES>(&board);
-    assert_eq!(moves.len(), 8);
-}
+let board: Board = Board::kiwipete();
+let moves: MoveList = gen_moves::<TACTICAL_MOVES>(&board);
+assert_eq!(moves.len(), 8);
 ```
 
 ### **Execute moves**
@@ -109,11 +100,9 @@ You can apply a move to the board using UCI (Universal Chess Interface) notation
 ```rust
 use laura_core::Board;
 
-fn main() {
-    let board: Board = Board::default();
-    let new: Board = board.make_uci_move("e2e4").unwrap();
-    assert_eq!(new.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
-}
+let board: Board = Board::default();
+let new: Board = board.make_uci_move("e2e4").unwrap();
+assert_eq!(new.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
 ```
 
 This executes the move e2e4 (pawn to e4) and asserts the updated board position.
@@ -136,3 +125,7 @@ This project is licensed under **GPLv3**. See the [LICENSE][license-link] file f
 [license-link]:https://github.com/hanstibberio/Laura/blob/master/LICENSE
 
 [license-badge]:https://img.shields.io/github/license/hanstibberio/laura?style=for-the-badge&label=license&color=success
+
+[crates-link]:https://crates.io/crates/laura_core
+
+[crates-badge]:https://img.shields.io/crates/v/laura_core?style=for-the-badge

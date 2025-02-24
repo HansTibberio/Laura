@@ -25,13 +25,21 @@ use core::mem::transmute;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 #[repr(u8)]
 pub enum Rank {
+    /// Rank One
     One,
+    /// Rank Two
     Two,
+    /// Rank Three
     Three,
+    /// Rank Four
     Four,
+    /// Rank Five
     Five,
+    /// Rank Six
     Six,
+    /// Rank Seven
     Seven,
+    /// Rank Eight
     Eight,
 }
 

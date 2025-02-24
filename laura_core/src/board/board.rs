@@ -210,10 +210,10 @@ impl FromStr for Board {
     }
 }
 
-/// Constructs a default chess board, representing the standard starting position
-/// for a chess game, using FEN notation. The default position is the classic setup
-/// with castling rights and no en passant.
 impl Default for Board {
+    /// Constructs a default chess board, representing the standard starting position
+    /// for a chess game, using FEN notation. The default position is the classic setup
+    /// with castling rights and no en passant.
     #[inline]
     fn default() -> Self {
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -226,7 +226,7 @@ impl Board {
     /// Creates a new empty board with no pieces. The bitboards are initialized as empty,
     /// and castling rights, en passant square, and other attributes are set to their
     /// default (empty or zero) values.
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             pieces_bitboard: [BitBoard::EMPTY; Piece::COUNT],
             sides_bitboard: [BitBoard::EMPTY; 2],
@@ -304,6 +304,8 @@ impl Board {
 
     /// Removes a piece from a square and updates the corresponding bitboards and
     /// Zobrist hash.
+    ///
+    /// # Panics
     /// This function will panic if no piece is present on the specified square,
     /// as it calls `unwrap()` on an `Option`.
     pub fn remove_piece(&mut self, square: Square) {

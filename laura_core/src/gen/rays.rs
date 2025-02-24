@@ -26,7 +26,7 @@ include!(concat!(env!("OUT_DIR"), "/between_array.rs"));
 
 /// Precomputed rays for bishops, indexed by square.
 /// This constant holds the BitBoards representing the rays a bishop can attack from each square.
-pub const BISHOP_RAYS: [BitBoard; Square::NUM_SQUARES] = [
+pub(crate) const BISHOP_RAYS: [BitBoard; Square::NUM_SQUARES] = [
     BitBoard(9241421688590303744),
     BitBoard(36099303471056128),
     BitBoard(141012904249856),
@@ -95,7 +95,7 @@ pub const BISHOP_RAYS: [BitBoard; Square::NUM_SQUARES] = [
 
 /// Precomputed rays for rooks, indexed by square.
 /// This constant holds the BitBoards representing the rays a rook can attack from each square.
-pub const ROOK_RAYS: [BitBoard; Square::NUM_SQUARES] = [
+pub(crate) const ROOK_RAYS: [BitBoard; Square::NUM_SQUARES] = [
     BitBoard(72340172838076926),
     BitBoard(144680345676153597),
     BitBoard(289360691352306939),
@@ -175,11 +175,11 @@ pub fn get_between(src: Square, dest: Square) -> BitBoard {
 }
 
 /// Retrieves the BitBoard representing the rays a bishop can attack from a given square.
-pub fn bishop_rays(square: Square) -> BitBoard {
+pub fn get_bishop_rays(square: Square) -> BitBoard {
     unsafe { *BISHOP_RAYS.get_unchecked(square.to_index()) }
 }
 
 /// Retrieves the BitBoard representing the rays a rook can attack from a given square.
-pub fn rook_rays(square: Square) -> BitBoard {
+pub fn get_rook_rays(square: Square) -> BitBoard {
     unsafe { *ROOK_RAYS.get_unchecked(square.to_index()) }
 }

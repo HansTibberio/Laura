@@ -16,33 +16,38 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
-
+#![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 #![no_std]
 
-pub mod bitboard;
-pub mod board;
-pub mod castle_rights;
-pub mod color;
-pub mod file;
-pub mod gen;
-pub mod macros;
-pub mod move_list;
-pub mod moves;
-pub mod piece;
-pub mod rank;
-pub mod square;
-pub mod zobrist;
+mod bitboard;
+mod board;
+mod castle_rights;
+mod color;
+mod file;
+mod gen;
+mod macros;
+mod move_list;
+mod moves;
+mod piece;
+mod rank;
+mod square;
+mod zobrist;
 
-pub use bitboard::BitBoard;
-pub use board::board::Board;
-pub use board::movegen;
-pub use castle_rights::CastleRights;
-pub use color::Color;
-pub use file::File;
-pub use move_list::MoveList;
-pub use movegen::*;
-pub use moves::{Move, MoveType};
-pub use piece::{Piece, PieceType};
-pub use rank::Rank;
-pub use square::Square;
-pub use zobrist::Zobrist;
+pub use bitboard::*;
+pub use board::board::*;
+pub use board::movegen::*;
+pub use castle_rights::*;
+pub use color::*;
+pub use file::*;
+#[cfg(not(feature = "bmi2"))]
+pub use gen::black_magics::*;
+#[cfg(feature = "bmi2")]
+pub use gen::pext::*;
+pub use gen::{king::*, knight::*, pawn::*, rays::*};
+pub use move_list::*;
+pub use moves::*;
+pub use piece::*;
+pub use rank::*;
+pub use square::*;
+pub use zobrist::*;
