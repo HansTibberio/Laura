@@ -118,6 +118,12 @@ This executes the move e2e4 (pawn to e4) and asserts the updated board position.
 
 **\*** Compiled with `RUSTFLAGS="-C target-cpu=native"` for hardware-specific optimization.  
 
+## Changelog
+
+All notable changes are documented in the [CHANGELOG](CHANGELOG.md).
+
+For details on the latest updates, bug fixes, and improvements, check the full changelog.
+
 ## **License**
 
 This project is licensed under **GPLv3**. See the [LICENSE][license-link] file for details.
