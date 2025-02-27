@@ -1,4 +1,4 @@
-name: Rust
+name: Cargo Build & Test
 
 on:
   push:
@@ -10,24 +10,25 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
-        
+  lint:  
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+    - name: Cargo Check
+      run: cargo check --verbose
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy -- -D warnings
     - name: Fmt
       run: cargo fmt --all -- --check
     
   build:
-
     runs-on: ubuntu-latest
+    needs: lint
 
     steps:
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --release --verbose
