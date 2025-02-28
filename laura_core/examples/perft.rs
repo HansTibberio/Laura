@@ -162,10 +162,6 @@ fn main() {
         println!("{fen}");
 
         let nodes: usize = perft::<false>(&board, depth);
-        assert_eq!(
-            nodes,
-            correct_count as usize,
-            "Perft Test Failed"
-        );
+        assert_eq!(nodes, correct_count as usize, "Perft Test Failed");
     }
 }
