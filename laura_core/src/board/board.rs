@@ -320,7 +320,7 @@ impl Board {
     }
 
     /// Returns the piece located on the specified square.
-    #[inline]
+    #[inline(always)]
     pub fn piece_on(&self, square: Square) -> Option<Piece> {
         self.piece_map[square.to_index()]
     }

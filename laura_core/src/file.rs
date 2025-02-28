@@ -84,25 +84,25 @@ impl File {
     ];
 
     /// Converts an index (0-7) to the corresponding `File`.
-    #[inline]
+    #[inline(always)]
     pub const fn from_index(index: usize) -> File {
         unsafe { transmute(index as u8 & 7) }
     }
 
     /// Converts a `File` into its corresponding index (0 for A, 7 for H).
-    #[inline]
+    #[inline(always)]
     pub const fn to_index(self) -> usize {
         self as usize
     }
 
     /// Gets file to the right, wraps H->A
-    #[inline]
+    #[inline(always)]
     pub const fn right(self) -> Self {
         unsafe { transmute((self as u8 + 1) & 7) }
     }
 
     /// Gets file to the left, wraps A->H
-    #[inline]
+    #[inline(always)]
     pub const fn left(self) -> Self {
         unsafe { transmute((self as u8).wrapping_sub(1) & 7) }
     }

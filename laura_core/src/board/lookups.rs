@@ -20,15 +20,9 @@
 use crate::get_king_attacks;
 use crate::get_knight_attacks;
 use crate::get_pawn_attacks;
-
-#[cfg(not(feature = "bmi2"))]
+use crate::{gen_moves, ALL_MOVES};
 use crate::{get_bishop_attacks, get_rook_attacks};
-#[cfg(feature = "bmi2")]
-use crate::{get_bishop_attacks, get_rook_attacks};
-
 use crate::{BitBoard, Board, Color, Move, Piece, Square};
-
-use super::movegen::*;
 
 impl Board {
     /// Returns the bitboard representing all pieces for the white side.

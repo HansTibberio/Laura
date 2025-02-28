@@ -143,7 +143,7 @@ impl Move {
     /// let mv: Move = Move::null();
     /// assert_eq!(mv.is_null(), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     pub const fn is_null(self) -> bool {
         self.0 == 0
     }
@@ -157,7 +157,7 @@ impl Move {
     /// assert_eq!(mv.get_dest(), Square::E4);
     /// assert_eq!(mv.get_type(), MoveType::DoublePawn);
     /// ```
-    #[inline]
+    #[inline(always)]
     pub const fn new(src: Square, dest: Square, move_type: MoveType) -> Self {
         Self(((move_type as u16) << 12) | ((dest as u16) << 6) | (src as u16))
     }

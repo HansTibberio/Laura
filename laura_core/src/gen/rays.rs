@@ -164,6 +164,7 @@ pub(crate) const ROOK_RAYS: [BitBoard; Square::NUM_SQUARES] = [
 
 /// Retrieves the BitBoard representing all the squares between the source and destination squares,
 /// based on the precomputed between table for rooks, bishops, or queens.
+#[inline]
 pub fn get_between(src: Square, dest: Square) -> BitBoard {
     unsafe {
         BitBoard(
@@ -175,11 +176,13 @@ pub fn get_between(src: Square, dest: Square) -> BitBoard {
 }
 
 /// Retrieves the BitBoard representing the rays a bishop can attack from a given square.
+#[inline(always)]
 pub fn get_bishop_rays(square: Square) -> BitBoard {
     unsafe { *BISHOP_RAYS.get_unchecked(square.to_index()) }
 }
 
 /// Retrieves the BitBoard representing the rays a rook can attack from a given square.
+#[inline(always)]
 pub fn get_rook_rays(square: Square) -> BitBoard {
     unsafe { *ROOK_RAYS.get_unchecked(square.to_index()) }
 }

@@ -17,12 +17,12 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::castle_rights::*;
 use crate::get_king_attacks;
 use crate::get_knight_attacks;
 use crate::get_pawn_attacks;
 use crate::{get_between, get_bishop_rays, get_rook_rays};
 use crate::{get_bishop_attacks, get_rook_attacks};
+use crate::{DESTINATION, KING_SIDE, MEDIUM, PRESENCE, QUEEN_SIDE, SOURCE};
 
 use crate::{BitBoard, Board, Call_Handler, Enumerate_Moves, Move, MoveList, MoveType, Square};
 

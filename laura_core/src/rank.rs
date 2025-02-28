@@ -75,25 +75,25 @@ impl Rank {
     ];
 
     /// Converts an index (0-7) to the corresponding `Rank`.
-    #[inline]
+    #[inline(always)]
     pub const fn from_index(index: usize) -> Rank {
         unsafe { transmute(index as u8 & 7) }
     }
 
     /// Converts a `Rank` into its corresponding index (0 for One, 7 for Eight).
-    #[inline]
+    #[inline(always)]
     pub const fn to_index(self) -> usize {
         self as usize
     }
 
     /// Gets rank above, wraps Eight->One
-    #[inline]
+    #[inline(always)]
     pub const fn up(self) -> Self {
         unsafe { transmute((self as u8 + 1) & 7) }
     }
 
     /// Gets rank below, wraps One->Eight
-    #[inline]
+    #[inline(always)]
     pub const fn down(self) -> Self {
         unsafe { transmute((self as u8).wrapping_sub(1) & 7) }
     }
