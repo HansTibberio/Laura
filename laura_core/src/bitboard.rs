@@ -135,7 +135,7 @@ impl BitBoard {
     /// Sets a given `Square` on the `BitBoard`, turning the bit at the square's position to '1'.
     #[inline(always)]
     pub const fn set_square(self, square: Square) -> Self {
-        Self(self.0 | 1u64 << square.to_index())
+        Self(self.0 | (1u64 << square.to_index()))
     }
 
     /// Checks if a specific `Square` is set on the `BitBoard`.

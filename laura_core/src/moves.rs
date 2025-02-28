@@ -159,7 +159,7 @@ impl Move {
     /// ```
     #[inline]
     pub const fn new(src: Square, dest: Square, move_type: MoveType) -> Self {
-        Self((move_type as u16) << 12 | (dest as u16) << 6 | (src as u16))
+        Self(((move_type as u16) << 12) | ((dest as u16) << 6) | (src as u16))
     }
 
     /// Returns the destination square of the move.

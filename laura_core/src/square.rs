@@ -68,7 +68,7 @@ impl Square {
     /// The index is calculated by shifting the rank and XORing with the file.
     #[inline(always)]
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
-        let index: u8 = (rank as u8) << 3 ^ (file as u8);
+        let index: u8 = ((rank as u8) << 3) ^ (file as u8);
         unsafe { transmute(index & 63) }
     }
 
