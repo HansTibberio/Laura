@@ -290,8 +290,8 @@ impl Board {
     }
 
     /// Sets a piece on the board at a given square and updates the corresponding bitboards
-    /// and Zobrist hash. This method modifies both the specific piece bitboard and the
-    /// side's bitboard (either White or Black).
+    /// and [`Zobrist`] hash. This method modifies both the specific piece bitboard and the
+    /// side's [`BitBoard`] (either White or Black).
     pub fn set_piece(&mut self, piece: Piece, square: Square) {
         let index: usize = piece.piece_index();
         let color: usize = piece.color() as usize;
@@ -303,7 +303,7 @@ impl Board {
     }
 
     /// Removes a piece from a square and updates the corresponding bitboards and
-    /// Zobrist hash.
+    /// [`Zobrist`] hash.
     ///
     /// # Panics
     /// This function will panic if no piece is present on the specified square,
@@ -339,7 +339,7 @@ impl Board {
 
     /// Returns the Zobrist hash of the current board position.
     ///
-    /// The Zobrist hash is a unique value representing the current state of the board.
+    /// The [`Zobrist`] hash is a unique value representing the current state of the board.
     /// It is used for hashing positions in transposition tables.
     #[inline(always)]
     pub const fn zobrist(&self) -> Zobrist {

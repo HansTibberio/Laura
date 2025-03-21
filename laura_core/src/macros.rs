@@ -81,7 +81,7 @@ macro_rules! BitBoardConsts {
 macro_rules! SquareDocs {
     ($($square:ident),*) => {
         /// Enum representing each square on a chessboard, from A1 to H8.
-        /// The squares are ordered by rank (rows) and file (columns),
+        /// The squares are ordered by [`Rank`] (rows) and [`File`] (columns),
         /// with A1 as the bottom-left and H8 as the top-right.
         #[derive(PartialEq, Ord, Eq, PartialOrd, Copy, Clone, Debug, Hash)]
         #[repr(u8)]
@@ -123,7 +123,7 @@ macro_rules! impl_piece_lookups {
     ($($piece_index:expr, $allied_fn:ident, $enemy_fn:ident, $total_fn:ident),*) => {
         impl Board {
             $(
-                /// Returns the positions of the current player's (allied)
+                /// Returns the [`BitBoard`] positions of the current player's (allied)
                 #[doc = stringify!($total_fn)]
                 /// pieces.
                 #[inline(always)]
@@ -131,7 +131,7 @@ macro_rules! impl_piece_lookups {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize].0)
                 }
 
-                /// Returns the positions of the opponent's (enemy)
+                /// Returns the [`BitBoard`] positions of the opponent's (enemy)
                 #[doc = stringify!($total_fn)]
                 /// pieces.
                 #[inline(always)]
@@ -139,7 +139,7 @@ macro_rules! impl_piece_lookups {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize ^ 1].0)
                 }
 
-                /// Returns the positions of all
+                /// Returns the [`BitBoard`] positions of all
                 #[doc = stringify!($total_fn)]
                 /// pieces, regardless of side.
                 #[inline(always)]

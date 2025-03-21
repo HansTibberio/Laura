@@ -25,19 +25,19 @@ use crate::{get_bishop_attacks, get_rook_attacks};
 use crate::{BitBoard, Board, Color, Move, Piece, Square};
 
 impl Board {
-    /// Returns the bitboard representing all pieces for the white side.
+    /// Returns the [`BitBoard`] representing all pieces for the white side.
     #[inline(always)]
     pub const fn white_bitboard(&self) -> BitBoard {
         self.sides_bitboard[Color::White as usize]
     }
 
-    /// Returns the bitboard representing all pieces for the black side.
+    /// Returns the [`BitBoard`] representing all pieces for the black side.
     #[inline(always)]
     pub const fn black_bitboard(&self) -> BitBoard {
         self.sides_bitboard[Color::Black as usize]
     }
 
-    /// Returns a bitboard representing all pieces currently on the board for both sides.
+    /// Returns a [`BitBoard`] representing all pieces currently on the board for both sides.
     ///
     /// This function combines the bitboards for both white and black pieces by performing
     /// a bitwise OR operation.
@@ -46,7 +46,7 @@ impl Board {
         BitBoard(self.white_bitboard().0 | self.black_bitboard().0)
     }
 
-    /// Returns a `BitBoard` representing the presence of a specified piece type and color on the board.
+    /// Returns a [`BitBoard`] representing the presence of a specified piece type and color on the board.
     /// Combines the bitboard for the specified piece with the bitboard for the side it belongs to.
     #[inline(always)]
     pub const fn piece_presence(&self, piece: Piece) -> BitBoard {
@@ -56,33 +56,33 @@ impl Board {
         )
     }
 
-    /// Returns a `BitBoard` representing the presence of all allied pieces for the current side on the board.
+    /// Returns a [`BitBoard`] representing the presence of all allied pieces for the current side on the board.
     #[inline(always)]
     pub const fn allied_presence(&self) -> BitBoard {
         self.sides_bitboard[self.side as usize]
     }
 
-    /// Returns a `BitBoard` representing the presence of all enemy pieces for the opposing side on the board.
+    /// Returns a [`BitBoard`] representing the presence of all enemy pieces for the opposing side on the board.
     #[inline(always)]
     pub const fn enemy_presence(&self) -> BitBoard {
         self.sides_bitboard[self.side as usize ^ 1]
     }
 
-    /// Returns a `BitBoard` representing the presence of enemy queens and bishops on the board.
+    /// Returns a [`BitBoard`] representing the presence of enemy queens and bishops on the board.
     /// This combines the bitboards for enemy queens and bishops into a single bitboard.
     #[inline(always)]
     pub fn enemy_queen_bishops(&self) -> BitBoard {
         self.enemy_queens() | self.enemy_bishops()
     }
 
-    /// Returns a `BitBoard` representing the presence of enemy queens and rooks on the board.
+    /// Returns a [`BitBoard`] representing the presence of enemy queens and rooks on the board.
     /// This combines the bitboards for enemy queens and rooks into a single bitboard.
     #[inline(always)]
     pub fn enemy_queen_rooks(&self) -> BitBoard {
         self.enemy_queens() | self.enemy_rooks()
     }
 
-    /// Returns a `BitBoard` representing all enemy pieces that are attacking a specified square,
+    /// Returns a [`BitBoard`] representing all enemy pieces that are attacking a specified square,
     /// based on the given blockers on the board. Evaluates potential attacks from enemy knights,
     /// kings, pawns, queens, bishops, and rooks against the square.
     #[inline]
@@ -101,7 +101,7 @@ impl Board {
         self.attackers(square, blockers) != BitBoard::EMPTY
     }
 
-    /// Returns a `BitBoard` representing all enemy pieces that are directly checking the allied king.
+    /// Returns a [`BitBoard`] representing all enemy pieces that are directly checking the allied king.
     /// Uses the current combined board state to evaluate potential checks.
     #[inline(always)]
     pub fn checkers(&self) -> BitBoard {

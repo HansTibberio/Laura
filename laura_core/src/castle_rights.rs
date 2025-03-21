@@ -214,6 +214,7 @@ const CASTLE_RIGHTS_MASK: [u8; Square::NUM_SQUARES] = [
 ///
 /// - Kingside castling (king moves to G-file): returns (H-file, F-file)
 /// - Queenside castling (king moves to C-file): returns (A-file, D-file)
+#[inline(always)]
 pub(crate) const fn get_rook_castling(dest: Square) -> (Square, Square) {
     match dest.file() {
         File::C => (dest.left().left(), dest.right()),

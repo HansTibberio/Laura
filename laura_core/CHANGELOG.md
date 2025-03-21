@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.  
 This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic Versioning][semver-link].
 
-## [Unreleased]
+## [0.2.1] - 2025-03-21
 
 ### Changed
 - Improved and expanded documentation across all modules and functions.

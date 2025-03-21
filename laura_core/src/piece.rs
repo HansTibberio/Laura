@@ -83,7 +83,7 @@ impl PieceType {
     ///
     /// # Safety
     /// This is an unsafe operation as it directly converts the index to `PieceType`.
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
         core::mem::transmute(index)
     }
@@ -175,7 +175,7 @@ impl Piece {
     /// Total number of pieces on chess (6x2 = 12).
     pub const NUM_PIECES: usize = 12;
 
-    /// Creates a new `Piece` given a `PieceType` and a `Color`.
+    /// Creates a new `Piece` given a [`PieceType`] and a [`Color`].
     /// The piece is determined by the combination of the piece type and the color.
     #[inline(always)]
     pub const fn new(piece_type: PieceType, color: Color) -> Self {
@@ -183,7 +183,7 @@ impl Piece {
         unsafe { core::mem::transmute(index) }
     }
 
-    /// Returns the `PieceType` index of the `Piece` as a usize.
+    /// Returns the [`PieceType`] index of the `Piece` as a usize.
     /// This index is used to identify the piece type within the range of 0-5.
     #[inline(always)]
     pub const fn piece_index(self) -> usize {
@@ -207,7 +207,7 @@ impl Piece {
         }
     }
 
-    /// Returns the `Color` of the `Piece` (either `White` or `Black`).
+    /// Returns the [`Color`] of the `Piece` (either `White` or `Black`).
     #[inline(always)]
     pub const fn color(self) -> Color {
         if (self as u8) < 6 {
@@ -217,7 +217,7 @@ impl Piece {
         }
     }
 
-    /// Returns the `PieceType` of the `Piece` (e.g., Pawn, Knight, etc.).
+    /// Returns the [`PieceType`] of the `Piece` (e.g., Pawn, Knight, etc.).
     #[inline(always)]
     pub const fn piece_type(self) -> PieceType {
         let index: u8 = self as u8 % 6;

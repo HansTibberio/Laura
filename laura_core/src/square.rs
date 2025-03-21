@@ -64,7 +64,7 @@ impl Square {
     /// Total number of squares on a chessboard (8x8 = 64).
     pub const NUM_SQUARES: usize = 64;
 
-    /// Create a `Square` from a `File` (column) and `Rank` (row).
+    /// Create a [`Square`] from a [`File`] (column) and [`Rank`] (row).
     /// The index is calculated by shifting the rank and XORing with the file.
     #[inline(always)]
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
@@ -72,7 +72,7 @@ impl Square {
         unsafe { transmute(index & 63) }
     }
 
-    /// Convert an index (0-63) to a `Square`.
+    /// Convert an index (0-63) to a [`Square`].
     /// # Example
     /// ```
     /// # use laura_core::*;
@@ -84,18 +84,18 @@ impl Square {
         unsafe { transmute(index as u8 & 63) }
     }
 
-    /// Convert a `Square` to its index (0 for A1, 63 for H8).
+    /// Convert a [`Square`] to its index (0 for A1, 63 for H8).
     #[inline(always)]
     pub const fn to_index(self) -> usize {
         self as usize
     }
 
-    /// Convert a `Square` to `Bitboard`
+    /// Convert a [`Square`] to a [`BitBoard`]
     /// # Example
     /// ```
     /// # use laura_core::*;
-    /// let square = Square::C6;
-    /// assert_eq!(square.to_bitboard(), BitBoard(4398046511104));
+    /// let square = Square::F3;
+    /// assert_eq!(square.to_bitboard(), BitBoard(2097152));
     /// ```
     #[inline(always)]
     pub const fn to_bitboard(self) -> BitBoard {

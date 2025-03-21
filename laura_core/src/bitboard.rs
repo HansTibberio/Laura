@@ -126,19 +126,19 @@ impl BitBoard {
         FULL = 0xFFFF_FFFF_FFFF_FFFF,
     }
 
-    /// Converts the `BitBoard` to a `Square`, returning the square that corresponds to the least significant '1' bit.
+    /// Converts the `BitBoard` to a [`Square`], returning the square that corresponds to the least significant '1' bit.
     #[inline(always)]
     pub const fn to_square(self) -> Square {
         unsafe { transmute((self.0.trailing_zeros() as u8) & 63) }
     }
 
-    /// Sets a given `Square` on the `BitBoard`, turning the bit at the square's position to '1'.
+    /// Sets a given [`Square`] on the `BitBoard`, turning the bit at the square's position to '1'.
     #[inline(always)]
     pub const fn set_square(self, square: Square) -> Self {
         Self(self.0 | (1u64 << square.to_index()))
     }
 
-    /// Checks if a specific `Square` is set on the `BitBoard`.
+    /// Checks if a specific [`Square`] is set on the `BitBoard`.
     ///
     /// `true` if the square is set, otherwise `false`.
     #[inline(always)]
@@ -146,7 +146,7 @@ impl BitBoard {
         self.0 & (1u64 << square.to_index()) != 0
     }
 
-    /// Clears a specific `Square` on the `BitBoard`, turning the bit at the square's position to '0'.
+    /// Clears a specific [`Square`] on the `BitBoard`, turning the bit at the square's position to '0'.
     #[inline(always)]
     pub const fn pop_square(self, square: Square) -> Self {
         Self(self.0 & !(1u64 << square.to_index()))
@@ -173,7 +173,7 @@ impl BitBoard {
         }
     }
 
-    /// Returns a new BitBoard representing the squares diagonally up-left  
+    /// Returns a new `BitBoard` representing the squares diagonally up-left  
     /// from the current position, considering the given side's perspective.
     #[inline(always)]
     pub const fn up_left(self, side: Color) -> Self {
@@ -183,7 +183,7 @@ impl BitBoard {
         }
     }
 
-    /// Returns a new BitBoard representing the squares diagonally up-right  
+    /// Returns a new `BitBoard` representing the squares diagonally up-right  
     /// from the current position, considering the given side's perspective.
     #[inline(always)]
     pub const fn up_right(self, side: Color) -> Self {

@@ -120,7 +120,7 @@ This executes the move e2e4 (pawn to e4) and asserts the updated board position.
 
 ## Changelog
 
-All notable changes are documented in the [CHANGELOG](CHANGELOG.md).
+All notable changes are documented in the [CHANGELOG][changelog-link].
 
 For details on the latest updates, bug fixes, and improvements, check the full changelog.
 
@@ -128,10 +128,12 @@ For details on the latest updates, bug fixes, and improvements, check the full c
 
 This project is licensed under **GPLv3**. See the [LICENSE][license-link] file for details.
 
+[changelog-link]:https://github.com/hanstibberio/Laura/blob/master/laura_core/CHANGELOG.md
+
 [license-link]:https://github.com/hanstibberio/Laura/blob/master/LICENSE
 
-[license-badge]:https://img.shields.io/github/license/hanstibberio/laura?style=for-the-badge&label=license&color=success
+[license-badge]:https://img.shields.io/github/license/hanstibberio/laura?label=license&color=success
 
 [crates-link]:https://crates.io/crates/laura_core
 
-[crates-badge]:https://img.shields.io/crates/v/laura_core?style=for-the-badge
+[crates-badge]:https://img.shields.io/crates/v/laura_core
