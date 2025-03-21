@@ -16,7 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
-
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 
@@ -64,11 +63,43 @@ impl_bitwise_assign_op!(BitAndAssign, bitand_assign);
 impl_bitwise_assign_op!(BitOrAssign, bitor_assign);
 impl_bitwise_assign_op!(BitXorAssign, bitxor_assign);
 
+/// Macro to generate the docs for the BitBoard constants
+#[doc(hidden)]
+#[macro_export]
+macro_rules! BitBoardConsts {
+    ($($name:ident = $value:expr),* $(,)?) => {
+        $(
+            #[doc = concat!("BitBoard representing `", stringify!($name), "`.")]
+            pub const $name: BitBoard = BitBoard($value);
+        )*
+    };
+}
+
+/// Macro to generate the Square enum and the documentation for each square.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! SquareDocs {
+    ($($square:ident),*) => {
+        /// Enum representing each square on a chessboard, from A1 to H8.
+        /// The squares are ordered by [`Rank`] (rows) and [`File`] (columns),
+        /// with A1 as the bottom-left and H8 as the top-right.
+        #[derive(PartialEq, Ord, Eq, PartialOrd, Copy, Clone, Debug, Hash)]
+        #[repr(u8)]
+        pub enum Square {
+            $(
+                #[doc = concat!("The square `", stringify!($square), "`.")]
+                $square,
+            )*
+        }
+    };
+}
+
 /// A macro to create a `BlackMagicEntry` instance with the provided parameters.
 ///
 /// This macro simplifies the initialization of `BlackMagicEntry` structs by directly
 /// mapping the values to the struct's fields, which represent various components
 /// of the magic bitboard setup for chess engines or similar applications.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! BlackMagic {
     ($mg: expr, $nm: expr, $o: expr) => {
@@ -92,16 +123,25 @@ macro_rules! impl_piece_lookups {
     ($($piece_index:expr, $allied_fn:ident, $enemy_fn:ident, $total_fn:ident),*) => {
         impl Board {
             $(
+                /// Returns the [`BitBoard`] positions of the current player's (allied)
+                #[doc = stringify!($total_fn)]
+                /// pieces.
                 #[inline(always)]
                 pub const fn $allied_fn(&self) -> BitBoard {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize].0)
                 }
 
+                /// Returns the [`BitBoard`] positions of the opponent's (enemy)
+                #[doc = stringify!($total_fn)]
+                /// pieces.
                 #[inline(always)]
                 pub const fn $enemy_fn(&self) -> BitBoard {
                     BitBoard(self.pieces_bitboard[$piece_index].0 & self.sides_bitboard[self.side as usize ^ 1].0)
                 }
 
+                /// Returns the [`BitBoard`] positions of all
+                #[doc = stringify!($total_fn)]
+                /// pieces, regardless of side.
                 #[inline(always)]
                 pub const fn $total_fn(&self) -> BitBoard {
                     self.pieces_bitboard[$piece_index]
@@ -124,6 +164,7 @@ impl_piece_lookups! {
 /// Calls the provided move handler function with a newly created move.
 /// This macro simplifies move generation by constructing a `Move`
 /// with the given source, destination, and move type, then passing it to the handler.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! Call_Handler {
     ($handler:expr, $src:expr, $dest:expr, $move_type:ident) => {
@@ -134,6 +175,7 @@ macro_rules! Call_Handler {
 /// Enumerates all possible moves for different piece types.
 /// This macro calls specific move generation functions for pawns, knights, bishops, rooks, and queens.
 /// Considering check conditions, pinned pieces, and the provided move handler.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! Enumerate_Moves {
     ($check:expr, $board:expr, $diagonal_pins:expr, $linear_pins:expr, $handler:expr) => {

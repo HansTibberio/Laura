@@ -17,16 +17,12 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::castle_rights::*;
-use crate::gen::king::get_king_attacks;
-use crate::gen::knight::get_knight_attacks;
-use crate::gen::pawn::get_pawn_attacks;
-use crate::gen::rays::{bishop_rays, get_between, rook_rays};
-
-#[cfg(not(feature = "bmi2"))]
-use crate::gen::black_magics::{get_bishop_attacks, get_rook_attacks};
-#[cfg(feature = "bmi2")]
-use crate::gen::pext::{get_bishop_attacks, get_rook_attacks};
+use crate::get_king_attacks;
+use crate::get_knight_attacks;
+use crate::get_pawn_attacks;
+use crate::{get_between, get_bishop_rays, get_rook_rays};
+use crate::{get_bishop_attacks, get_rook_attacks};
+use crate::{DESTINATION, KING_SIDE, MEDIUM, PRESENCE, QUEEN_SIDE, SOURCE};
 
 use crate::{BitBoard, Board, Call_Handler, Enumerate_Moves, Move, MoveList, MoveType, Square};
 
@@ -41,12 +37,21 @@ use crate::{BitBoard, Board, Call_Handler, Enumerate_Moves, Move, MoveList, Move
 // - Belette (GPLv3): https://github.com/vincentbab/Belette/blob/main/src/movegen.h
 // - Cozy-Chess (MIT): https://github.com/analog-hors/cozy-chess/blob/master/cozy-chess/src/board/movegen/mod.rs
 
-// Constants defining the types of moves for the move generation process.
-// - QUIET_MOVES represents standard, non-capturing moves.
-// - TACTICAL_MOVES represents capturing or special moves, such as en passant or queen promotions.
-// - ALL_MOVES is a combination of both quiet and tactical moves.
+// Constants defining the types of moves to be considered in the move generation process.
+//
+// These constants help specify which types of moves should be included when generating legal moves
+// for a given position in the game of chess.
+
+///   Represents standard, non-capturing moves, such as pawn advances or knight jumps. These moves
+///   do not involve capturing an opponent's piece. Typically used for regular piece movement.
 pub const QUIET_MOVES: usize = 1;
+
+///   Represents capturing or special moves, including captures (taking an opponent's piece), en passant,
+///   and promotions to a queen. This category focuses on moves that impact the game's tactical dynamics.
 pub const TACTICAL_MOVES: usize = 2;
+
+///   A combination of both `QUIET_MOVES` and `TACTICAL_MOVES`. This constant includes all legal moves
+///   (both standard and tactical) and is used when generating the full set of moves for a given position.
 pub const ALL_MOVES: usize = QUIET_MOVES | TACTICAL_MOVES;
 
 /// Generates a list of legal moves for the given board based on the specified move types.
@@ -308,7 +313,8 @@ where
                     | dest.to_bitboard();
 
             // Ensure en passant does not expose the king to a rook or queen attack.
-            let king_ray: bool = !(rook_rays(king_square) & board.enemy_queen_rooks()).is_empty();
+            let king_ray: bool =
+                !(get_rook_rays(king_square) & board.enemy_queen_rooks()).is_empty();
             if king_ray
                 && !(get_rook_attacks(king_square, blockers) & board.enemy_queen_rooks()).is_empty()
             {
@@ -317,7 +323,7 @@ where
 
             // Ensure en passant does not expose the king to a bishop or queen attack.
             let king_ray: bool =
-                !(bishop_rays(king_square) & board.enemy_queen_bishops()).is_empty();
+                !(get_bishop_rays(king_square) & board.enemy_queen_bishops()).is_empty();
             if king_ray
                 && !(get_bishop_attacks(king_square, blockers) & board.enemy_queen_bishops())
                     .is_empty()
@@ -651,7 +657,7 @@ fn pinners(board: &Board) -> (BitBoard, BitBoard) {
     let king_square: Square = board.allied_king().to_square();
     let blockers_mask: BitBoard = board.combined_bitboard();
 
-    let probe: BitBoard = (bishop_rays(king_square) | rook_rays(king_square))
+    let probe: BitBoard = (get_bishop_rays(king_square) | get_rook_rays(king_square))
         & (board.enemy_queen_bishops() | board.enemy_queen_rooks());
 
     if probe.is_empty() {

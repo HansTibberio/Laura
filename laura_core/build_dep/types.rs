@@ -97,7 +97,7 @@ impl BitBoard {
     pub const FULL: BitBoard = BitBoard(0xFFFF_FFFF_FFFF_FFFF);
 
     pub const fn set_square(self, square: Square) -> Self {
-        Self(self.0 | 1u64 << square.to_index())
+        Self(self.0 | (1u64 << square.to_index()))
     }
 
     pub const fn get_square(self, square: Square) -> bool {
@@ -201,7 +201,7 @@ impl Square {
     pub const NUM_SQUARES: usize = 64;
 
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
-        let index: u8 = (rank as u8) << 3 ^ (file as u8);
+        let index: u8 = ((rank as u8) << 3) ^ (file as u8);
         unsafe { std::mem::transmute(index & 63) }
     }
 

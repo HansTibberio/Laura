@@ -18,8 +18,8 @@
 */
 
 use crate::{
-    castle_rights::get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece,
-    PieceType, Square,
+    get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece, PieceType,
+    Square,
 };
 
 // This implementation is based on the approach used in Carp,
@@ -28,13 +28,13 @@ use crate::{
 
 impl Board {
     /// Executes a move on the chessboard, updating the board state, castling rights,
-    /// en passant square, fifty-move rule counter, and Zobrist hash accordingly.
+    /// en passant square, fifty-move rule counter, and [`Zobrist`] hash accordingly.
     ///
     /// This function clones the current board state, applies the given move,
     /// and returns the resulting board. The move can include special cases such as captures,
     /// pawn promotions, castling, and en passant captures.
     ///
-    /// ### Panics
+    /// # Panics
     /// The function will panic if the source and destination squares of the move are the same.
     pub fn make_move(&self, mv: Move) -> Board {
         let mut board: Board = *self;
@@ -125,7 +125,7 @@ impl Board {
     /// before performing the null move. The function will reset the en passant square and clear any checkers
     /// on the board.
     ///
-    /// ### Panics
+    /// # Panics
     /// This function will panic if the current player's checkers are not empty, indicating that the
     /// game state is invalid for performing a null move.
     pub fn null_move(&self) -> Board {

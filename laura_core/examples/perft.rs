@@ -19,7 +19,7 @@
 
 use std::str::FromStr;
 
-use laura_core::{movegen::*, Board};
+use laura_core::*;
 
 /// A collection of standardized perft test positions for the Laura-Core move generation.
 /// These positions are used to validate move generation correctness and measure performance.
@@ -162,10 +162,6 @@ fn main() {
         println!("{fen}");
 
         let nodes: usize = perft::<false>(&board, depth);
-        assert_eq!(
-            nodes,
-            correct_count.try_into().unwrap(),
-            "Perft Test Failed"
-        );
+        assert_eq!(nodes, correct_count as usize, "Perft Test Failed");
     }
 }

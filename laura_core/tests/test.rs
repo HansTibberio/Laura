@@ -27,8 +27,8 @@ fn test_file_from_index() {
 
 #[test]
 fn test_movelist_push() {
-    use crate::moves::MoveType;
-    use crate::square::Square;
+    use crate::MoveType;
+    use crate::Square;
 
     let mut list: MoveList = MoveList::default();
     assert_eq!(list.is_empty(), true);
@@ -41,7 +41,6 @@ fn test_movelist_push() {
 
 #[test]
 fn test_movelist_iter() {
-    use crate::movegen::*;
     use crate::{Board, MoveList};
 
     let board: Board = Board::default();
@@ -130,12 +129,12 @@ fn test_castling_from_string() {
 #[test]
 fn test_bishop_magic_attacks() {
     let blockers: BitBoard = BitBoard(76631562411574272);
-    let bitboard: BitBoard = gen::black_magics::get_bishop_attacks(Square::E4, blockers);
+    let bitboard: BitBoard = get_bishop_attacks(Square::E4, blockers);
     println!("{}\n{}", blockers, bitboard);
     assert_eq!(bitboard, BitBoard(72695482583352320));
 
     let blockers: BitBoard = BitBoard(1099782160384);
-    let bitboard: BitBoard = gen::black_magics::get_bishop_attacks(Square::B7, blockers);
+    let bitboard: BitBoard = get_bishop_attacks(Square::B7, blockers);
     println!("{}\n{}", blockers, bitboard);
     assert_eq!(bitboard, BitBoard(360293502375952384));
 }
@@ -143,61 +142,43 @@ fn test_bishop_magic_attacks() {
 #[test]
 fn test_rook_magic_attacks() {
     let blockers: BitBoard = BitBoard(144115188075921408);
-    let bitboard: BitBoard = gen::black_magics::get_rook_attacks(Square::A8, blockers);
+    let bitboard: BitBoard = get_rook_attacks(Square::A8, blockers);
     println!("{}\n{}", blockers, bitboard);
     assert_eq!(bitboard, BitBoard(144397766876004352));
 
     let blockers: BitBoard = BitBoard(4503600181022721);
-    let bitboard: BitBoard = gen::black_magics::get_rook_attacks(Square::E4, blockers);
+    let bitboard: BitBoard = get_rook_attacks(Square::E4, blockers);
     println!("{}\n{}", blockers, bitboard);
     assert_eq!(bitboard, BitBoard(4521261322473472));
 }
 
 #[test]
 fn test_get_king_attacks() {
-    let attack: BitBoard = gen::king::get_king_attacks(Square::A2);
+    let attack: BitBoard = get_king_attacks(Square::A2);
     assert_eq!(attack, BitBoard(197123));
     println!("{}", attack);
 }
 
 #[test]
-fn test_gen_king_attacks() {
-    let attacks: [BitBoard; 64] = gen::king::gen_king_attack_table();
-    println!("{:?}", attacks);
-}
-
-#[test]
 fn test_get_knight_attacks() {
-    let attack: BitBoard = gen::knight::get_knight_attacks(Square::C1);
+    let attack: BitBoard = get_knight_attacks(Square::C1);
     assert_eq!(attack, BitBoard(659712));
     println!("{}", attack);
-}
-
-#[test]
-fn test_gen_knight_attacks() {
-    let attacks: [BitBoard; 64] = gen::knight::gen_knight_attack_table();
-    println!("{:?}", attacks);
 }
 
 #[test]
 fn test_pawn_get_attacks() {
     let square: Square = Square::E3;
     let color: Color = Color::White;
-    let pawn_attack: BitBoard = gen::pawn::get_pawn_attacks(color, square);
+    let pawn_attack: BitBoard = get_pawn_attacks(color, square);
     assert_eq!(pawn_attack, BitBoard(671088640));
     println!("Pawn attacks ({}) from E3: {}", color, pawn_attack);
 }
 
 #[test]
-fn test_pawn_gen_attacks() {
-    let attacks: [[BitBoard; 64]; 2] = gen::pawn::gen_pawn_attacks();
-    println!("{:?}", attacks);
-}
-
-#[test]
 fn test_bishop_ray() {
     let square: Square = Square::B6;
-    let king_ray: BitBoard = gen::rays::bishop_rays(square);
+    let king_ray: BitBoard = get_bishop_rays(square);
     assert_eq!(king_ray, BitBoard(577868148797087808));
     println!("{}", king_ray);
 }
@@ -205,7 +186,7 @@ fn test_bishop_ray() {
 #[test]
 fn test_rook_ray() {
     let square: Square = Square::B6;
-    let king_ray: BitBoard = gen::rays::rook_rays(square);
+    let king_ray: BitBoard = get_rook_rays(square);
     assert_eq!(king_ray, BitBoard(144956323094725122));
     println!("{}", king_ray);
 }
@@ -270,7 +251,7 @@ fn test_find_move() {
 #[test]
 fn test_default_moves() {
     let board: Board = Board::default();
-    let move_list: MoveList = movegen::gen_moves::<{ movegen::ALL_MOVES }>(&board);
+    let move_list: MoveList = gen_moves::<{ ALL_MOVES }>(&board);
     assert_eq!(move_list.len(), 20);
     for mv in move_list {
         println!("{mv} -> {:?}", mv.get_type());
@@ -284,7 +265,7 @@ fn test_quiet_moves() {
     let board: Board =
         Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
             .unwrap();
-    let move_list: MoveList = movegen::gen_moves::<{ movegen::QUIET_MOVES }>(&board);
+    let move_list: MoveList = gen_moves::<{ QUIET_MOVES }>(&board);
     assert_eq!(move_list.len(), 40);
     println!("{board}");
     for mv in move_list {
@@ -299,18 +280,12 @@ fn test_tactical_moves() {
     let board: Board =
         Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
             .unwrap();
-    let move_list: MoveList = movegen::gen_moves::<{ movegen::TACTICAL_MOVES }>(&board);
+    let move_list: MoveList = gen_moves::<{ TACTICAL_MOVES }>(&board);
     assert_eq!(move_list.len(), 8);
     println!("{board}");
     for mv in move_list {
         println!("{mv} -> {:?}", mv.get_type());
     }
-}
-
-#[test]
-fn test_board() {
-    let board: Board = Board::new();
-    println!("{}", board);
 }
 
 #[test]

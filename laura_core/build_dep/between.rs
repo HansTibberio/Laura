@@ -91,7 +91,7 @@ pub fn write_between(
 ) -> Result<()> {
     writeln!(
         out,
-        "const {}_ARRAY: [[u64; {}]; {}] = [",
+        "static {}_ARRAY: [[u64; {}]; {}] = [",
         name,
         Square::NUM_SQUARES,
         Square::NUM_SQUARES

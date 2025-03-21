@@ -21,14 +21,9 @@ use core::fmt;
 use core::mem::transmute;
 use core::str::FromStr;
 
-use crate::{BitBoard, Color, File, Rank};
+use crate::{BitBoard, Color, File, Rank, SquareDocs};
 
-/// Enum representing each square on a chessboard, from A1 to H8.
-/// The squares are ordered by rank (rows) and file (columns), with A1 as the bottom-left and H8 as the top-right.
-#[derive(PartialEq, Ord, Eq, PartialOrd, Copy, Clone, Debug, Hash)]
-#[repr(u8)]
-#[rustfmt::skip]
-pub enum Square {
+SquareDocs! {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
     A3, B3, C3, D3, E3, F3, G3, H3,
@@ -36,7 +31,7 @@ pub enum Square {
     A5, B5, C5, D5, E5, F5, G5, H5,
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
-    A8, B8, C8, D8, E8, F8, G8, H8,
+    A8, B8, C8, D8, E8, F8, G8, H8
 }
 
 /// Parse a square from its algebraic notation, e.g., "e4" or "g5".
@@ -69,15 +64,15 @@ impl Square {
     /// Total number of squares on a chessboard (8x8 = 64).
     pub const NUM_SQUARES: usize = 64;
 
-    /// Create a `Square` from a `File` (column) and `Rank` (row).
+    /// Create a [`Square`] from a [`File`] (column) and [`Rank`] (row).
     /// The index is calculated by shifting the rank and XORing with the file.
     #[inline(always)]
     pub const fn from_file_rank(file: File, rank: Rank) -> Self {
-        let index: u8 = (rank as u8) << 3 ^ (file as u8);
+        let index: u8 = ((rank as u8) << 3) ^ (file as u8);
         unsafe { transmute(index & 63) }
     }
 
-    /// Convert an index (0-63) to a `Square`.
+    /// Convert an index (0-63) to a [`Square`].
     /// # Example
     /// ```
     /// # use laura_core::*;
@@ -89,18 +84,18 @@ impl Square {
         unsafe { transmute(index as u8 & 63) }
     }
 
-    /// Convert a `Square` to its index (0 for A1, 63 for H8).
+    /// Convert a [`Square`] to its index (0 for A1, 63 for H8).
     #[inline(always)]
     pub const fn to_index(self) -> usize {
         self as usize
     }
 
-    /// Convert a `Square` to `Bitboard`
+    /// Convert a [`Square`] to a [`BitBoard`]
     /// # Example
     /// ```
     /// # use laura_core::*;
-    /// let square = Square::C6;
-    /// assert_eq!(square.to_bitboard(), BitBoard(4398046511104));
+    /// let square = Square::F3;
+    /// assert_eq!(square.to_bitboard(), BitBoard(2097152));
     /// ```
     #[inline(always)]
     pub const fn to_bitboard(self) -> BitBoard {
