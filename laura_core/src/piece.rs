@@ -187,8 +187,7 @@ impl Piece {
     /// This index is used to identify the piece type within the range of 0-5.
     #[inline(always)]
     pub const fn piece_index(self) -> usize {
-        let index: u8 = self as u8 % 6;
-        index as usize
+        (self as u8 % 6) as usize
     }
 
     /// Returns the index of the `Piece` as a usize.
