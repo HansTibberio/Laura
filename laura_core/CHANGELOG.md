@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.  
 This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic Versioning][semver-link].
 
+## [Unreleased]
+
+---
+
+## [0.2.2] - 2025-03-27
+
+### Fixed
+- Optimized move generation performance by fixing a bottleneck in the code.
+
+---
+
 ## [0.2.1] - 2025-03-21
 
 ### Changed

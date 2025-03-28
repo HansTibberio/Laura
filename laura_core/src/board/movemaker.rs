@@ -28,7 +28,7 @@ use crate::{
 
 impl Board {
     /// Executes a move on the chessboard, updating the board state, castling rights,
-    /// en passant square, fifty-move rule counter, and [`Zobrist`] hash accordingly.
+    /// en passant square, fifty-move rule counter, and Zobrist hash accordingly.
     ///
     /// This function clones the current board state, applies the given move,
     /// and returns the resulting board. The move can include special cases such as captures,
