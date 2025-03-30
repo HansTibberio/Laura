@@ -434,11 +434,13 @@ where
     // Iterate through the possible king moves and ensure the king does not move into check.
     for dest in king {
         if !board.attacked_square(dest, blockers) {
-            if board.enemy_presence().get_square(dest) {
-                Call_Handler!(handler, src, dest, Capture);
+            let is_capture: bool = (board.enemy_presence().0 & dest.to_bitboard().0) != 0;
+            let move_type: MoveType = if is_capture {
+                MoveType::Capture
             } else {
-                Call_Handler!(handler, src, dest, Quiet);
-            }
+                MoveType::Quiet
+            };
+            handler(Move::new(src, dest, move_type));
         }
     }
     true
@@ -478,11 +480,13 @@ where
         }
 
         for dest in attacks {
-            if board.enemy_presence().get_square(dest) {
-                Call_Handler!(handler, src, dest, Capture);
+            let is_capture: bool = (board.enemy_presence().0 & dest.to_bitboard().0) != 0;
+            let move_type: MoveType = if is_capture {
+                MoveType::Capture
             } else {
-                Call_Handler!(handler, src, dest, Quiet);
-            }
+                MoveType::Quiet
+            };
+            handler(Move::new(src, dest, move_type));
         }
     }
     true
@@ -526,11 +530,13 @@ where
         }
 
         for dest in attacks {
-            if board.enemy_presence().get_square(dest) {
-                Call_Handler!(handler, src, dest, Capture);
+            let is_capture: bool = (board.enemy_presence().0 & dest.to_bitboard().0) != 0;
+            let move_type: MoveType = if is_capture {
+                MoveType::Capture
             } else {
-                Call_Handler!(handler, src, dest, Quiet);
-            }
+                MoveType::Quiet
+            };
+            handler(Move::new(src, dest, move_type));
         }
     }
 
@@ -555,11 +561,13 @@ where
         }
 
         for dest in attacks {
-            if board.enemy_presence().get_square(dest) {
-                Call_Handler!(handler, src, dest, Capture);
+            let is_capture: bool = (board.enemy_presence().0 & dest.to_bitboard().0) != 0;
+            let move_type: MoveType = if is_capture {
+                MoveType::Capture
             } else {
-                Call_Handler!(handler, src, dest, Quiet);
-            }
+                MoveType::Quiet
+            };
+            handler(Move::new(src, dest, move_type));
         }
     }
     true
@@ -602,11 +610,13 @@ where
         }
 
         for dest in attacks {
-            if board.enemy_presence().get_square(dest) {
-                Call_Handler!(handler, src, dest, Capture);
+            let is_capture: bool = (board.enemy_presence().0 & dest.to_bitboard().0) != 0;
+            let move_type: MoveType = if is_capture {
+                MoveType::Capture
             } else {
-                Call_Handler!(handler, src, dest, Quiet);
-            }
+                MoveType::Quiet
+            };
+            handler(Move::new(src, dest, move_type));
         }
     }
 
@@ -631,11 +641,13 @@ where
         }
 
         for dest in attacks {
-            if board.enemy_presence().get_square(dest) {
-                Call_Handler!(handler, src, dest, Capture);
+            let is_capture: bool = (board.enemy_presence().0 & dest.to_bitboard().0) != 0;
+            let move_type: MoveType = if is_capture {
+                MoveType::Capture
             } else {
-                Call_Handler!(handler, src, dest, Quiet);
-            }
+                MoveType::Quiet
+            };
+            handler(Move::new(src, dest, move_type));
         }
     }
     true

@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-laura_core = { path = "../laura_core", version = "0.2.0" }
+laura_core = { path = "../laura_core", version = "0.2.2" }
