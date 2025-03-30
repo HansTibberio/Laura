@@ -2,6 +2,11 @@
 name = "laura_engine"
 version = "0.1.0"
 edition = "2021"
+authors = ["HansTibberio <hanstiberio@proton.me>"]
 
 [dependencies]
 laura_core = { path = "../laura_core", version = "0.2.2" }
+
+[[bin]]
+name = "laura"
+path = "src/main.rs"
