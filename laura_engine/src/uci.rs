@@ -35,6 +35,7 @@ pub enum UciError {
     InvalidOptionValue,
     InvalidPosition,
     InvalidGo,
+    IlegalUciMove,
 }
 
 impl FromStr for UCICommand {
@@ -48,16 +49,34 @@ impl FromStr for UCICommand {
             Some("isready") => Ok(Self::IsReady),
             Some("ucinewgame") => Ok(Self::UciNewGame),
             Some("position") => {
-                let board: Board = match tokens.next() {
+                let mut board: Board = match tokens.next() {
                     Some("startpos") => Board::default(),
                     Some("fen") => {
-                        let fen: String = tokens.take(6).collect::<Vec<&str>>().join(" ");
+                        let mut fen: String = String::with_capacity(128);
+                        for token in tokens.by_ref().take(6) {
+                            if !fen.is_empty() {
+                                fen.push(' ');
+                            }
+                            fen.push_str(token);
+                        }
                         Board::from_str(&fen)
                             .ok()
                             .ok_or(UciError::InvalidPosition)?
                     }
                     _ => return Err(UciError::InvalidPosition),
                 };
+
+                if matches!(tokens.next(), Some("moves")) {
+                    for uci_move in tokens {
+                        if let Some(mv) = board.find_move(uci_move) {
+                            let board_res: Board = board.make_move(mv);
+                            board = board_res;
+                        } else {
+                            return Err(UciError::IlegalUciMove);
+                        }
+                    }
+                }
+
                 Ok(Self::Position(board))
             }
             Some("go") => todo!(),
@@ -122,8 +141,12 @@ impl UCI {
                 std::process::exit(0);
             }
 
-            Ok(UCICommand::DividePerft(depth)) => todo!(),
-            Ok(UCICommand::Perft(depth)) => todo!(),
+            Ok(UCICommand::DividePerft(depth)) => {
+                self.engine.divided_perft(depth);
+            }
+            Ok(UCICommand::Perft(depth)) => {
+                self.engine.perft(depth);
+            }
             Ok(UCICommand::Print) => {
                 println!("{}", self.engine.board);
             }
@@ -143,6 +166,9 @@ impl UCI {
             }
             Err(UciError::InvalidGo) => {
                 eprintln!("Error: Invalid parameters for 'go'")
+            }
+            Err(UciError::IlegalUciMove) => {
+                eprintln!("Error: Ilegal uci move")
             }
         }
     }

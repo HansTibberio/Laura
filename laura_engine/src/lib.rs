@@ -1,4 +1,4 @@
-mod uci;
 mod engine;
+mod uci;
 
 pub use uci::*;
