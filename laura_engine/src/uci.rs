@@ -2,11 +2,14 @@
 
 //! UCI protocol implementation
 
-use std::{str::FromStr, sync::atomic::AtomicBool};
+use std::str::FromStr;
 
 use laura_core::Board;
 
-use crate::engine::Engine;
+use crate::{
+    engine::Engine,
+    timer::{TimeControl, TimeParserError},
+};
 
 const NAME: &str = "Laura";
 const AUTHOR: &str = "HansTibberio";
@@ -18,7 +21,7 @@ pub enum UCICommand {
     IsReady,
     UciNewGame,
     Position(Board),
-    Go(String),
+    Go(TimeControl),
     Stop,
     Quit,
 
@@ -29,19 +32,44 @@ pub enum UCICommand {
 }
 
 #[derive(Debug)]
-pub enum UciError {
+pub enum UCIError {
     UnknownCommand(String),
-    NoOptionValueProvided,
+    NoOptionValue,
     InvalidOptionValue,
     InvalidPosition,
-    InvalidGo,
+    InvalidGo(TimeParserError),
     IlegalUciMove,
 }
 
+impl std::fmt::Display for UCIError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UCIError::UnknownCommand(s) => write!(f, "Error: Unkown command: '{s}'."),
+            UCIError::NoOptionValue => write!(f, "Error: No option value provided."),
+            UCIError::InvalidOptionValue => write!(f, "Error: Invalid option value."),
+            UCIError::InvalidPosition => write!(f, "Error: Invalid position format."),
+            UCIError::InvalidGo(err) => write!(f, "Error: '{err:?}'"),
+            UCIError::IlegalUciMove => write!(f, "Error: Ilegal uci move"),
+        }
+    }
+}
+
+impl From<TimeParserError> for UCIError {
+    fn from(err: TimeParserError) -> Self {
+        Self::InvalidGo(err)
+    }
+}
+
 impl FromStr for UCICommand {
-    type Err = UciError;
+    type Err = UCIError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s: &str = s.trim();
+
+        if s.is_empty() {
+            return Err(UCIError::UnknownCommand(s.to_string()));
+        }
+
         let mut tokens = s.split_whitespace();
 
         match tokens.next() {
@@ -61,9 +89,9 @@ impl FromStr for UCICommand {
                         }
                         Board::from_str(&fen)
                             .ok()
-                            .ok_or(UciError::InvalidPosition)?
+                            .ok_or(UCIError::InvalidPosition)?
                     }
-                    _ => return Err(UciError::InvalidPosition),
+                    _ => return Err(UCIError::InvalidPosition),
                 };
 
                 if matches!(tokens.next(), Some("moves")) {
@@ -72,40 +100,51 @@ impl FromStr for UCICommand {
                             let board_res: Board = board.make_move(mv);
                             board = board_res;
                         } else {
-                            return Err(UciError::IlegalUciMove);
+                            return Err(UCIError::IlegalUciMove);
                         }
                     }
                 }
 
                 Ok(Self::Position(board))
             }
-            Some("go") => todo!(),
+            Some("go") => {
+                let mut commands: String = String::with_capacity(64);
+                for token in tokens {
+                    if !commands.is_empty() {
+                        commands.push(' ');
+                    }
+                    commands.push_str(token);
+                }
+
+                let time_control: TimeControl = TimeControl::from_str(&commands)?;
+                Ok(Self::Go(time_control))
+            }
             Some("stop") => Ok(Self::Stop),
             Some("quit") => Ok(Self::Quit),
 
             Some("dperft") => {
                 match tokens
                     .next()
-                    .ok_or(UciError::NoOptionValueProvided)?
+                    .ok_or(UCIError::NoOptionValue)?
                     .parse::<usize>()
                 {
                     Ok(depth) if depth > 0 => Ok(Self::DividePerft(depth)),
-                    _ => Err(UciError::InvalidOptionValue),
+                    _ => Err(UCIError::InvalidOptionValue),
                 }
             }
             Some("perft") => {
                 match tokens
                     .next()
-                    .ok_or(UciError::NoOptionValueProvided)?
+                    .ok_or(UCIError::NoOptionValue)?
                     .parse::<usize>()
                 {
                     Ok(depth) if depth > 0 => Ok(Self::Perft(depth)),
-                    _ => Err(UciError::InvalidOptionValue),
+                    _ => Err(UCIError::InvalidOptionValue),
                 }
             }
             Some("print") => Ok(Self::Print),
             Some("eval") => Ok(Self::Eval),
-            _ => Err(UciError::UnknownCommand(s.to_string())),
+            _ => Err(UCIError::UnknownCommand(s.to_string())),
         }
     }
 }
@@ -113,30 +152,35 @@ impl FromStr for UCICommand {
 #[derive(Default)]
 pub struct UCI {
     engine: Engine,
-    _search: AtomicBool,
 }
 
 impl UCI {
-    pub fn start(&self) {
+    pub fn uci_start(&self) {
         println!("id name {NAME} {VERSION}");
         println!("id author {AUTHOR}");
         println!("uciok");
     }
 
-    pub fn run(&mut self, command: Result<UCICommand, UciError>) {
+    pub fn run(&mut self, command: Result<UCICommand, UCIError>) {
         match command {
             Ok(UCICommand::Uci) => {
-                self.start();
+                self.uci_start();
             }
             Ok(UCICommand::IsReady) => {
                 println!("readyok");
             }
-            Ok(UCICommand::UciNewGame) => todo!(),
+            Ok(UCICommand::UciNewGame) => {
+                self.engine.set_board(Board::default());
+            }
             Ok(UCICommand::Position(pos)) => {
                 self.engine.set_board(pos);
             }
-            Ok(UCICommand::Go(_params)) => todo!(),
-            Ok(UCICommand::Stop) => todo!(),
+            Ok(UCICommand::Go(time_control)) => {
+                self.engine.timer.start();
+                self.engine.timer.set_control(time_control);
+                println!("TimeControl: {time_control:?}")
+            }
+            Ok(UCICommand::Stop) => self.engine.stop(),
             Ok(UCICommand::Quit) => {
                 std::process::exit(0);
             }
@@ -148,28 +192,11 @@ impl UCI {
                 self.engine.perft(depth);
             }
             Ok(UCICommand::Print) => {
-                println!("{}", self.engine.board);
+                println!("{}", self.engine.board());
             }
             Ok(UCICommand::Eval) => todo!(),
-
-            Err(UciError::UnknownCommand(cmd)) => {
-                eprintln!("Error: Unknown command: '{}'", cmd)
-            }
-            Err(UciError::NoOptionValueProvided) => {
-                eprintln!("Error: No option value provided.")
-            }
-            Err(UciError::InvalidOptionValue) => {
-                eprintln!("Error: Invalid option value.")
-            }
-            Err(UciError::InvalidPosition) => {
-                eprintln!("Error: Invalid position format.")
-            }
-            Err(UciError::InvalidGo) => {
-                eprintln!("Error: Invalid parameters for 'go'")
-            }
-            Err(UciError::IlegalUciMove) => {
-                eprintln!("Error: Ilegal uci move")
-            }
+            Err(UCIError::UnknownCommand(s)) if s.is_empty() => {}
+            Err(e) => eprintln!("info string {e}"),
         }
     }
 }
