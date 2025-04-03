@@ -1,19 +1,12 @@
 // src/engine.rs
 
-//! Engine
+//! Engine implementation
+
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use laura_core::{enumerate_legal_moves, Board, ALL_MOVES};
 
-#[derive(Default, Clone, Debug)]
-pub struct Engine {
-    pub board: Board,
-}
-
-impl Engine {
-    pub fn set_board(&mut self, board: Board) {
-        self.board = board
-    }
-}
+use crate::timer::TimeManager;
 
 fn perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
     let start: std::time::Instant = std::time::Instant::now();
@@ -63,7 +56,30 @@ fn inner_perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
     total
 }
 
+#[derive(Default, Debug)]
+pub struct Engine {
+    board: Board,
+    pub timer: TimeManager,
+    pub stop: AtomicBool,
+}
+
 impl Engine {
+    pub fn board(&self) -> Board {
+        self.board
+    }
+
+    pub fn set_board(&mut self, board: Board) {
+        self.board = board
+    }
+
+    pub fn stop(&self) {
+        self.stop.store(true, Ordering::Release);
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.stop.load(Ordering::Acquire)
+    }
+
     pub fn perft(&self, depth: usize) -> usize {
         let total_nodes: usize = perft::<false>(&self.board, depth);
         total_nodes
