@@ -91,7 +91,11 @@ where
         }
         _ => {}
     }
-    enumerate_king_moves::<ALL_MOVES, F>(board, board.allied_king().to_square(), &mut handler);
+    enumerate_king_moves::<ALL_MOVES, F>(
+        board,
+        board.allied_king().to_square().unwrap(),
+        &mut handler,
+    );
     true
 }
 
@@ -298,7 +302,7 @@ where
     F: FnMut(Move) -> bool,
 {
     let pawns: BitBoard = src & !linear_pins;
-    let king_square: Square = board.allied_king().to_square();
+    let king_square: Square = board.allied_king().to_square().unwrap();
 
     // En Passant captures
     if let Some(en_passant) = board.enpassant_square {
@@ -666,7 +670,7 @@ where
 /// 3. Collects all such pinning paths and returns them as bitboards.
 #[inline(always)]
 fn pinners(board: &Board) -> (BitBoard, BitBoard) {
-    let king_square: Square = board.allied_king().to_square();
+    let king_square: Square = board.allied_king().to_square().unwrap();
     let blockers_mask: BitBoard = board.combined_bitboard();
 
     let probe: BitBoard = (get_bishop_rays(king_square) | get_rook_rays(king_square))
@@ -717,7 +721,10 @@ fn pinners(board: &Board) -> (BitBoard, BitBoard) {
 #[inline(always)]
 fn check_mask<const IN_CHECK: bool>(board: &Board) -> BitBoard {
     if IN_CHECK {
-        get_between(board.allied_king().to_square(), board.checkers.to_square()) | board.checkers
+        get_between(
+            board.allied_king().to_square().unwrap(),
+            board.checkers.to_square().unwrap(),
+        ) | board.checkers
     } else {
         BitBoard::FULL
     }

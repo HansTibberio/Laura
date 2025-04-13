@@ -105,7 +105,10 @@ impl Board {
     /// Uses the current combined board state to evaluate potential checks.
     #[inline(always)]
     pub fn checkers(&self) -> BitBoard {
-        self.attackers(self.allied_king().to_square(), self.combined_bitboard())
+        self.attackers(
+            self.allied_king().to_square().unwrap(),
+            self.combined_bitboard(),
+        )
     }
 
     /// Finds legal move in board from the uci-formatted move string

@@ -5,7 +5,7 @@ use laura_core::*;
 #[test]
 fn test_bitboard() {
     let bitboard: BitBoard = BitBoard(2097152);
-    assert_eq!(bitboard.to_square(), Square::F3);
+    assert_eq!(bitboard.to_square(), Some(Square::F3));
     println!("{}", bitboard);
     let bitboard: BitBoard = bitboard.set_square(Square::G6);
     println!("{}", bitboard);

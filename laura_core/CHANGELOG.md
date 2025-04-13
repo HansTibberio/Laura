@@ -5,6 +5,13 @@ This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic
 
 ## [Unreleased]
 
+### Added
+- Added new functions to the **Bitboard** module:
+  - `right()`, `right_for()`, `left()`, `left_for()`, `up_left_for()`, `up_right_for()`
+
+### Breaking
+- The function BitBoard::to_square() now returns an Option<Square> instead of a Square.
+
 ---
 
 ## [0.2.2] - 2025-03-27
