@@ -6,11 +6,15 @@ This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic
 ## [Unreleased]
 
 ### Added
-- Added new functions to the **Bitboard** module:
-  - `right()`, `right_for()`, `left()`, `left_for()`, `up_left_for()`, `up_right_for()`
+- New utility functions in the **BitBoard** module:
+  - `right()`, `right_for()`, `left()`, `left_for()`, `up_left_for()`, `up_right_for()`.
+- Improved documentation for the **BitBoard** module, now including usage examples.
+
+### Changed
+- Rewrote the `Iterator` implementation for `BitBoard` to improve clarity and flexibility.
 
 ### Breaking
-- The function BitBoard::to_square() now returns an Option<Square> instead of a Square.
+- `BitBoard::to_square()` now returns an `Option<Square>` instead of `Square`, to handle empty bitboards more safely.
 
 ---
 
