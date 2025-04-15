@@ -25,8 +25,8 @@ pub enum UCICommand {
     Stop,
     Quit,
 
-    DividePerft(usize),
-    Perft(usize),
+    DividePerft(u8),
+    Perft(u8),
     Print,
     Eval,
 }
@@ -122,26 +122,14 @@ impl FromStr for UCICommand {
             Some("stop") => Ok(Self::Stop),
             Some("quit") => Ok(Self::Quit),
 
-            Some("dperft") => {
-                match tokens
-                    .next()
-                    .ok_or(UCIError::NoOptionValue)?
-                    .parse::<usize>()
-                {
-                    Ok(depth) if depth > 0 => Ok(Self::DividePerft(depth)),
-                    _ => Err(UCIError::InvalidOptionValue),
-                }
-            }
-            Some("perft") => {
-                match tokens
-                    .next()
-                    .ok_or(UCIError::NoOptionValue)?
-                    .parse::<usize>()
-                {
-                    Ok(depth) if depth > 0 => Ok(Self::Perft(depth)),
-                    _ => Err(UCIError::InvalidOptionValue),
-                }
-            }
+            Some("dperft") => match tokens.next().ok_or(UCIError::NoOptionValue)?.parse::<u8>() {
+                Ok(depth) if depth > 0 => Ok(Self::DividePerft(depth)),
+                _ => Err(UCIError::InvalidOptionValue),
+            },
+            Some("perft") => match tokens.next().ok_or(UCIError::NoOptionValue)?.parse::<u8>() {
+                Ok(depth) if depth > 0 => Ok(Self::Perft(depth)),
+                _ => Err(UCIError::InvalidOptionValue),
+            },
             Some("print") => Ok(Self::Print),
             Some("eval") => Ok(Self::Eval),
             _ => Err(UCIError::UnknownCommand(s.to_string())),

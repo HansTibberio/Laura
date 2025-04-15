@@ -2,16 +2,17 @@
 
 //! Engine implementation
 
-use std::sync::atomic::{AtomicBool, Ordering};
-
+use crate::{config::Nodes, timer::TimeManager};
 use laura_core::{enumerate_legal_moves, Board, ALL_MOVES};
+use std::{
+    sync::atomic::{AtomicBool, Ordering},
+    time::{Duration, Instant},
+};
 
-use crate::timer::TimeManager;
-
-fn perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
-    let start: std::time::Instant = std::time::Instant::now();
-    let total_nodes: usize = inner_perft::<DIV>(board, depth);
-    let duration: std::time::Duration = start.elapsed();
+fn perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
+    let start: Instant = Instant::now();
+    let total_nodes: Nodes = inner_perft::<DIV>(board, depth);
+    let duration: Duration = start.elapsed();
 
     let nps: f64 = total_nodes as f64 / duration.as_secs_f64();
     println!("{total_nodes} nodes in {duration:?} -> {nps:.0} nodes/s");
@@ -20,8 +21,8 @@ fn perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
 }
 
 #[allow(unused_assignments)]
-fn inner_perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
-    let mut total: usize = 0;
+fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
+    let mut total: Nodes = 0;
 
     if !DIV && depth <= 1 {
         enumerate_legal_moves::<ALL_MOVES, _>(board, |_| -> bool {
@@ -32,7 +33,7 @@ fn inner_perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
     }
 
     enumerate_legal_moves::<ALL_MOVES, _>(board, |mv| -> bool {
-        let mut nodes: usize = 0;
+        let mut nodes: Nodes = 0;
         if DIV && depth == 1 {
             nodes = 1;
         } else {
@@ -80,13 +81,13 @@ impl Engine {
         self.stop.load(Ordering::Acquire)
     }
 
-    pub fn perft(&self, depth: usize) -> usize {
-        let total_nodes: usize = perft::<false>(&self.board, depth);
+    pub fn perft(&self, depth: u8) -> Nodes {
+        let total_nodes: Nodes = perft::<false>(&self.board, depth);
         total_nodes
     }
 
-    pub fn divided_perft(&self, depth: usize) -> usize {
-        let total_nodes: usize = perft::<true>(&self.board, depth);
+    pub fn divided_perft(&self, depth: u8) -> Nodes {
+        let total_nodes: Nodes = perft::<true>(&self.board, depth);
         total_nodes
     }
 }
