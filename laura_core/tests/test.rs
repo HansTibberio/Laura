@@ -5,7 +5,7 @@ use laura_core::*;
 #[test]
 fn test_bitboard() {
     let bitboard: BitBoard = BitBoard(2097152);
-    assert_eq!(bitboard.to_square(), Square::F3);
+    assert_eq!(bitboard.to_square(), Some(Square::F3));
     println!("{}", bitboard);
     let bitboard: BitBoard = bitboard.set_square(Square::G6);
     println!("{}", bitboard);
@@ -44,7 +44,7 @@ fn test_movelist_iter() {
     use crate::{Board, MoveList};
 
     let board: Board = Board::default();
-    let moves: MoveList = gen_moves::<ALL_MOVES>(&board);
+    let moves: MoveList = gen_moves::<AllMoves>(&board);
     assert_eq!(moves.len(), 20);
 
     for mv in moves {
@@ -251,7 +251,7 @@ fn test_find_move() {
 #[test]
 fn test_default_moves() {
     let board: Board = Board::default();
-    let move_list: MoveList = gen_moves::<{ ALL_MOVES }>(&board);
+    let move_list: MoveList = gen_moves::<AllMoves>(&board);
     assert_eq!(move_list.len(), 20);
     for mv in move_list {
         println!("{mv} -> {:?}", mv.get_type());
@@ -265,7 +265,7 @@ fn test_quiet_moves() {
     let board: Board =
         Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
             .unwrap();
-    let move_list: MoveList = gen_moves::<{ QUIET_MOVES }>(&board);
+    let move_list: MoveList = gen_moves::<QuietMoves>(&board);
     assert_eq!(move_list.len(), 40);
     println!("{board}");
     for mv in move_list {
@@ -280,7 +280,7 @@ fn test_tactical_moves() {
     let board: Board =
         Board::from_str("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
             .unwrap();
-    let move_list: MoveList = gen_moves::<{ TACTICAL_MOVES }>(&board);
+    let move_list: MoveList = gen_moves::<TacticalMoves>(&board);
     assert_eq!(move_list.len(), 8);
     println!("{board}");
     for mv in move_list {

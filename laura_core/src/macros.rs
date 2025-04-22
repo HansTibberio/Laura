@@ -16,10 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
+#[allow(unused_imports)]
+use crate::{gen_moves, BitBoard, Board, MoveList, QuietMoves, TacticalMoves};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
-
-use crate::{BitBoard, Board};
 
 /// Macro to implement bitwise operators for a type.
 ///
@@ -179,33 +179,103 @@ macro_rules! Call_Handler {
 #[macro_export]
 macro_rules! Enumerate_Moves {
     ($check:expr, $board:expr, $diagonal_pins:expr, $linear_pins:expr, $handler:expr) => {
-        enumerate_pawn_moves::<$check, ALL_MOVES, F>(
+        enumerate_pawn_moves::<$check, M, F>(
             $board,
             $board.allied_pawns(),
             $diagonal_pins,
             $linear_pins,
             &mut $handler,
         );
-        enumerate_knight_moves::<$check, ALL_MOVES, F>(
+        enumerate_knight_moves::<$check, M, F>(
             $board,
             $board.allied_knights(),
             $diagonal_pins,
             $linear_pins,
             &mut $handler,
         );
-        enumerate_bishop_moves::<$check, ALL_MOVES, F>(
+        enumerate_bishop_moves::<$check, M, F>(
             $board,
             $board.allied_bishops() | $board.allied_queens(),
             $diagonal_pins,
             $linear_pins,
             &mut $handler,
         );
-        enumerate_rook_moves::<$check, ALL_MOVES, F>(
+        enumerate_rook_moves::<$check, M, F>(
             $board,
             $board.allied_rooks() | $board.allied_queens(),
             $diagonal_pins,
             $linear_pins,
             &mut $handler,
         );
+    };
+}
+
+/// Generates all legal moves for the given board position.
+///
+/// This macro enumerates all legal moves, including quiet moves (non-captures),
+/// captures, and promotions, and collects them into a [`MoveList`].
+///
+/// It simplifies usage by automatically handling the type specialization
+/// required by the internal [`gen_moves`] function.
+///
+/// # Example
+/// ```
+/// # use laura_core::*;
+/// let board: Board = Board::default();
+/// let moves: MoveList = legal_moves!(&board);
+/// assert_eq!(moves.len(), 20);
+///
+/// for m in moves {
+///     println!("{:?}", m);
+/// }
+/// ```
+///
+/// This macro is intended as the main entry point for generating legal moves.
+#[macro_export]
+macro_rules! legal_moves {
+    ($board:expr) => {
+        $crate::gen_moves::<$crate::AllMoves>($board);
+    };
+}
+
+/// Generates only quiet (non-capturing) moves for the given board position.
+///
+/// This macro collects all legal moves that do not involve captures or promotions
+/// into a [`MoveList`], using the [`QuietMoves`] generator.
+///
+/// Mainly intended for advanced search techniques.
+///
+/// # Example
+/// ```
+/// # use laura_core::*;
+/// let board: Board = Board::kiwipete();
+/// let quiets: MoveList = quiet_moves!(&board);
+/// assert_eq!(quiets.len(), 40);
+/// ```
+#[macro_export]
+macro_rules! quiet_moves {
+    ($board:expr) => {
+        $crate::gen_moves::<$crate::QuietMoves>($board);
+    };
+}
+
+/// Generates only tactical moves (captures and queen promotions) for the given board position.
+///
+/// This macro collects all aggressive tactical moves—such as captures and
+/// promotions to queen—into a [`MoveList`], using the [`TacticalMoves`] generator.
+///
+/// Mainly intended for tactical search stages.
+///
+/// # Example
+/// ```
+/// # use laura_core::*;
+/// let board: Board = Board::kiwipete();
+/// let tactics: MoveList = tactical_moves!(&board);
+/// assert_eq!(tactics.len(), 8);
+/// ```
+#[macro_export]
+macro_rules! tactical_moves {
+    ($board:expr) => {
+        $crate::gen_moves::<$crate::TacticalMoves>($board);
     };
 }

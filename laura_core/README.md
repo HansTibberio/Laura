@@ -55,41 +55,41 @@ assert_eq!(board, Board::kiwipete());
 
 ### **Generate all legal moves**
 
-To generate moves from a given position, use the gen_moves function along with one of the predefined constants:
+To generate moves from a given position, use the gen_moves function along with one of the filtering move types
 
-- `ALL_MOVES`: Generates all legal moves.
-- `QUIET_MOVES`: Generates only quiet moves (non-capturing moves).
-- `TACTICAL_MOVES`: Generates tactical moves (captures and queen promotions).
+- `AllMoves`: Generates all legal moves.
+- `QuietMoves`: Generates only quiet moves (non-capturing moves).
+- `TacticalMoves`: Generates tactical moves (captures and queen promotions).
 
 **Example: Generating all legal moves**
 
 This example starts from the default position and generate all legal moves.
 
 ```rust 
-use laura_core::{gen_moves, Board, MoveList, ALL_MOVES};
+use laura_core::{gen_moves, Board, MoveList, AllMoves};
 
 let board: Board = Board::default();
-let moves: MoveList = gen_moves::<ALL_MOVES>(&board);
+let moves: MoveList = gen_moves::<AllMoves>(&board);
 assert_eq!(moves.len(), 20);
 ```
 
 **Example: Generating only quiet moves**
 
 ```rust 
-use laura_core::{gen_moves, Board, MoveList, QUIET_MOVES};
+use laura_core::{gen_moves, Board, MoveList, QuietMoves};
 
 let board: Board = Board::kiwipete();
-let moves: MoveList = gen_moves::<QUIET_MOVES>(&board);
+let moves: MoveList = gen_moves::<QuietMoves>(&board);
 assert_eq!(moves.len(), 40);
 ```
 
 **Example: Generating only tactical moves**
 
 ```rust 
-use laura_core::{gen_moves, Board, MoveList, TACTICAL_MOVES};
+use laura_core::{gen_moves, Board, MoveList, TacticalMoves};
 
 let board: Board = Board::kiwipete();
-let moves: MoveList = gen_moves::<TACTICAL_MOVES>(&board);
+let moves: MoveList = gen_moves::<TacticalMoves>(&board);
 assert_eq!(moves.len(), 8);
 ```
 
