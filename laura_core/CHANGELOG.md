@@ -9,12 +9,19 @@ This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic
 - New utility functions in the **BitBoard** module:
   - `right()`, `right_for()`, `left()`, `left_for()`, `up_left_for()`, `up_right_for()`.
 - Improved documentation for the **BitBoard** module, now including usage examples.
+- New macros for generating legal moves:
+  - `legal_moves!`: Generates all legal moves for a given board position.
+  - `quiet_moves!`: Generates only quiet (non-capturing) moves for a given board position.
+  - `tactical_moves!`: Generates only tactical (capturing and promoting) moves for a given board position.
+- The `MoveFilter` trait and the structs `QuietMoves`, `TacticalMoves`, and `AllMoves` to improve flexibility and control over move generation.
 
 ### Changed
 - Rewrote the `Iterator` implementation for `BitBoard` to improve clarity and flexibility.
+- Replaced previous constants used for move generation with the new `MoveFilter` trait and specialized structs (`QuietMoves`, `TacticalMoves`, `AllMoves`)
 
 ### Breaking
 - `BitBoard::to_square()` now returns an `Option<Square>` instead of `Square`, to handle empty bitboards more safely.
+- The previous approach to move generation using constants has been replaced by the `MoveFilter` trait, which may require changes in how users interact with move generation.
 
 ---
 
