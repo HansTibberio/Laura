@@ -123,14 +123,14 @@ pub fn inner_perft<const DIV: bool>(board: &Board, depth: usize) -> usize {
     let mut total: usize = 0;
 
     if !DIV && depth <= 1 {
-        enumerate_legal_moves::<ALL_MOVES, _>(board, |_| -> bool {
+        enumerate_legal_moves::<AllMoves, _>(board, |_| -> bool {
             total += 1;
             true
         });
         return total;
     }
 
-    enumerate_legal_moves::<ALL_MOVES, _>(board, |mv| -> bool {
+    enumerate_legal_moves::<AllMoves, _>(board, |mv: Move| -> bool {
         let mut nodes: usize = 0;
         if DIV && depth == 1 {
             nodes = 1;

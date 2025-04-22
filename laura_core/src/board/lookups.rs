@@ -20,9 +20,8 @@
 use crate::get_king_attacks;
 use crate::get_knight_attacks;
 use crate::get_pawn_attacks;
-use crate::{gen_moves, ALL_MOVES};
 use crate::{get_bishop_attacks, get_rook_attacks};
-use crate::{BitBoard, Board, Color, Move, Piece, Square};
+use crate::{BitBoard, Board, Color, Piece, Square};
 
 impl Board {
     /// Returns the [`BitBoard`] representing all pieces for the white side.
@@ -109,15 +108,5 @@ impl Board {
             self.allied_king().to_square().unwrap(),
             self.combined_bitboard(),
         )
-    }
-
-    /// Finds legal move in board from the uci-formatted move string
-    #[inline]
-    pub fn find_move(&self, move_str: &str) -> Option<Move> {
-        gen_moves::<ALL_MOVES>(self)
-            .moves()
-            .iter()
-            .find(|&mv| *mv == move_str)
-            .copied()
     }
 }

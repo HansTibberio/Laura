@@ -1,3 +1,4 @@
+use crate::{gen_moves, AllMoves};
 /*
     Laura-Core: a fast and efficient move generator for chess engines.
 
@@ -16,10 +17,10 @@
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
-
+#[allow(unused_imports)]
 use crate::{
     get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece, PieceType,
-    Square,
+    Square, Zobrist,
 };
 
 // This implementation is based on the approach used in Carp,
@@ -150,6 +151,16 @@ impl Board {
 
         // Return the new board state after the null move.
         board
+    }
+
+    /// Finds legal move in board from the uci-formatted move string
+    #[inline]
+    pub fn find_move(&self, move_str: &str) -> Option<Move> {
+        gen_moves::<AllMoves>(self)
+            .moves()
+            .iter()
+            .find(|&mv| *mv == move_str)
+            .copied()
     }
 
     /// Attempts to make a move on the board using the UCI (Universal Chess Interface) notation.
