@@ -7,12 +7,12 @@ use std::str::FromStr;
 use laura_core::Board;
 
 use crate::{
-    engine::Engine,
-    timer::{TimeControl, TimeParserError},
+    position::Position,
+    timer::{TimeControl, TimeManager, TimeParserError},
 };
 
-const NAME: &str = "Laura";
 const AUTHOR: &str = "HansTibberio";
+const NAME: &str = "Laura";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
@@ -139,50 +139,58 @@ impl FromStr for UCICommand {
 
 #[derive(Default)]
 pub struct UCI {
-    engine: Engine,
+    position: Position,
+    time_manager: TimeManager,
 }
 
 impl UCI {
-    pub fn uci_start(&self) {
-        println!("id name {NAME} {VERSION}");
-        println!("id author {AUTHOR}");
-        println!("uciok");
+    pub fn uci_start() {
+        println!("{NAME} {VERSION} by {AUTHOR}");
     }
 
     pub fn run(&mut self, command: Result<UCICommand, UCIError>) {
         match command {
             Ok(UCICommand::Uci) => {
-                self.uci_start();
+                println!("id name {NAME} {VERSION}");
+                println!("id author {AUTHOR}");
+                println!("uciok");
             }
             Ok(UCICommand::IsReady) => {
                 println!("readyok");
             }
             Ok(UCICommand::UciNewGame) => {
-                self.engine.set_board(Board::default());
+                self.position.set_board(Board::default());
             }
             Ok(UCICommand::Position(pos)) => {
-                self.engine.set_board(pos);
+                self.position.set_board(pos);
             }
             Ok(UCICommand::Go(time_control)) => {
-                self.engine.timer.start();
-                self.engine.timer.set_control(time_control);
+                // TODO!
+                self.time_manager.start();
+                self.time_manager.set_control(time_control);
                 println!("TimeControl: {time_control:?}")
             }
-            Ok(UCICommand::Stop) => self.engine.stop(),
+            Ok(UCICommand::Stop) => todo!(),
             Ok(UCICommand::Quit) => {
                 std::process::exit(0);
             }
 
             Ok(UCICommand::DividePerft(depth)) => {
-                self.engine.divided_perft(depth);
+                self.position.divided_perft(depth);
             }
             Ok(UCICommand::Perft(depth)) => {
-                self.engine.perft(depth);
+                self.position.perft(depth);
             }
             Ok(UCICommand::Print) => {
-                println!("{}", self.engine.board());
+                println!("{}", self.position.board());
             }
-            Ok(UCICommand::Eval) => todo!(),
+            Ok(UCICommand::Eval) => {
+                if self.position.in_check() {
+                    println!("None: King in check");
+                } else {
+                    println!("{}", self.position.evaluate());
+                }
+            }
             Err(UCIError::UnknownCommand(s)) if s.is_empty() => {}
             Err(e) => eprintln!("info string {e}"),
         }

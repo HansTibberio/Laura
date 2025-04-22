@@ -1,11 +1,11 @@
-// src/engine.rs
+// src/position.rs
 
-//! Engine implementation
+//! Position implementation
 
-use crate::{config::Nodes, timer::TimeManager};
-use laura_core::{enumerate_legal_moves, Board, ALL_MOVES};
+use crate::{config::Nodes, evaluation};
+use laura_core::{enumerate_legal_moves, AllMoves, Board, Move};
 use std::{
-    sync::atomic::{AtomicBool, Ordering},
+    mem::replace,
     time::{Duration, Instant},
 };
 
@@ -25,14 +25,14 @@ fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
     let mut total: Nodes = 0;
 
     if !DIV && depth <= 1 {
-        enumerate_legal_moves::<ALL_MOVES, _>(board, |_| -> bool {
+        enumerate_legal_moves::<AllMoves, _>(board, |_| -> bool {
             total += 1;
             true
         });
         return total;
     }
 
-    enumerate_legal_moves::<ALL_MOVES, _>(board, |mv| -> bool {
+    enumerate_legal_moves::<AllMoves, _>(board, |mv| -> bool {
         let mut nodes: Nodes = 0;
         if DIV && depth == 1 {
             nodes = 1;
@@ -57,28 +57,19 @@ fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
     total
 }
 
-#[derive(Default, Debug)]
-pub struct Engine {
+#[derive(Default, Debug, Clone)]
+pub struct Position {
     board: Board,
-    pub timer: TimeManager,
-    pub stop: AtomicBool,
+    game: Vec<Board>,
 }
 
-impl Engine {
+impl Position {
     pub fn board(&self) -> Board {
         self.board
     }
 
     pub fn set_board(&mut self, board: Board) {
         self.board = board
-    }
-
-    pub fn stop(&self) {
-        self.stop.store(true, Ordering::Release);
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.stop.load(Ordering::Acquire)
     }
 
     pub fn perft(&self, depth: u8) -> Nodes {
@@ -89,5 +80,34 @@ impl Engine {
     pub fn divided_perft(&self, depth: u8) -> Nodes {
         let total_nodes: Nodes = perft::<true>(&self.board, depth);
         total_nodes
+    }
+
+    pub fn push_move(&mut self, mv: Move) {
+        let new: Board = self.board.make_move(mv);
+        let old: Board = replace(&mut self.board, new);
+        self.game.push(old);
+    }
+
+    pub fn push_null(&mut self) {
+        let new: Board = self.board.null_move();
+        let old: Board = replace(&mut self.board, new);
+        self.game.push(old);
+    }
+
+    pub fn pop_move(&mut self) {
+        let old: Board = self.game.pop().unwrap();
+        self.board = old;
+    }
+
+    pub fn evaluate(&self) -> i32 {
+        evaluation::evaluate(&self.board)
+    }
+
+    pub fn ply(&self) -> usize {
+        self.game.len()
+    }
+
+    pub fn in_check(&self) -> bool {
+        self.board.checkers.count_bits() != 0
     }
 }

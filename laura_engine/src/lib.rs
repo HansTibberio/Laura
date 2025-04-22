@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 mod config;
-mod engine;
+mod evaluation;
+mod position;
+mod search;
+mod thread;
 mod timer;
 mod uci;
 

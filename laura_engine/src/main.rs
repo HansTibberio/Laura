@@ -6,7 +6,7 @@ use std::{
 
 fn main() {
     let mut uci: UCI = UCI::default();
-    uci.uci_start();
+    UCI::uci_start();
     let sdtin: Stdin = stdin();
     for line in sdtin.lock().lines() {
         if let Ok(input) = line {

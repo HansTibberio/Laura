@@ -56,7 +56,7 @@ impl FromStr for TimeControl {
                 "btime" => btime = Some(parse_value::<u64>(&mut tokens, "btime")?),
                 "winc" => winc = Some(parse_value::<u64>(&mut tokens, "winc")?),
                 "binc" => binc = Some(parse_value::<u64>(&mut tokens, "binc")?),
-                "movestogo" => movestogo = Some(parse_value(&mut tokens, "movestogo")?),
+                "movestogo" => movestogo = Some(parse_value::<u64>(&mut tokens, "movestogo")?),
                 "nodes" => nodes = Some(parse_value::<u64>(&mut tokens, "nodes")?),
                 "infinite" => return Ok(Self::Infinite),
                 _ => return Err(TimeParserError::UnknownParameter(token.to_string())),

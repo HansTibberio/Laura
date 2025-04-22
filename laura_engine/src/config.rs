@@ -11,4 +11,8 @@ pub const DEFAULT_MOVESTOGO: u64 = 40;
 
 // Public types
 pub type Nodes = u64;
-pub type Eval = i16;
+pub type Eval = i32;
+pub type Score = i32;
+
+pub const INFINITY: Score = 32_000;
+pub const MAX_DEPTH: usize = 127;
