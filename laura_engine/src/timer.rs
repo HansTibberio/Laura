@@ -160,10 +160,7 @@ impl TimeManager {
 
                 let (soft, hard) = calculate_time(remaining, increment, movestogo);
 
-                (
-                    Duration::from_millis(soft as u64),
-                    Duration::from_millis(hard as u64),
-                )
+                (Duration::from_millis(soft), Duration::from_millis(hard))
             }
             TimeControl::Nodes(_) => (Duration::ZERO, Duration::ZERO),
             TimeControl::Infinite => (Duration::ZERO, Duration::ZERO),
@@ -246,6 +243,15 @@ impl TimeManager {
         }
 
         stop
+    }
+
+    pub fn not_search(&self) -> bool {
+        match self.time_control {
+            TimeControl::MoveTime(_) | TimeControl::DynamicTime { .. } => {
+                self.soft_limit == Duration::ZERO
+            }
+            _ => false,
+        }
     }
 }
 

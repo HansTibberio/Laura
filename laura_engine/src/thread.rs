@@ -146,7 +146,7 @@ impl ThreadPool {
             return None;
         }
 
-        if moves.len() == 1 {
+        if moves.len() == 1 || self.main.time_manager.not_search() {
             return Some(moves.moves()[0]);
         }
 
@@ -169,14 +169,13 @@ impl ThreadPool {
                 });
             }
         });
-        println!("{}", self.main.time_manager.elapsed().as_millis());
         let best: Move = self.main.best_move();
         Some(best)
     }
 }
 
 #[test]
-fn test_resize() {
+fn test_best_move() {
     let mut threadpool = ThreadPool::new(Arc::new(AtomicBool::new(false)));
     let mut position = Position::default();
     let best = threadpool.start_search(&mut position, TimeControl::Depth(4));
