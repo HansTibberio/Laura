@@ -4,11 +4,12 @@
 
 use std::str::FromStr;
 
-use laura_core::Board;
+use laura_core::{Board, Move};
 
 use crate::{
     position::Position,
-    timer::{TimeControl, TimeManager, TimeParserError},
+    thread::ThreadPool,
+    timer::{TimeControl, TimeParserError},
 };
 
 const AUTHOR: &str = "HansTibberio";
@@ -137,62 +138,61 @@ impl FromStr for UCICommand {
     }
 }
 
-#[derive(Default)]
-pub struct UCI {
-    position: Position,
-    time_manager: TimeManager,
+pub fn uci_start() {
+    println!("{NAME} {VERSION} by {AUTHOR}");
 }
 
-impl UCI {
-    pub fn uci_start() {
-        println!("{NAME} {VERSION} by {AUTHOR}");
-    }
-
-    pub fn run(&mut self, command: Result<UCICommand, UCIError>) {
-        match command {
-            Ok(UCICommand::Uci) => {
-                println!("id name {NAME} {VERSION}");
-                println!("id author {AUTHOR}");
-                println!("uciok");
-            }
-            Ok(UCICommand::IsReady) => {
-                println!("readyok");
-            }
-            Ok(UCICommand::UciNewGame) => {
-                self.position.set_board(Board::default());
-            }
-            Ok(UCICommand::Position(pos)) => {
-                self.position.set_board(pos);
-            }
-            Ok(UCICommand::Go(time_control)) => {
-                // TODO!
-                self.time_manager.start();
-                self.time_manager.set_control(time_control);
-                println!("TimeControl: {time_control:?}")
-            }
-            Ok(UCICommand::Stop) => todo!(),
-            Ok(UCICommand::Quit) => {
-                std::process::exit(0);
-            }
-
-            Ok(UCICommand::DividePerft(depth)) => {
-                self.position.divided_perft(depth);
-            }
-            Ok(UCICommand::Perft(depth)) => {
-                self.position.perft(depth);
-            }
-            Ok(UCICommand::Print) => {
-                println!("{}", self.position.board());
-            }
-            Ok(UCICommand::Eval) => {
-                if self.position.in_check() {
-                    println!("None: King in check");
-                } else {
-                    println!("{}", self.position.evaluate());
-                }
-            }
-            Err(UCIError::UnknownCommand(s)) if s.is_empty() => {}
-            Err(e) => eprintln!("info string {e}"),
+pub fn uci_run(
+    position: &mut Position,
+    threadpool: &mut ThreadPool,
+    command: Result<UCICommand, UCIError>,
+) {
+    match command {
+        Ok(UCICommand::Uci) => {
+            println!("id name {NAME} {VERSION}");
+            println!("id author {AUTHOR}");
+            println!("uciok");
         }
+        Ok(UCICommand::IsReady) => {
+            println!("readyok");
+        }
+        Ok(UCICommand::UciNewGame) => {
+            position.set_board(Board::default());
+        }
+        Ok(UCICommand::Position(pos)) => {
+            position.set_board(pos);
+        }
+        Ok(UCICommand::Go(time_control)) => {
+            println!("TimeControl: {time_control:?}");
+            let best: Option<Move> = threadpool.start_search(position, time_control);
+            if let Some(mv) = best {
+                println!("bestmove {}", mv);
+            }
+        }
+        Ok(UCICommand::Stop) => {
+            println!("info string Stop command received!");
+            threadpool.stop();
+        }
+        Ok(UCICommand::Quit) => {
+            std::process::exit(0);
+        }
+        Ok(UCICommand::DividePerft(depth)) => {
+            position.divided_perft(depth);
+        }
+        Ok(UCICommand::Perft(depth)) => {
+            position.perft(depth);
+        }
+        Ok(UCICommand::Print) => {
+            println!("{}", position.board());
+        }
+        Ok(UCICommand::Eval) => {
+            if position.in_check() {
+                println!("None: King in check");
+            } else {
+                println!("{}", position.evaluate());
+            }
+        }
+        Err(UCIError::UnknownCommand(s)) if s.is_empty() => {}
+        Err(e) => eprintln!("info string {e}"),
     }
 }

@@ -4,6 +4,10 @@
 
 use std::{
     str::{FromStr, SplitWhitespace},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 
@@ -106,32 +110,86 @@ fn parse_value<T: FromStr>(
         .map_err(|_| TimeParserError::InvalidValue)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct TimeManager {
     // Time Control
-    control: TimeControl,
+    time_control: TimeControl,
     // Starting Time
     start_time: Instant,
-    //  Soft Limit Time
+    // Soft Limit Time
     soft_limit: Duration,
     // Hard Limit Time
     hard_limit: Duration,
-}
-
-impl Default for TimeManager {
-    fn default() -> Self {
-        Self {
-            control: TimeControl::Infinite,
-            start_time: Instant::now(),
-            soft_limit: Duration::default(),
-            hard_limit: Duration::default(),
-        }
-    }
+    // Stop Timer
+    stop: Arc<AtomicBool>,
+    // Node Count
+    nodes: Arc<AtomicU64>,
 }
 
 impl TimeManager {
-    pub fn start(&mut self) {
-        self.start_time = Instant::now();
+    pub fn new(
+        stop: Arc<AtomicBool>,
+        nodes: Arc<AtomicU64>,
+        time_control: TimeControl,
+        white: bool,
+    ) -> Self {
+        let (soft_limit, hard_limit) = match time_control {
+            TimeControl::Depth(_) => (Duration::ZERO, Duration::ZERO),
+            TimeControl::MoveTime(time) => (
+                Duration::from_millis(time - MOVE_OVERHEAD.min(time)),
+                Duration::from_millis(time - MOVE_OVERHEAD.min(time)),
+            ),
+            TimeControl::DynamicTime {
+                wtime,
+                btime,
+                winc,
+                binc,
+                movestogo,
+            } => {
+                let (remaining, increment) = if white {
+                    match winc {
+                        Some(winc) => (wtime, winc),
+                        None => (wtime, 0),
+                    }
+                } else {
+                    match binc {
+                        Some(binc) => (btime, binc),
+                        None => (btime, 0),
+                    }
+                };
+
+                let (soft, hard) = calculate_time(remaining, increment, movestogo);
+
+                (
+                    Duration::from_millis(soft as u64),
+                    Duration::from_millis(hard as u64),
+                )
+            }
+            TimeControl::Nodes(_) => (Duration::ZERO, Duration::ZERO),
+            TimeControl::Infinite => (Duration::ZERO, Duration::ZERO),
+        };
+
+        Self {
+            time_control,
+            start_time: Instant::now(),
+            soft_limit,
+            hard_limit,
+            stop,
+            nodes,
+        }
+    }
+
+    pub fn spinner(stop: Arc<AtomicBool>, nodes: Arc<AtomicU64>) -> TimeManager {
+        Self::new(stop, nodes, TimeControl::Infinite, false)
+    }
+
+    pub fn fixed_depth(depth: usize) -> TimeManager {
+        TimeManager::new(
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            TimeControl::Depth(depth as u32),
+            false,
+        )
     }
 
     pub fn elapsed(&self) -> Duration {
@@ -139,7 +197,55 @@ impl TimeManager {
     }
 
     pub fn set_control(&mut self, time_control: TimeControl) {
-        self.control = time_control
+        self.time_control = time_control
+    }
+
+    pub fn nodes(&self) -> u64 {
+        self.nodes.load(Ordering::SeqCst)
+    }
+
+    pub fn go_search(&mut self, depth: usize) -> bool {
+        if self.stop.load(Ordering::SeqCst) {
+            return false;
+        }
+
+        if depth == 1 {
+            return true;
+        }
+
+        let go: bool = match self.time_control {
+            TimeControl::Depth(control_depth) => depth <= control_depth as usize,
+            TimeControl::MoveTime(_) | TimeControl::DynamicTime { .. } => {
+                self.elapsed() < self.soft_limit
+            }
+            TimeControl::Nodes(control_nodes) => self.nodes() <= control_nodes,
+            TimeControl::Infinite => true,
+        };
+
+        if !go {
+            self.stop.store(true, Ordering::SeqCst);
+        }
+
+        go
+    }
+
+    pub fn should_stop(&mut self) -> bool {
+        if self.stop.load(Ordering::SeqCst) {
+            return true;
+        }
+
+        let stop: bool = match self.time_control {
+            TimeControl::MoveTime(_) | TimeControl::DynamicTime { .. } => {
+                self.elapsed() >= self.hard_limit
+            }
+            _ => false,
+        };
+
+        if stop {
+            self.stop.store(true, Ordering::SeqCst);
+        }
+
+        stop
     }
 }
 
@@ -160,6 +266,6 @@ pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) ->
 
 #[test]
 fn test() {
-    let (soft, hard) = calculate_time(100, 0, None);
+    let (soft, hard) = calculate_time(1000, 0, None);
     println!("Soft: {}, Hard: {}", soft, hard);
 }

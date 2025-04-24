@@ -14,5 +14,7 @@ pub type Nodes = u64;
 pub type Eval = i32;
 pub type Score = i32;
 
-pub const INFINITY: Score = 32_000;
+pub const INFINITY: Eval = 32_001;
+pub const MATE: Eval = 32_000;
+pub const MAX_MATE: Eval = MATE - MAX_DEPTH as Eval;
 pub const MAX_DEPTH: usize = 127;

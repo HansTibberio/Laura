@@ -1,15 +1,20 @@
 use std::{
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    fmt::Display,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
     thread,
 };
 
 use laura_core::{legal_moves, Move, MoveList};
 
 use crate::{
-    config::{INFINITY, MAX_DEPTH},
+    config::{INFINITY, MATE, MAX_DEPTH, MAX_MATE},
     position::Position,
     search::{MainThread, PrincipalVariation, WorkerThread},
-    timer::TimeManager,
+    timer::TimeControl,
+    TimeManager,
 };
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -21,18 +26,41 @@ pub struct SearchStack {
 #[derive(Debug)]
 pub struct Thread {
     pub search_stack: [SearchStack; MAX_DEPTH],
-
+    pub time_manager: TimeManager,
     pub principal_variation: PrincipalVariation,
     pub nodes: u64,
     pub ply: usize,
-
     pub score: i32,
     pub depth: usize,
-    pub stop: bool,
+}
+
+impl Display for Thread {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let score: String = if self.score.abs() >= MAX_MATE {
+            let mate_in: i32 = (MATE - self.score.abs() + 1) / 2;
+
+            if self.score > 0 {
+                format!("mate {}", mate_in)
+            } else {
+                format!("mate -{}", mate_in)
+            }
+        } else {
+            format!("cp {}", self.score)
+        };
+
+        let time: u128 = self.time_manager.elapsed().as_millis().max(1);
+        let nodes: u64 = self.time_manager.nodes();
+        let nps: u128 = (nodes as u128 * 1000) / time;
+        write!(
+            f,
+            "info time {} score {} depth {} nodes {} nps {} {}",
+            time, score, self.depth, nodes, nps, self.principal_variation
+        )
+    }
 }
 
 impl Thread {
-    pub fn new() -> Self {
+    pub fn new(time_manager: TimeManager) -> Self {
         Self {
             search_stack: [SearchStack::default(); MAX_DEPTH],
             principal_variation: PrincipalVariation::default(),
@@ -40,8 +68,12 @@ impl Thread {
             ply: 0,
             score: -INFINITY,
             depth: 0,
-            stop: false,
+            time_manager,
         }
+    }
+
+    pub fn spinner(stop: Arc<AtomicBool>, nodes: Arc<AtomicU64>) -> Self {
+        Self::new(TimeManager::spinner(stop, nodes))
     }
 
     pub fn best_move(&self) -> Move {
@@ -54,28 +86,30 @@ impl Thread {
         self.ply = 0;
         self.score = -INFINITY;
         self.depth = 0;
-        self.stop = false;
     }
 }
 
 #[derive(Debug)]
 pub struct ThreadPool {
-    pub main: Thread,
-    pub pool: Vec<Thread>,
-    pub time_manager: TimeManager,
-    stop: AtomicBool,
-    nodes: AtomicU64,
+    main: Thread,
+    pool: Vec<Thread>,
+    stop: Arc<AtomicBool>,
+    nodes: Arc<AtomicU64>,
 }
 
 impl ThreadPool {
-    pub fn new(stop: AtomicBool) -> Self {
+    pub fn new(stop: Arc<AtomicBool>) -> Self {
+        let nodes: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
         Self {
-            main: Thread::new(),
+            main: Thread::spinner(stop.clone(), nodes.clone()),
             pool: Vec::new(),
-            time_manager: TimeManager::default(),
             stop,
-            nodes: AtomicU64::new(0),
+            nodes,
         }
+    }
+
+    pub fn stop(&mut self) {
+        self.stop.store(true, Ordering::SeqCst);
     }
 
     pub fn set_up(&mut self) {
@@ -84,15 +118,24 @@ impl ThreadPool {
     }
 
     pub fn resize(&mut self, threads: usize) {
-        self.main = Thread::new();
-        self.pool.resize_with(threads - 1, Thread::new);
+        self.main = Thread::spinner(self.stop.clone(), self.nodes.clone());
+        self.pool.resize_with(threads, || {
+            Thread::spinner(self.stop.clone(), self.nodes.clone())
+        });
     }
 
     pub fn start_search(
         &mut self,
         position: &mut Position,
-        time_manager: TimeManager,
+        time_control: TimeControl,
     ) -> Option<Move> {
+        self.main.time_manager = TimeManager::new(
+            self.stop.clone(),
+            self.nodes.clone(),
+            time_control,
+            position.white(),
+        );
+
         let moves: MoveList = legal_moves!(&position.board());
         if moves.is_empty() {
             if position.in_check() {
@@ -107,28 +150,26 @@ impl ThreadPool {
             return Some(moves.moves()[0]);
         }
 
-        self.time_manager = time_manager;
-
         self.set_up();
-        self.stop.store(false, Ordering::Release);
-        self.nodes = AtomicU64::new(0);
+        self.stop.store(false, Ordering::SeqCst);
+        self.nodes.store(0, Ordering::SeqCst);
 
         let pcopy: Position = position.clone();
         thread::scope(|s| {
             s.spawn(|| {
                 self.main.set_up();
-                // TODO! delete the depth
-                position.iterative_deepening::<MainThread>(&mut self.main, 5);
-                self.stop.store(true, Ordering::Release);
+                position.iterative_deepening::<MainThread>(&mut self.main);
+                self.stop.store(true, Ordering::SeqCst);
             });
             for thread in self.pool.iter_mut() {
-                let mut position: Position = pcopy.clone();
-                thread.set_up();
-                // TODO! delete the depth
-                position.iterative_deepening::<WorkerThread>(thread, 5);
+                s.spawn(|| {
+                    let mut position: Position = pcopy.clone();
+                    thread.set_up();
+                    position.iterative_deepening::<WorkerThread>(thread);
+                });
             }
         });
-
+        println!("{}", self.main.time_manager.elapsed().as_millis());
         let best: Move = self.main.best_move();
         Some(best)
     }
@@ -136,9 +177,8 @@ impl ThreadPool {
 
 #[test]
 fn test_resize() {
-    let mut threadpool = ThreadPool::new(AtomicBool::new(false));
+    let mut threadpool = ThreadPool::new(Arc::new(AtomicBool::new(false)));
     let mut position = Position::default();
-    let time_manager = TimeManager::default();
-    let best = threadpool.start_search(&mut position, time_manager);
+    let best = threadpool.start_search(&mut position, TimeControl::Depth(4));
     println!("Best: {}", best.unwrap());
 }
