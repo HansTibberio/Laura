@@ -2,13 +2,23 @@
 
 //! UCI protocol implementation
 
-use std::str::FromStr;
+use std::{
+    io::{stdin, BufRead, Stdin},
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::{self, Receiver},
+        Arc,
+    },
+    thread,
+};
 
-use laura_core::Board;
+use laura_core::{Board, Move};
 
 use crate::{
     position::Position,
-    timer::{TimeControl, TimeManager, TimeParserError},
+    thread::ThreadPool,
+    timer::{TimeControl, TimeParserError},
 };
 
 const AUTHOR: &str = "HansTibberio";
@@ -24,7 +34,6 @@ pub enum UCICommand {
     Go(TimeControl),
     Stop,
     Quit,
-
     DividePerft(u8),
     Perft(u8),
     Print,
@@ -36,20 +45,22 @@ pub enum UCIError {
     UnknownCommand(String),
     NoOptionValue,
     InvalidOptionValue,
-    InvalidPosition,
+    InvalidFenPosition,
+    InvalidPositionFormat(String),
     InvalidGo(TimeParserError),
-    IlegalUciMove,
+    IlegalUciMove(String),
 }
 
 impl std::fmt::Display for UCIError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UCIError::UnknownCommand(s) => write!(f, "Error: Unkown command: '{s}'."),
-            UCIError::NoOptionValue => write!(f, "Error: No option value provided."),
-            UCIError::InvalidOptionValue => write!(f, "Error: Invalid option value."),
-            UCIError::InvalidPosition => write!(f, "Error: Invalid position format."),
-            UCIError::InvalidGo(err) => write!(f, "Error: '{err:?}'"),
-            UCIError::IlegalUciMove => write!(f, "Error: Ilegal uci move"),
+            UCIError::UnknownCommand(s) => write!(f, "[error] unkown command '{s}'."),
+            UCIError::NoOptionValue => write!(f, "[error] no option value provided."),
+            UCIError::InvalidOptionValue => write!(f, "[error] invalid option value."),
+            UCIError::InvalidFenPosition => write!(f, "[error] invalid fen position format."),
+            UCIError::InvalidPositionFormat(s) => write!(f, "[error] {s}"),
+            UCIError::InvalidGo(err) => write!(f, "[error] '{err:?}'"),
+            UCIError::IlegalUciMove(s) => write!(f, "[error] ilegal uci move '{s}'."),
         }
     }
 }
@@ -77,8 +88,27 @@ impl FromStr for UCICommand {
             Some("isready") => Ok(Self::IsReady),
             Some("ucinewgame") => Ok(Self::UciNewGame),
             Some("position") => {
-                let mut board: Board = match tokens.next() {
-                    Some("startpos") => Board::default(),
+                let board: Board = match tokens.next() {
+                    Some("startpos") => match tokens.next() {
+                        Some("moves") => {
+                            let mut board: Board = Board::default();
+                            for uci_move in tokens {
+                                if let Some(mv) = board.find_move(uci_move) {
+                                    let board_res: Board = board.make_move(mv);
+                                    board = board_res;
+                                } else {
+                                    return Err(UCIError::IlegalUciMove(uci_move.to_string()));
+                                }
+                            }
+                            return Ok(Self::Position(board));
+                        }
+                        None => Board::default(),
+                        Some(_) => {
+                            return Err(UCIError::InvalidPositionFormat(
+                                "unexpected token after 'startpos' (expected 'moves' or end of command)".to_string(),
+                            ))
+                        }
+                    },
                     Some("fen") => {
                         let mut fen: String = String::with_capacity(128);
                         for token in tokens.by_ref().take(6) {
@@ -87,23 +117,29 @@ impl FromStr for UCICommand {
                             }
                             fen.push_str(token);
                         }
-                        Board::from_str(&fen)
+                        let mut board: Board = Board::from_str(&fen)
                             .ok()
-                            .ok_or(UCIError::InvalidPosition)?
-                    }
-                    _ => return Err(UCIError::InvalidPosition),
-                };
+                            .ok_or(UCIError::InvalidFenPosition)?;
 
-                if matches!(tokens.next(), Some("moves")) {
-                    for uci_move in tokens {
-                        if let Some(mv) = board.find_move(uci_move) {
-                            let board_res: Board = board.make_move(mv);
-                            board = board_res;
-                        } else {
-                            return Err(UCIError::IlegalUciMove);
+                        if matches!(tokens.next(), Some("moves")) {
+                            for uci_move in tokens {
+                                if let Some(mv) = board.find_move(uci_move) {
+                                    let board_res: Board = board.make_move(mv);
+                                    board = board_res;
+                                } else {
+                                    return Err(UCIError::IlegalUciMove(uci_move.to_string()));
+                                }
+                            }
                         }
+
+                        board
                     }
-                }
+                    _ => {
+                        return Err(UCIError::InvalidPositionFormat(
+                            "expected 'startpos' or 'fen' after 'position'".to_string(),
+                        ))
+                    }
+                };
 
                 Ok(Self::Position(board))
             }
@@ -137,58 +173,90 @@ impl FromStr for UCICommand {
     }
 }
 
-#[derive(Default)]
-pub struct UCI {
-    position: Position,
-    time_manager: TimeManager,
+pub fn uci_start() {
+    println!("{NAME} {VERSION} by {AUTHOR}");
 }
 
-impl UCI {
-    pub fn uci_start() {
-        println!("{NAME} {VERSION} by {AUTHOR}");
-    }
+pub fn uci_listener() {
+    let (sender, receiver) = mpsc::channel();
+    let stop: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    let stop_clone: Arc<AtomicBool> = Arc::clone(&stop);
+    thread::spawn(move || {
+        uci_loop(receiver, stop_clone);
+    });
 
-    pub fn run(&mut self, command: Result<UCICommand, UCIError>) {
+    let stdin: Stdin = stdin();
+    for line in stdin.lock().lines() {
+        match line {
+            Ok(cmd) => {
+                let command: Result<UCICommand, UCIError> = UCICommand::from_str(&cmd);
+                match command {
+                    Ok(UCICommand::Stop) => {
+                        stop.store(true, Ordering::SeqCst);
+                    }
+                    Ok(UCICommand::Quit) => {
+                        stop.store(true, Ordering::SeqCst);
+                        std::process::exit(0);
+                    }
+                    _ => {
+                        if sender.send(command).is_err() {
+                            eprintln!("info string [error] failed to send command.");
+                            break;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("info string [error] reading stdin: {}.", e);
+            }
+        }
+    }
+}
+
+pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<AtomicBool>) {
+    let mut position: Position = Position::default();
+    let mut threadpool: ThreadPool = ThreadPool::new(stop);
+
+    while let Ok(command) = receiver.recv() {
         match command {
             Ok(UCICommand::Uci) => {
-                println!("id name {NAME} {VERSION}");
-                println!("id author {AUTHOR}");
+                println!("id name {} {}", NAME, VERSION);
+                println!("id author {}", AUTHOR);
                 println!("uciok");
             }
             Ok(UCICommand::IsReady) => {
                 println!("readyok");
             }
             Ok(UCICommand::UciNewGame) => {
-                self.position.set_board(Board::default());
+                position.set_board(Board::default());
             }
             Ok(UCICommand::Position(pos)) => {
-                self.position.set_board(pos);
+                position.set_board(pos);
             }
             Ok(UCICommand::Go(time_control)) => {
-                // TODO!
-                self.time_manager.start();
-                self.time_manager.set_control(time_control);
-                println!("TimeControl: {time_control:?}")
+                let best: Option<Move> = threadpool.start_search(&mut position, time_control);
+                if let Some(mv) = best {
+                    println!("bestmove {}", mv);
+                }
             }
-            Ok(UCICommand::Stop) => todo!(),
-            Ok(UCICommand::Quit) => {
-                std::process::exit(0);
+            Ok(UCICommand::Stop) | Ok(UCICommand::Quit) => {
+                eprintln!("info string [warning] unexpected stop/quit.");
+                continue;
             }
-
             Ok(UCICommand::DividePerft(depth)) => {
-                self.position.divided_perft(depth);
+                position.divided_perft(depth);
             }
             Ok(UCICommand::Perft(depth)) => {
-                self.position.perft(depth);
+                position.perft(depth);
             }
             Ok(UCICommand::Print) => {
-                println!("{}", self.position.board());
+                println!("{}", position.board());
             }
             Ok(UCICommand::Eval) => {
-                if self.position.in_check() {
-                    println!("None: King in check");
+                if position.in_check() {
+                    println!("none: king in check.");
                 } else {
-                    println!("{}", self.position.evaluate());
+                    println!("{}", position.evaluate());
                 }
             }
             Err(UCIError::UnknownCommand(s)) if s.is_empty() => {}

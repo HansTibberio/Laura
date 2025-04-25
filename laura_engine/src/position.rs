@@ -3,7 +3,7 @@
 //! Position implementation
 
 use crate::{config::Nodes, evaluation};
-use laura_core::{enumerate_legal_moves, AllMoves, Board, Move};
+use laura_core::{enumerate_legal_moves, AllMoves, Board, Color, Move};
 use std::{
     mem::replace,
     time::{Duration, Instant},
@@ -109,5 +109,9 @@ impl Position {
 
     pub fn in_check(&self) -> bool {
         self.board.checkers.count_bits() != 0
+    }
+
+    pub fn white(&self) -> bool {
+        self.board.side == Color::White
     }
 }
