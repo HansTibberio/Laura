@@ -56,6 +56,15 @@ impl IntoIterator for MoveList {
     }
 }
 
+impl<'a> IntoIterator for &'a MoveList {
+    type Item = &'a Move;
+    type IntoIter = core::slice::Iter<'a, Move>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.moves[..self.len].iter()
+    }
+}
+
 impl Default for MoveList {
     /// Creates a new, empty `MoveList` initialized with the default values.
     ///
