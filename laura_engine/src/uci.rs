@@ -45,9 +45,10 @@ pub enum UCIError {
     UnknownCommand(String),
     NoOptionValue,
     InvalidOptionValue,
-    InvalidPosition,
+    InvalidFenPosition,
+    InvalidPositionFormat(String),
     InvalidGo(TimeParserError),
-    IlegalUciMove,
+    IlegalUciMove(String),
 }
 
 impl std::fmt::Display for UCIError {
@@ -56,9 +57,10 @@ impl std::fmt::Display for UCIError {
             UCIError::UnknownCommand(s) => write!(f, "[error] unkown command '{s}'."),
             UCIError::NoOptionValue => write!(f, "[error] no option value provided."),
             UCIError::InvalidOptionValue => write!(f, "[error] invalid option value."),
-            UCIError::InvalidPosition => write!(f, "[error] invalid position format."),
+            UCIError::InvalidFenPosition => write!(f, "[error] invalid fen position format."),
+            UCIError::InvalidPositionFormat(s) => write!(f, "[error] {s}"),
             UCIError::InvalidGo(err) => write!(f, "[error] '{err:?}'"),
-            UCIError::IlegalUciMove => write!(f, "[error] ilegal uci move."),
+            UCIError::IlegalUciMove(s) => write!(f, "[error] ilegal uci move '{s}'."),
         }
     }
 }
@@ -86,8 +88,27 @@ impl FromStr for UCICommand {
             Some("isready") => Ok(Self::IsReady),
             Some("ucinewgame") => Ok(Self::UciNewGame),
             Some("position") => {
-                let mut board: Board = match tokens.next() {
-                    Some("startpos") => Board::default(),
+                let board: Board = match tokens.next() {
+                    Some("startpos") => match tokens.next() {
+                        Some("moves") => {
+                            let mut board: Board = Board::default();
+                            for uci_move in tokens {
+                                if let Some(mv) = board.find_move(uci_move) {
+                                    let board_res: Board = board.make_move(mv);
+                                    board = board_res;
+                                } else {
+                                    return Err(UCIError::IlegalUciMove(uci_move.to_string()));
+                                }
+                            }
+                            return Ok(Self::Position(board));
+                        }
+                        None => Board::default(),
+                        Some(_) => {
+                            return Err(UCIError::InvalidPositionFormat(
+                                "unexpected token after 'startpos' (expected 'moves' or end of command)".to_string(),
+                            ))
+                        }
+                    },
                     Some("fen") => {
                         let mut fen: String = String::with_capacity(128);
                         for token in tokens.by_ref().take(6) {
@@ -96,23 +117,29 @@ impl FromStr for UCICommand {
                             }
                             fen.push_str(token);
                         }
-                        Board::from_str(&fen)
+                        let mut board: Board = Board::from_str(&fen)
                             .ok()
-                            .ok_or(UCIError::InvalidPosition)?
-                    }
-                    _ => return Err(UCIError::InvalidPosition),
-                };
+                            .ok_or(UCIError::InvalidFenPosition)?;
 
-                if matches!(tokens.next(), Some("moves")) {
-                    for uci_move in tokens {
-                        if let Some(mv) = board.find_move(uci_move) {
-                            let board_res: Board = board.make_move(mv);
-                            board = board_res;
-                        } else {
-                            return Err(UCIError::IlegalUciMove);
+                        if matches!(tokens.next(), Some("moves")) {
+                            for uci_move in tokens {
+                                if let Some(mv) = board.find_move(uci_move) {
+                                    let board_res: Board = board.make_move(mv);
+                                    board = board_res;
+                                } else {
+                                    return Err(UCIError::IlegalUciMove(uci_move.to_string()));
+                                }
+                            }
                         }
+
+                        board
                     }
-                }
+                    _ => {
+                        return Err(UCIError::InvalidPositionFormat(
+                            "expected 'startpos' or 'fen' after 'position'".to_string(),
+                        ))
+                    }
+                };
 
                 Ok(Self::Position(board))
             }
