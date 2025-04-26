@@ -3,25 +3,39 @@
 All notable changes to this project will be documented in this file.  
 This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic Versioning][semver-link].
 
+---
+
 ## [Unreleased]
+
+---
+
+## [0.3.0] - 2025-04-26
 
 ### Added
 - New utility functions in the **BitBoard** module:
-  - `right()`, `right_for()`, `left()`, `left_for()`, `up_left_for()`, `up_right_for()`.
-- Improved documentation for the **BitBoard** module, now including usage examples.
+  - `right()`, `right_for()`, `left()`, `left_for()`, `up_left_for()`, and `up_right_for()`.
+- New methods in the **MoveList** module:
+  - `as_slice()`, `as_mut_slice()`, and `clear()`
+- Expanded and improved documentation for **BitBoard** and **MoveList**, now including usage examples.
 - New macros for generating legal moves:
   - `legal_moves!`: Generates all legal moves for a given board position.
-  - `quiet_moves!`: Generates only quiet (non-capturing) moves for a given board position.
-  - `tactical_moves!`: Generates only tactical (capturing and promoting) moves for a given board position.
-- The `MoveFilter` trait and the structs `QuietMoves`, `TacticalMoves`, and `AllMoves` to improve flexibility and control over move generation.
+  - `quiet_moves!`: Generates only quiet (non-capturing) moves.
+  - `tactical_moves!`: Generates only tactical (capturing and promoting) moves.
+- Introduced the `MoveFilter` trait along with the `QuietMoves`, `TacticalMoves`, and `AllMoves` structs,
+  offering more flexibility and control over move generation.
+- Implemented `Deref` and `DerefMut` for **MoveList** for more ergonomic access.
 
 ### Changed
 - Rewrote the `Iterator` implementation for `BitBoard` to improve clarity and flexibility.
-- Replaced previous constants used for move generation with the new `MoveFilter` trait and specialized structs (`QuietMoves`, `TacticalMoves`, `AllMoves`)
+- Replaced the previous move generation constants with the new `MoveFilter` trait and associated
+  structs(`QuietMoves`, `TacticalMoves`, `AllMoves`).
+- Renamed the old `moves()` method in **MoveList** to `as_slice()`.
 
-### Breaking
-- `BitBoard::to_square()` now returns an `Option<Square>` instead of `Square`, to handle empty bitboards more safely.
-- The previous approach to move generation using constants has been replaced by the `MoveFilter` trait, which may require changes in how users interact with move generation.
+### Removed
+- `BitBoard::to_square()` now returns an `Option<Square>` instead of `Square`, improving safety when dealing with empty
+  bitboards.
+- The previous move generation approach based on constants has been fully replaced by the `MoveFilter`
+  system. This change may require users to update how they generate moves.
 
 ---
 
