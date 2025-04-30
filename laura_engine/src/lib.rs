@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 mod config;
 mod evaluation;
+mod movepicker;
 mod position;
 mod search;
 mod thread;
