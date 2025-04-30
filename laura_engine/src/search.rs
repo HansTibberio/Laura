@@ -4,10 +4,11 @@
 
 use std::fmt;
 
-use laura_core::{legal_moves, Move, MoveList};
+use laura_core::Move;
 
 use crate::{
-    config::{Score, INFINITY, MAX_DEPTH},
+    config::{ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, MATE, MAX_DELTA, MAX_PLY},
+    movepicker::MovePicker,
     position::Position,
     thread::Thread,
 };
@@ -25,20 +26,45 @@ impl ThreadType for WorkerThread {
     const MAIN: bool = false;
 }
 
+trait NodeType {
+    const PV_NODE: bool;
+    const ROOT_NODE: bool;
+}
+
+struct RootNode;
+struct PvNode;
+struct NonPv;
+
+impl NodeType for RootNode {
+    const PV_NODE: bool = true;
+    const ROOT_NODE: bool = true;
+}
+
+impl NodeType for PvNode {
+    const PV_NODE: bool = true;
+    const ROOT_NODE: bool = false;
+}
+
+impl NodeType for NonPv {
+    const PV_NODE: bool = false;
+    const ROOT_NODE: bool = false;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct PrincipalVariation {
-    moves: [Move; MAX_DEPTH],
-    len: usize,
+    pub moves: [Move; MAX_PLY],
+    pub len: usize,
 }
 
 impl fmt::Display for PrincipalVariation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pv")?;
-
-        for mv in self.moves() {
-            write!(f, " {mv}")?;
+        if !self.is_empty() {
+            write!(f, "pv ")?;
         }
 
+        for &mv in self.as_slice() {
+            write!(f, "{mv} ")?;
+        }
         Ok(())
     }
 }
@@ -46,54 +72,68 @@ impl fmt::Display for PrincipalVariation {
 impl Default for PrincipalVariation {
     fn default() -> Self {
         Self {
-            moves: [Move::null(); MAX_DEPTH],
+            moves: [Move::null(); MAX_PLY],
             len: 0,
         }
     }
 }
 
 impl PrincipalVariation {
-    pub fn push_line(&mut self, mv: Move, old: &Self) {
-        self.len = old.len + 1;
-        self.moves[0] = mv;
-        self.moves[1..=old.len].copy_from_slice(&old.moves[..old.len]);
+    #[inline(always)]
+    pub fn push(&mut self, mv: Move) {
+        if self.len < MAX_PLY {
+            self.moves[self.len] = mv;
+            self.len += 1;
+        }
     }
 
-    pub fn set_len(&mut self, len: usize) {
-        self.len = len
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    pub fn moves(&self) -> &[Move] {
+    #[inline(always)]
+    pub fn as_slice(&self) -> &[Move] {
         &self.moves[..self.len]
     }
 
-    pub fn best_move(&self) -> Move {
-        self.moves[0]
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.len = 0;
+    }
+
+    #[inline(always)]
+    pub fn push_line(&mut self, mv: Move, old: &PrincipalVariation) {
+        self.clear();
+        self.push(mv);
+        self.len = old.len + 1;
+        self.moves[1..=old.len].copy_from_slice(old.as_slice());
     }
 }
 
 impl Position {
-    #[allow(clippy::extra_unused_type_parameters)]
     pub fn iterative_deepening<T>(&mut self, thread: &mut Thread)
     where
         T: ThreadType,
     {
-        let mut pv_table: PrincipalVariation = PrincipalVariation::default();
+        let limit: usize = thread
+            .time_manager
+            .time_control()
+            .depth()
+            .unwrap_or(MAX_PLY);
 
-        let alpha: i32 = -INFINITY;
-        let beta: i32 = INFINITY;
-        while thread.depth < MAX_DEPTH && thread.time_manager.go_search(thread.depth + 1) {
-            let score: i32 = self.negamax(thread, thread.depth + 1, alpha, beta, &mut pv_table);
-
-            if thread.time_manager.should_stop() {
+        // Main Iterative Deepening Loop
+        for depth in 1..=limit {
+            if thread.depth > MAX_PLY || thread.time_manager.stop_soft() {
                 break;
             }
 
-            thread.principal_variation = pv_table;
+            let score: i32 = self.aspiration_window(thread, depth);
+
+            if thread.time_manager.stopped() {
+                break;
+            }
+
             thread.score = score;
             thread.depth += 1;
 
@@ -101,73 +141,273 @@ impl Position {
                 println!("{}", thread);
             }
         }
+
+        if T::MAIN && thread.time_manager.stopped() {
+            println!("{}", thread);
+        }
     }
 
+    fn aspiration_window(&mut self, thread: &mut Thread, depth: usize) -> i32 {
+        let mut root_pv: PrincipalVariation = PrincipalVariation::default();
+        let mut delta: i32 = ASPIRATION_MARGIN;
+
+        let (mut alpha, mut beta) = if depth >= ASPIRATION_DEPTH_THRESHOLD {
+            (
+                (-INFINITY).max(thread.score - delta),
+                (INFINITY).min(thread.score + delta),
+            )
+        } else {
+            (-INFINITY, INFINITY)
+        };
+
+        loop {
+            let score: i32 = self.alphabeta::<RootNode>(thread, depth, alpha, beta, &mut root_pv);
+
+            if thread.time_manager.stopped() {
+                return -INFINITY;
+            }
+
+            match score {
+                s if s <= alpha => {
+                    // Fail-low, expand window down
+                    alpha -= delta;
+                }
+                s if s >= beta => {
+                    // Fail-high, expand window up
+                    beta += delta;
+                }
+                _ => {
+                    // Succesful
+                    thread.principal_variation = root_pv;
+                    return score;
+                }
+            }
+
+            delta *= 2;
+            if delta >= MAX_DELTA {
+                alpha = -INFINITY;
+                beta = INFINITY;
+            }
+        }
+    }
+
+    // Alpha-Beta with Fail-Soft
     #[allow(unused_assignments)]
-    pub fn negamax(
+    fn alphabeta<Node: NodeType>(
         &mut self,
         thread: &mut Thread,
-        depth: usize,
+        mut depth: usize,
         mut alpha: i32,
-        beta: i32,
-        pv_table: &mut PrincipalVariation,
-    ) -> Score {
-        if thread.time_manager.should_stop() {
+        mut beta: i32,
+        node_pv: &mut PrincipalVariation,
+    ) -> i32 {
+        let mut temp_pv: PrincipalVariation = PrincipalVariation::default();
+        let child_pv: &mut PrincipalVariation = &mut temp_pv;
+
+        // Hard Limit Time Control
+        if thread.time_manager.stop_hard(thread.nodes) {
             return 0;
         }
 
-        if depth == 0 {
-            return self.evaluate();
+        // Update thread selective depth
+        thread.seldepth = if Node::ROOT_NODE {
+            0
+        } else {
+            thread.seldepth.max(thread.ply)
+        };
+
+        // 1. Check Extension
+        let in_check: bool = self.in_check();
+        if in_check && depth < MAX_PLY {
+            depth += 1;
         }
 
-        let mut old_pv: PrincipalVariation = PrincipalVariation::default();
-        pv_table.set_len(0);
+        // 2. Quiescence Search
+        if depth == 0 || thread.ply >= MAX_PLY {
+            if Node::PV_NODE {
+                return self.quiescence::<PvNode>(thread, alpha, beta, node_pv);
+            } else {
+                return self.quiescence::<NonPv>(thread, alpha, beta, node_pv);
+            }
+        }
 
-        let moves: MoveList = legal_moves!(&self.board());
+        node_pv.len = 0;
+
+        // Limit the depth
+        depth = depth.min(MAX_PLY - 1);
+
+        if !Node::ROOT_NODE {
+            // 3. Mate Distance Pruning.
+            alpha = alpha.max(mated_in(thread.ply));
+            beta = beta.min(mate_in(thread.ply + 1));
+
+            if alpha >= beta {
+                return alpha;
+            }
+        }
+
         let mut best_move: Move = Move::default();
-        let mut best_score: Score = -INFINITY;
+        let mut best_score: i32 = -INFINITY;
+        let mut move_count: usize = 0;
 
-        for mv in moves {
-            self.push_move(mv);
-            let score = -self.negamax(thread, depth - 1, -beta, -alpha, &mut old_pv);
-            self.pop_move();
+        let mut picker: MovePicker = MovePicker::new(None, None);
 
+        // Main Alpha-Beta Loop
+        while let Some(mv) = picker.next(&self.board()) {
+            self.push_move(mv, thread);
+            move_count += 1;
+            let mut score: i32;
+
+            // Principal Variation Search
+            if move_count == 1 {
+                // First move: Full Window Search
+                score = if Node::PV_NODE {
+                    -self.alphabeta::<PvNode>(thread, depth - 1, -beta, -alpha, child_pv)
+                } else {
+                    -self.alphabeta::<NonPv>(thread, depth - 1, -beta, -alpha, child_pv)
+                };
+            } else {
+                // Later moves: Null window search
+                score = -self.alphabeta::<NonPv>(thread, depth - 1, -alpha - 1, -alpha, child_pv);
+
+                // If it fails high and we are in a PV node, re-search with full window
+                if score > alpha && Node::PV_NODE {
+                    score = -self.alphabeta::<PvNode>(thread, depth - 1, -beta, -alpha, child_pv);
+                }
+            }
+            self.pop_move(thread);
+
+            if thread.time_manager.stopped() {
+                return 0;
+            }
+
+            // Best move and alpha update
             if score > best_score {
                 best_score = score;
 
                 if score > alpha {
-                    best_move = mv;
-                    pv_table.push_line(best_move, &old_pv);
                     alpha = score;
+                    best_move = mv;
+                    if Node::PV_NODE {
+                        node_pv.push_line(best_move, child_pv);
+                    }
                 }
 
+                // Beta Pruning
                 if score >= beta {
-                    alpha = beta;
-
                     break;
                 }
             }
         }
 
-        alpha
+        if move_count == 0 {
+            return if in_check {
+                // We are being mated
+                mated_in(thread.ply)
+            } else {
+                // Stalemate
+                0
+            };
+        }
+
+        best_score
     }
+
+    #[allow(unused_assignments, unused_variables)]
+    fn quiescence<Node: NodeType>(
+        &mut self,
+        thread: &mut Thread,
+        mut alpha: i32,
+        beta: i32,
+        node_pv: &mut PrincipalVariation,
+    ) -> i32 {
+        let mut temp_pv: PrincipalVariation = PrincipalVariation::default();
+        let child_pv: &mut PrincipalVariation = &mut temp_pv;
+        node_pv.len = 0;
+
+        // Hard Limit Time Control
+        if thread.time_manager.stop_hard(thread.nodes) {
+            return 0;
+        }
+
+        // Update thread selective depth
+        if thread.ply > thread.seldepth {
+            thread.seldepth = thread.ply;
+        }
+
+        let stand_pat: i32 = self.evaluate();
+
+        // Standing Pat Prunning
+        // Fail-soft beta cuttof
+        if stand_pat >= beta {
+            return stand_pat;
+        }
+
+        // Improve alpha
+        if stand_pat > alpha {
+            alpha = stand_pat;
+        }
+
+        let mut best_score: i32 = stand_pat;
+        let mut best_move: Move = Move::default();
+
+        let mut picker: MovePicker = MovePicker::new(None, None);
+        picker.skip_quiets = true;
+
+        // Main Quiescence Loop
+        while let Some(mv) = picker.next(&self.board()) {
+            self.push_move(mv, thread);
+            let score: i32 = -self.quiescence::<Node>(thread, -beta, -alpha, child_pv);
+            self.pop_move(thread);
+
+            if thread.time_manager.stopped() {
+                return 0;
+            }
+
+            // Best move and alpha update
+            if score > best_score {
+                best_score = score;
+
+                if score > alpha {
+                    alpha = score;
+                    best_move = mv;
+                    if Node::PV_NODE {
+                        node_pv.push_line(mv, child_pv);
+                    }
+                }
+
+                // Beta Pruning
+                if score >= beta {
+                    break;
+                }
+            }
+        }
+
+        best_score
+    }
+}
+
+#[inline(always)]
+fn mate_in(ply: usize) -> i32 {
+    MATE - ply as i32
+}
+
+#[inline(always)]
+fn mated_in(ply: usize) -> i32 {
+    -MATE + ply as i32
 }
 
 #[cfg(test)]
 mod tests {
-
-    use std::str::FromStr;
-
-    use laura_core::Board;
-
     use crate::{search::MainThread, thread::Thread, Position, TimeManager};
+    use laura_core::Board;
+    use std::str::FromStr;
 
     #[test]
     fn test_negamax() {
         let mut position: Position = Position::default();
         position.set_board(
-            Board::from_str("r1bqkb1r/pppppppp/5n2/8/1nB5/2N1P3/PPPP1PPP/R1BQK1NR w KQkq - 0 1")
-                .unwrap(),
+            Board::from_str("6k1/1bqr1p1p/pp3pp1/8/3b4/2P1Q2P/PP3PP1/2B1R1K1 w - - 0 22").unwrap(),
         );
         let mut thread: Thread = Thread::new(TimeManager::fixed_depth(5));
         let _ = position.iterative_deepening::<MainThread>(&mut thread);
