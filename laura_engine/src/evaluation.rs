@@ -2,7 +2,7 @@
 
 //! Evaluation implementation using PeSTO
 
-use std::ops::{AddAssign, Sub};
+use std::ops::{AddAssign, Mul, Sub};
 
 use laura_core::{BitBoard, Board, Color, Piece, PieceType, Square};
 
@@ -24,6 +24,14 @@ impl Sub for Value {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Value(self.0 - rhs.0, self.1 - rhs.1)
+    }
+}
+
+impl Mul for Value {
+    type Output = Value;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Value(self.0 * rhs.0, self.1 * rhs.1)
     }
 }
 
@@ -136,6 +144,16 @@ const CONNECTED_PAWN_BONUS: [Value; 8] = [
     Value(40, 40), // Rank Seven
     Value(0, 0),   // Rank Eight
 ];
+const OUTPOST_KNIGHT_BONUS: [Value; 8] = [
+    Value(0, 0),   // Rank One
+    Value(0, 0),   // Rank Two
+    Value(0, 0),   // Rank Three
+    Value(20, 25), // Rank Four
+    Value(25, 30), // Rank Five
+    Value(35, 35), // Rank Six
+    Value(40, 40), // Rank Seven
+    Value(0, 0),   // Rank Eight
+];
 const TEMPO: i32 = 20;
 
 pub fn evaluate(board: &Board) -> i32 {
@@ -190,18 +208,16 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
         if pawns.0 & DOUBLED_PAWN_MASK[square.to_index()] != 0 {
             eval += DOUBLED_PAWN[square.file().to_index()];
         }
+
+        //Double supported pawn bonus
+        if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones() >= 2 {
+            eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+        }
     }
 
     // Connected pawn bonus
     for square in connected {
         eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
-    }
-
-    //Double supported pawn bonus
-    for square in pawns {
-        if pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()] == 0 {
-            eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
-        }
     }
 
     eval
@@ -216,10 +232,26 @@ fn connected_pawns<const COLOR: usize>(pawns: BitBoard) -> BitBoard {
 fn evaluate_knights<const COLOR: usize>(board: &Board) -> Value {
     let mut eval: Value = Value(0, 0);
     let knights: BitBoard = board.pieces_bitboard[PieceType::KNIGHT] & board.sides_bitboard[COLOR];
+    let enemy_pawns: BitBoard =
+        board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR ^ 1];
+    let pawns: BitBoard = board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR];
+    let outpost: BitBoard = knights & KNIGHT_OUTPOST[COLOR];
 
     for square in knights {
         eval += PIECE_VALUE[PieceType::KNIGHT];
         eval += KNIGHT_TABLE[square.to_index() ^ (56 * COLOR)];
+    }
+
+    // Knight Outpost bonus
+    for square in outpost {
+        if enemy_pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR ^ 1][square.to_index()] == 0 {
+            let count: u32 =
+                (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones();
+
+            // Extra bonus if the knight it's supported by two pawns
+            eval += OUTPOST_KNIGHT_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+                * Value(count as i32, count as i32);
+        }
     }
 
     eval
@@ -365,10 +397,15 @@ pub const DOUBLED_PAWN_MASK: [u64; 64] = [
     282578800148737, 565157600297474, 1130315200594948, 2260630401189896, 4521260802379792, 9042521604759584, 18085043209519168, 36170086419038336,
 ];
 
+pub const KNIGHT_OUTPOST: [BitBoard; 2] = [BitBoard(16954728004976640), BitBoard(258708618240)];
+
 #[cfg(test)]
 mod test {
-    use crate::evaluation::{connected_pawns, evaluate, Value, CONNECTED_PAWN_BONUS, WHITE};
-    use laura_core::Board;
+    use crate::evaluation::{
+        connected_pawns, evaluate, Value, CONNECTED_PAWN_BONUS, DOUBLE_SUPPORTED_PAWN_MASKS,
+        KNIGHT_OUTPOST, WHITE,
+    };
+    use laura_core::{BitBoard, Board};
     use std::str::FromStr;
 
     #[test]
@@ -399,25 +436,71 @@ mod test {
 
     #[test]
     fn phalanx() {
-        let board =
+        let board: Board =
             Board::from_str("rnbqkbnr/pppppppp/8/7P/8/8/PPPPPPP1/RNBQKBNR w KQkq - 0 1").unwrap();
-        let pawns = board.allied_pawns();
-        let phalanx = pawns.left_for::<WHITE>() | pawns.right_for::<WHITE>();
+        let pawns: BitBoard = board.allied_pawns();
+        let phalanx: BitBoard = pawns.left_for::<WHITE>() | pawns.right_for::<WHITE>();
         println!("Phalanx: {}", phalanx);
         println!("{}", phalanx & pawns);
     }
 
     #[test]
     fn connected() {
-        let board =
-            Board::from_str("rnbqkbnr/pppppppp/8/8/8/1P6/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        let pawns = board.allied_pawns();
-        let connected = connected_pawns::<WHITE>(pawns);
-        let mut eval = Value(0, 0);
+        let board: Board = Board::from_str(
+            "rnbqkbnr/p4p1p/2p1p1p1/1p1p4/1P6/P3PNP1/2PP1P1P/RNBQKB1R w KQkq - 0 1",
+        )
+        .unwrap();
+        let pawns: BitBoard = board.allied_pawns();
+        let connected: BitBoard = connected_pawns::<WHITE>(pawns);
+        let mut eval: Value = Value(0, 0);
         for square in connected {
             eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * WHITE)]
         }
         println!("{}", connected);
         println!("Connected Pawn Bonus: {:?}", eval);
+    }
+
+    #[test]
+    fn double_supported() {
+        let board: Board = Board::from_str(
+            "rnbqkbnr/p4p1p/2p1p1p1/1p1p4/1P6/P3PNP1/2PP1P1P/RNBQKB1R w KQkq - 0 1",
+        )
+        .unwrap();
+        let pawns: BitBoard = board.allied_pawns();
+        let mut eval: Value = Value(0, 0);
+        let mut supported: BitBoard = BitBoard::EMPTY;
+        for square in pawns {
+            if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE][square.to_index()]).count_ones() >= 2 {
+                supported = supported.set_square(square);
+            }
+        }
+        for square in pawns {
+            if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE][square.to_index()]).count_ones() >= 2 {
+                eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * WHITE)]
+            }
+        }
+        println!("{}", supported);
+        println!("Double Supported Pawn Bonus: {:?}", eval);
+    }
+
+    #[test]
+    fn generate_outpost_knight() {
+        let board =
+            Board::from_str("r2r2k1/pp3pbp/3p2p1/3Np3/2P1P2q/P4P2/1P1Q2PP/1K1R3R w - - 2 21")
+                .unwrap();
+        let knights: BitBoard = board.allied_knights();
+        let pawns: BitBoard = board.allied_pawns();
+        let enemy_pawns: BitBoard = board.enemy_pawns();
+        let candidate: BitBoard = knights & KNIGHT_OUTPOST[WHITE];
+        let mut outpost_knights: BitBoard = BitBoard::EMPTY;
+        for square in candidate {
+            if enemy_pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE ^ 1][square.to_index()] == 0 {
+                let count: u32 =
+                    (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE][square.to_index()]).count_ones();
+                assert_eq!(count, 2);
+                outpost_knights = outpost_knights.set_square(square);
+            }
+        }
+        println!("Outpost: {}", outpost_knights)
     }
 }
