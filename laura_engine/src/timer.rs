@@ -99,6 +99,15 @@ impl FromStr for TimeControl {
     }
 }
 
+impl TimeControl {
+    pub fn depth(&self) -> Option<usize> {
+        match self {
+            TimeControl::Depth(depth) => Some(*depth as usize),
+            _ => None,
+        }
+    }
+}
+
 fn parse_value<T: FromStr>(
     tokens: &mut SplitWhitespace<'_>,
     key: &str,
@@ -124,6 +133,7 @@ pub struct TimeManager {
     stop: Arc<AtomicBool>,
     // Node Count
     nodes: Arc<AtomicU64>,
+    last_nodes: u64,
 }
 
 impl TimeManager {
@@ -173,11 +183,8 @@ impl TimeManager {
             hard_limit,
             stop,
             nodes,
+            last_nodes: 0,
         }
-    }
-
-    pub fn spinner(stop: Arc<AtomicBool>, nodes: Arc<AtomicU64>) -> TimeManager {
-        Self::new(stop, nodes, TimeControl::Infinite, false)
     }
 
     pub fn fixed_depth(depth: usize) -> TimeManager {
@@ -193,6 +200,14 @@ impl TimeManager {
         self.start_time.elapsed()
     }
 
+    pub fn stopped(&self) -> bool {
+        self.stop.load(Ordering::SeqCst)
+    }
+
+    pub fn time_control(&self) -> TimeControl {
+        self.time_control
+    }
+
     pub fn set_control(&mut self, time_control: TimeControl) {
         self.time_control = time_control
     }
@@ -201,41 +216,45 @@ impl TimeManager {
         self.nodes.load(Ordering::SeqCst)
     }
 
-    pub fn go_search(&mut self, depth: usize) -> bool {
-        if self.stop.load(Ordering::SeqCst) {
-            return false;
-        }
-
-        if depth == 1 {
-            return true;
-        }
-
-        let go: bool = match self.time_control {
-            TimeControl::Depth(control_depth) => depth <= control_depth as usize,
-            TimeControl::MoveTime(_) | TimeControl::DynamicTime { .. } => {
-                self.elapsed() < self.soft_limit
-            }
-            TimeControl::Nodes(control_nodes) => self.nodes() <= control_nodes,
-            TimeControl::Infinite => true,
-        };
-
-        if !go {
-            self.stop.store(true, Ordering::SeqCst);
-        }
-
-        go
-    }
-
-    pub fn should_stop(&mut self) -> bool {
+    pub fn stop_soft(&mut self) -> bool {
         if self.stop.load(Ordering::SeqCst) {
             return true;
         }
 
         let stop: bool = match self.time_control {
             TimeControl::MoveTime(_) | TimeControl::DynamicTime { .. } => {
-                self.elapsed() >= self.hard_limit
+                self.elapsed() >= self.soft_limit
             }
+            TimeControl::Nodes(control_nodes) => self.nodes() >= control_nodes,
             _ => false,
+        };
+
+        if stop {
+            self.stop.store(true, Ordering::SeqCst);
+        }
+
+        stop
+    }
+
+    pub fn stop_hard(&mut self, nodes: u64) -> bool {
+        if self.stop.load(Ordering::SeqCst) {
+            return true;
+        }
+        let searched: u64 = nodes - self.last_nodes;
+
+        if searched > 1024 {
+            self.nodes.fetch_add(searched, Ordering::SeqCst);
+            self.last_nodes = nodes;
+        }
+
+        let stop: bool = match self.time_control {
+            TimeControl::Depth(_) | TimeControl::Infinite => self.stop.load(Ordering::SeqCst),
+            TimeControl::MoveTime(time) => {
+                let past_time: bool = self.elapsed().as_millis() as u64 >= time;
+                past_time
+            }
+            TimeControl::DynamicTime { .. } => self.elapsed() >= self.hard_limit,
+            TimeControl::Nodes(control_nodes) => self.nodes() >= control_nodes,
         };
 
         if stop {
@@ -248,7 +267,7 @@ impl TimeManager {
     pub fn not_search(&self) -> bool {
         match self.time_control {
             TimeControl::MoveTime(_) | TimeControl::DynamicTime { .. } => {
-                self.soft_limit == Duration::ZERO
+                self.hard_limit == Duration::ZERO
             }
             _ => false,
         }
@@ -272,6 +291,6 @@ pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) ->
 
 #[test]
 fn test() {
-    let (soft, hard) = calculate_time(1000, 0, None);
+    let (soft, hard) = calculate_time(20, 0, None);
     println!("Soft: {}, Hard: {}", soft, hard);
 }

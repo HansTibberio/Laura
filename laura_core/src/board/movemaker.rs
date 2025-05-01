@@ -157,7 +157,6 @@ impl Board {
     #[inline]
     pub fn find_move(&self, move_str: &str) -> Option<Move> {
         gen_moves::<AllMoves>(self)
-            .moves()
             .iter()
             .find(|&mv| *mv == move_str)
             .copied()

@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["HansTibberio <hanstiberio@proton.me>"]
 
 [dependencies]
-laura_core = { path = "../laura_core", version = "0.2.2" }
+laura_core = { path = "../laura_core", version = "0.3.0" }
 
 [[bin]]
 name = "laura"

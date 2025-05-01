@@ -2,16 +2,16 @@
 
 //! Position implementation
 
-use crate::{config::Nodes, evaluation};
+use crate::{evaluation, thread::Thread};
 use laura_core::{enumerate_legal_moves, AllMoves, Board, Color, Move};
 use std::{
     mem::replace,
     time::{Duration, Instant},
 };
 
-fn perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
+fn perft<const DIV: bool>(board: &Board, depth: u8) -> u64 {
     let start: Instant = Instant::now();
-    let total_nodes: Nodes = inner_perft::<DIV>(board, depth);
+    let total_nodes: u64 = inner_perft::<DIV>(board, depth);
     let duration: Duration = start.elapsed();
 
     let nps: f64 = total_nodes as f64 / duration.as_secs_f64();
@@ -21,8 +21,8 @@ fn perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
 }
 
 #[allow(unused_assignments)]
-fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
-    let mut total: Nodes = 0;
+fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> u64 {
+    let mut total: u64 = 0;
 
     if !DIV && depth <= 1 {
         enumerate_legal_moves::<AllMoves, _>(board, |_| -> bool {
@@ -33,7 +33,7 @@ fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> Nodes {
     }
 
     enumerate_legal_moves::<AllMoves, _>(board, |mv| -> bool {
-        let mut nodes: Nodes = 0;
+        let mut nodes: u64 = 0;
         if DIV && depth == 1 {
             nodes = 1;
         } else {
@@ -72,31 +72,39 @@ impl Position {
         self.board = board
     }
 
-    pub fn perft(&self, depth: u8) -> Nodes {
-        let total_nodes: Nodes = perft::<false>(&self.board, depth);
+    pub fn perft(&self, depth: u8) -> u64 {
+        let total_nodes: u64 = perft::<false>(&self.board, depth);
         total_nodes
     }
 
-    pub fn divided_perft(&self, depth: u8) -> Nodes {
-        let total_nodes: Nodes = perft::<true>(&self.board, depth);
+    pub fn divided_perft(&self, depth: u8) -> u64 {
+        let total_nodes: u64 = perft::<true>(&self.board, depth);
         total_nodes
     }
 
-    pub fn push_move(&mut self, mv: Move) {
+    pub fn push_move(&mut self, mv: Move, thread: &mut Thread) {
         let new: Board = self.board.make_move(mv);
         let old: Board = replace(&mut self.board, new);
         self.game.push(old);
+
+        thread.ply += 1;
+        thread.nodes += 1;
     }
 
-    pub fn push_null(&mut self) {
+    pub fn push_null(&mut self, thread: &mut Thread) {
         let new: Board = self.board.null_move();
         let old: Board = replace(&mut self.board, new);
         self.game.push(old);
+
+        thread.ply += 1;
+        thread.nodes += 1;
     }
 
-    pub fn pop_move(&mut self) {
+    pub fn pop_move(&mut self, thread: &mut Thread) {
         let old: Board = self.game.pop().unwrap();
         self.board = old;
+
+        thread.ply -= 1;
     }
 
     pub fn evaluate(&self) -> i32 {

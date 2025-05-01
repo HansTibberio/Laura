@@ -19,6 +19,7 @@
 
 use core::array::IntoIter;
 use core::fmt;
+use core::ops::{Deref, DerefMut};
 
 use crate::Move;
 
@@ -34,13 +35,30 @@ const MAX_MOVES: usize = 255;
 // Copyright (c) 2022 Pleco
 // Source: https://github.com/pleco-rs/Pleco/blob/main/pleco/src/core/move_list.rs
 
-/// A struct that holds a list of `Move` objects for a given position in a chess game.
+/// A container for storing and managing a list of [`Move`]s in a chess position.
 ///
-/// The `MoveList` allows storing and managing moves, and tracks the current number of moves.
+/// `MoveList` efficiently holds up to `MAX_MOVES` moves, depending on the target architecture.
+/// It keeps track of the number of moves currently stored, allowing for fast appending, clearing, and iteration.
 ///
-/// ### Fields
-/// - `moves`: An array of `Move` objects, up to `MAX_MOVES`.
-/// - `len`: The current number of moves stored in the list.
+/// # Notes
+///
+/// - `MAX_MOVES` may vary depending on the target platform's pointer width (`16`, `32`, or `64` bits).
+/// - The list operates similarly to a small, fixed-capacity vector.
+///
+/// # Example
+///
+/// ```
+/// # use laura_core::*;
+///
+/// let mut move_list = MoveList::default();
+/// assert_eq!(move_list.len(), 0);
+///
+/// let mv = Move::new(Square::E2, Square::E3, MoveType::Quiet);
+/// move_list.push(mv);
+///
+/// assert_eq!(move_list.len(), 1);
+/// assert_eq!(move_list[0], mv);
+/// ```
 #[derive(Clone, Debug)]
 pub struct MoveList {
     moves: [Move; MAX_MOVES],
@@ -65,11 +83,38 @@ impl<'a> IntoIterator for &'a MoveList {
     }
 }
 
+impl Deref for MoveList {
+    type Target = [Move];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl DerefMut for MoveList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_slice()
+    }
+}
+
 impl Default for MoveList {
-    /// Creates a new, empty `MoveList` initialized with the default values.
+    /// Creates a new, empty `MoveList` with all moves initialized to `Move::null()`.
+    ///
+    /// The list will have a length of `0` and a capacity of `MAX_MOVES`.
+    /// All entries are pre-filled with `Move::null()` to ensure valid memory and avoid uninitialized data.
     ///
     /// # Returns
-    /// A `MoveList` with all moves set to `Move::null()` and length set to 0.
+    ///
+    /// A fresh `MoveList` ready to store moves.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let move_list = MoveList::default();
+    /// assert_eq!(move_list.len(), 0);
+    /// ```
     #[inline]
     fn default() -> Self {
         MoveList {
@@ -99,9 +144,49 @@ impl fmt::Display for MoveList {
 }
 
 impl MoveList {
-    /// Adds a move to the list.
+    /// Adds a [`Move`] to the `MoveList`.
     ///
-    /// If the list is already at maximum capacity, the move is not added.
+    /// If the list has not yet reached its maximum capacity (`MAX_MOVES`), the move is appended.
+    /// If the list is full, the move is silently ignored.
+    ///
+    /// This function guarantees that the `MoveList` will never grow beyond its fixed capacity,
+    /// avoiding out-of-bounds memory access.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    ///
+    /// let mv1 = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
+    /// let mv2 = Move::new(Square::D7, Square::D5, MoveType::DoublePawn);
+    ///
+    /// move_list.push(mv1);
+    /// move_list.push(mv2);
+    ///
+    /// assert_eq!(move_list.len(), 2);
+    /// assert_eq!(move_list[0], mv1);
+    /// assert_eq!(move_list[1], mv2);
+    /// ```
+    ///
+    /// # Expected behavior
+    ///
+    /// If the list reaches its maximum capacity, additional calls to `push` will have no effect.
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    /// const MAX_MOVES: usize = 252; // for 64 bits target pointer
+    ///
+    /// for _ in 0..(MAX_MOVES + 10) {
+    ///     let mv = Move::new(Square::A2, Square::A3, MoveType::Quiet);
+    ///     move_list.push(mv);
+    /// }
+    ///
+    /// assert_eq!(move_list.len(), MAX_MOVES);
+    /// ```
     #[inline(always)]
     pub fn push(&mut self, mv: Move) {
         if self.len < MAX_MOVES {
@@ -110,23 +195,161 @@ impl MoveList {
         }
     }
 
-    /// Returns a reference to the stored moves, limited by `len`.
+    /// Returns a slice containing the moves currently stored in the `MoveList`.
+    ///
+    /// Only the first `len` moves are included; unused slots in the internal array are excluded.
+    ///
+    /// This allows efficient and safe iteration over the moves without exposing the uninitialized (or `Move::null()`) entries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    ///
+    /// let mv1 = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
+    /// let mv2 = Move::new(Square::D7, Square::D5, MoveType::DoublePawn);
+    ///
+    /// move_list.push(mv1);
+    /// move_list.push(mv2);
+    ///
+    /// let moves = move_list.as_slice();
+    ///
+    /// assert_eq!(moves.len(), 2);
+    /// assert_eq!(moves[0], mv1);
+    /// assert_eq!(moves[1], mv2);
+    /// ```
+    ///
+    /// # Expected behavior
+    ///
+    /// Even though the underlying array has capacity for `MAX_MOVES`,  
+    /// only the portion up to the current `len` is returned.
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let move_list = MoveList::default();
+    /// assert!(move_list.as_slice().is_empty());
+    /// ```
     #[inline(always)]
-    pub fn moves(&self) -> &[Move] {
+    pub fn as_slice(&self) -> &[Move] {
         &self.moves[..self.len]
     }
 
-    /// Returns the number of moves currently stored in the list.
+    /// Returns a mutable slice containing the moves currently stored in the `MoveList`.
+    ///
+    /// Only the first `len` moves are included; unused slots beyond `len` are excluded.
+    ///
+    /// This allows safe in-place modification of the stored moves without risking access
+    /// to uninitialized (`Move::null()`) entries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    ///
+    /// let mv1 = Move::new(Square::E2, Square::E4, MoveType::DoublePawn);
+    /// let mv2 = Move::new(Square::D7, Square::D5, MoveType::DoublePawn);
+    ///
+    /// move_list.push(mv1);
+    /// move_list.push(mv2);
+    ///
+    /// // Modify the first move
+    /// move_list.as_mut_slice()[0] = Move::new(Square::E2, Square::E3, MoveType::Quiet);
+    ///
+    /// assert_eq!(move_list[0].get_dest(), Square::E3);
+    /// ```
+    ///
+    /// # Expected behavior
+    ///
+    /// The returned mutable slice is always exactly `len` elements long,  
+    /// regardless of the full array capacity.
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    /// assert_eq!(move_list.as_mut_slice().len(), 0);
+    /// ```
+    #[inline(always)]
+    pub fn as_mut_slice(&mut self) -> &mut [Move] {
+        &mut self.moves[0..self.len]
+    }
+
+    /// Returns the number of moves currently stored in the `MoveList`.
+    ///
+    /// This represents the number of valid moves in the list,  
+    /// which may be less than the maximum capacity (`MAX_MOVES`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    /// assert_eq!(move_list.len(), 0);
+    ///
+    /// move_list.push(Move::new(Square::E2, Square::E4, MoveType::DoublePawn));
+    /// assert_eq!(move_list.len(), 1);
+    ///
+    /// move_list.push(Move::new(Square::D7, Square::D5, MoveType::DoublePawn));
+    /// assert_eq!(move_list.len(), 2);
+    /// ```
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.len
     }
 
-    /// Checks whether the move list is empty.
+    /// Returns `true` if the `MoveList` contains no moves.
     ///
-    ///`true` if the list is empty, `false` otherwise.
+    /// This checks whether the list is currently empty (`len == 0`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    /// assert!(move_list.is_empty());
+    ///
+    /// move_list.push(Move::new(Square::E2, Square::E4, MoveType::DoublePawn));
+    /// assert!(!move_list.is_empty());
+    ///
+    /// move_list.clear();
+    /// assert!(move_list.is_empty());
+    /// ```
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.len == 0
+    }
+
+    /// Clears all moves from the `MoveList`.
+    ///
+    /// This resets the list to an empty state by setting the length to zero.
+    /// The underlying move data is not overwritten, but will be replaced as new moves are added.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// let mut move_list = MoveList::default();
+    ///
+    /// move_list.push(Move::new(Square::E2, Square::E4, MoveType::DoublePawn));
+    /// move_list.push(Move::new(Square::D7, Square::D5, MoveType::DoublePawn));
+    ///
+    /// assert_eq!(move_list.len(), 2);
+    ///
+    /// move_list.clear();
+    ///
+    /// assert!(move_list.is_empty());
+    /// assert_eq!(move_list.len(), 0);
+    /// ```
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.len = 0;
     }
 }
