@@ -159,6 +159,47 @@ impl BitBoard {
         }
     }
 
+    /// Returns the nearest [`Square`] set in the bitboard, based on the specified color's perspective.
+    ///
+    /// This method returns the square corresponding to the most relevant bit set in the bitboard:
+    /// - For [`White`], the nearest square is the **least significant bit** (LSB), i.e., the lowest square index.
+    /// - For [`Black`], the nearest square is the **most significant bit** (MSB), i.e., the highest square index.
+    ///
+    /// This is particularly useful when evaluating move generation or determining priority based on color direction.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use laura_core::*;
+    ///
+    /// // Bitboard with multiple squares set
+    /// let bitboard = BitBoard((1 << Square::C3 as u64) | (1 << Square::E5 as u64));
+    ///
+    /// // From White's perspective, C3 is the closest (LSB)
+    /// assert_eq!(bitboard.to_square_nearest::<{Color::White as usize}>(), Some(Square::C3));
+    ///
+    /// // From Black's perspective, E5 is the closest (MSB)
+    /// assert_eq!(bitboard.to_square_nearest::<{Color::Black as usize}>(), Some(Square::E5));
+    ///
+    /// // Empty bitboard returns None
+    /// let empty = BitBoard::EMPTY;
+    /// assert_eq!(empty.to_square_nearest::<{Color::White as usize}>(), None);
+    /// ```
+    #[inline(always)]
+    pub const fn to_square_nearest<const COLOR: usize>(self) -> Option<Square> {
+        if self.0 != 0 {
+            let index: u8 = if COLOR == White as usize {
+                self.0.trailing_zeros() as u8
+            } else {
+                63 - self.0.leading_zeros() as u8
+            };
+            // SAFETY: Valid square guaranteed by prior check
+            Some(unsafe { core::mem::transmute::<u8, Square>(index & 63) })
+        } else {
+            None
+        }
+    }
+
     /// Returns a new `BitBoard` with the bit corresponding to the given [`Square`] set to `1`.
     ///
     /// This operation does not mutate the original `BitBoard`, but instead returns a new instance
