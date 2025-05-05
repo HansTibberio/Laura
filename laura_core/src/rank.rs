@@ -17,8 +17,20 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::BitBoard;
 use core::fmt;
 use core::mem::transmute;
+
+const RANK_BITBOARDS: [BitBoard; 8] = [
+    BitBoard::RANK_1,
+    BitBoard::RANK_2,
+    BitBoard::RANK_3,
+    BitBoard::RANK_4,
+    BitBoard::RANK_5,
+    BitBoard::RANK_6,
+    BitBoard::RANK_7,
+    BitBoard::RANK_8,
+];
 
 /// Enum representing the ranks (rows) on a chessboard.
 /// Ranks are numbered from 'One' (1) to 'Eight' (8).
@@ -96,5 +108,11 @@ impl Rank {
     #[inline(always)]
     pub const fn down(self) -> Self {
         unsafe { transmute((self as u8).wrapping_sub(1) & 7) }
+    }
+
+    /// Gets the Bitboard of the rank.
+    #[inline(always)]
+    pub const fn to_bitboard(self) -> BitBoard {
+        RANK_BITBOARDS[self.to_index()]
     }
 }
