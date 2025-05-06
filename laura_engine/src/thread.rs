@@ -1,5 +1,34 @@
+/*
+    Laura: A single-threaded UCI chess engine written in Rust.
+
+    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+
+    Laura is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laura is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laura. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+// src/thread.rs
+
+//! Thread management for parallel search.
+
+use crate::{
+    position::Position,
+    search::{MainThread, PrincipalVariation, WorkerThread},
+    timer::TimeControl,
+    TimeManager,
+};
+use laura_core::{legal_moves, Move, MoveList};
 use std::{
-    fmt::Display,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
@@ -7,18 +36,9 @@ use std::{
     thread,
 };
 
-use laura_core::{legal_moves, Move, MoveList};
-
-use crate::{
-    config::{MATE, MAX_MATE},
-    position::Position,
-    search::{MainThread, PrincipalVariation, WorkerThread},
-    timer::TimeControl,
-    TimeManager,
-};
-
 #[derive(Debug)]
 pub struct Thread {
+    pub id: usize,
     pub time_manager: TimeManager,
     pub principal_variation: PrincipalVariation,
     pub nodes: u64,
@@ -28,35 +48,10 @@ pub struct Thread {
     pub depth: usize,
 }
 
-impl Display for Thread {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let score: String = if self.score.abs() >= MAX_MATE {
-            let mate_in: i32 = (MATE - self.score.abs() + 1) / 2;
-
-            if self.score > 0 {
-                format!("mate {}", mate_in)
-            } else {
-                format!("mate -{}", mate_in)
-            }
-        } else {
-            format!("cp {}", self.score)
-        };
-
-        let time: u128 = self.time_manager.elapsed().as_millis().max(1);
-        let nodes: u64 = self.time_manager.nodes();
-        let nps: u128 = (nodes as u128 * 1000) / time;
-        write!(
-            f,
-            "info score {} depth {} seldepth {} time {} nodes {} nps {} {}",
-            score, self.depth, self.seldepth, time, nodes, nps, self.principal_variation
-        )?;
-        Ok(())
-    }
-}
-
 impl Thread {
-    pub fn new(time_manager: TimeManager) -> Self {
+    pub fn new(time_manager: TimeManager, id: usize) -> Self {
         Self {
+            id,
             principal_variation: PrincipalVariation::default(),
             nodes: 0,
             ply: 0,
@@ -67,8 +62,11 @@ impl Thread {
         }
     }
 
-    pub fn spinner(stop: Arc<AtomicBool>, nodes: Arc<AtomicU64>) -> Self {
-        Self::new(TimeManager::new(stop, nodes, TimeControl::Infinite, false))
+    pub fn smp(stop: Arc<AtomicBool>, nodes: Arc<AtomicU64>, id: usize) -> Self {
+        Self::new(
+            TimeManager::new(stop, nodes, TimeControl::Infinite, false),
+            id,
+        )
     }
 
     pub fn best_move(&self) -> Move {
@@ -97,7 +95,7 @@ impl ThreadPool {
     pub fn new(stop: Arc<AtomicBool>) -> Self {
         let nodes: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
         Self {
-            main: Thread::spinner(stop.clone(), nodes.clone()),
+            main: Thread::smp(stop.clone(), nodes.clone(), 0),
             pool: Vec::new(),
             stop,
             nodes,
@@ -110,13 +108,18 @@ impl ThreadPool {
 
     pub fn set_up(&mut self) {
         self.main.set_up();
-        self.pool.iter_mut().for_each(|thread| thread.set_up());
+        self.pool
+            .iter_mut()
+            .for_each(|thread: &mut Thread| thread.set_up());
     }
 
     pub fn resize(&mut self, threads: usize) {
-        self.main = Thread::spinner(self.stop.clone(), self.nodes.clone());
-        self.pool.resize_with(threads, || {
-            Thread::spinner(self.stop.clone(), self.nodes.clone())
+        let mut id: usize = 1;
+        self.main = Thread::smp(self.stop.clone(), self.nodes.clone(), 0);
+        self.pool.resize_with(threads.saturating_sub(1), || {
+            let thread_id: usize = id;
+            id += 1;
+            Thread::smp(self.stop.clone(), self.nodes.clone(), thread_id)
         });
     }
 
@@ -135,9 +138,9 @@ impl ThreadPool {
         let moves: MoveList = legal_moves!(&position.board());
         if moves.is_empty() {
             if position.in_check() {
-                println!("info score mate 0 depth 0 time 0");
+                println!("info depth 0 score mate 0 time 0");
             } else {
-                println!("info score cp 0 depth 0 time 0");
+                println!("info depth 0 score cp 0 time 0");
             }
             return None;
         }
@@ -170,10 +173,17 @@ impl ThreadPool {
     }
 }
 
-#[test]
-fn test_best_move() {
-    let mut threadpool = ThreadPool::new(Arc::new(AtomicBool::new(false)));
-    let mut position = Position::default();
-    let best = threadpool.start_search(&mut position, TimeControl::Depth(4));
-    println!("Best: {}", best.unwrap());
+#[cfg(test)]
+mod test {
+    use crate::{timer::TimeControl, Position, ThreadPool};
+    use laura_core::Move;
+    use std::sync::{atomic::AtomicBool, Arc};
+
+    #[test]
+    fn test_best_move() {
+        let mut threadpool: ThreadPool = ThreadPool::new(Arc::new(AtomicBool::new(false)));
+        let mut position: Position = Position::default();
+        let best: Option<Move> = threadpool.start_search(&mut position, TimeControl::Depth(4));
+        println!("Best: {}", best.unwrap());
+    }
 }

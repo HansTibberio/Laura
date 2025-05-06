@@ -1,17 +1,36 @@
+/*
+    Laura: A single-threaded UCI chess engine written in Rust.
+
+    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+
+    Laura is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laura is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laura. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // src/search.rs
 
 //! Search implementation
 
-use std::fmt;
-
-use laura_core::Move;
-
 use crate::{
-    config::{ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, MATE, MAX_DELTA, MAX_PLY},
+    config::{
+        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, MATE, MAX_DELTA, MAX_MATE, MAX_PLY,
+    },
     movepicker::MovePicker,
     position::Position,
     thread::Thread,
 };
+use laura_core::Move;
+use std::fmt;
 
 pub trait ThreadType {
     const MAIN: bool;
@@ -116,14 +135,15 @@ impl Position {
     where
         T: ThreadType,
     {
-        let limit: usize = thread
+        let start_depth: usize = (thread.id & 0b111) + 1;
+        let max_depth: usize = thread
             .time_manager
             .time_control()
             .depth()
             .unwrap_or(MAX_PLY);
 
         // Main Iterative Deepening Loop
-        for depth in 1..=limit {
+        for depth in start_depth..=max_depth {
             if thread.depth > MAX_PLY || thread.time_manager.stop_soft() {
                 break;
             }
@@ -138,12 +158,12 @@ impl Position {
             thread.depth += 1;
 
             if T::MAIN {
-                println!("{}", thread);
+                uci_printer(thread);
             }
         }
 
         if T::MAIN && thread.time_manager.stopped() {
-            println!("{}", thread);
+            uci_printer(thread);
         }
     }
 
@@ -397,21 +417,24 @@ fn mated_in(ply: usize) -> i32 {
     -MATE + ply as i32
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{search::MainThread, thread::Thread, Position, TimeManager};
-    use laura_core::Board;
-    use std::str::FromStr;
+fn uci_printer(thread: &mut Thread) {
+    let score: String = if thread.score.abs() >= MAX_MATE {
+        let mate_in: i32 = (MATE - thread.score.abs() + 1) / 2;
 
-    #[test]
-    fn test_negamax() {
-        let mut position: Position = Position::default();
-        position.set_board(
-            Board::from_str("6k1/1bqr1p1p/pp3pp1/8/3b4/2P1Q2P/PP3PP1/2B1R1K1 w - - 0 22").unwrap(),
-        );
-        let mut thread: Thread = Thread::new(TimeManager::fixed_depth(5));
-        let _ = position.iterative_deepening::<MainThread>(&mut thread);
-        println!("Score: {}", thread.score);
-        println!("Best move: {}", thread.best_move());
-    }
+        if thread.score > 0 {
+            format!("mate {}", mate_in)
+        } else {
+            format!("mate -{}", mate_in)
+        }
+    } else {
+        format!("cp {}", thread.score)
+    };
+
+    let time: u128 = thread.time_manager.elapsed().as_millis().max(1);
+    let nodes: u64 = thread.time_manager.nodes();
+    let nps: u128 = (nodes as u128 * 1000) / time;
+    println!(
+        "info depth {} seldepth {} score {} time {} nodes {} nps {} {}",
+        thread.depth, thread.seldepth, score, time, nodes, nps, thread.principal_variation
+    );
 }

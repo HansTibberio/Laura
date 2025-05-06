@@ -1,16 +1,34 @@
+/*
+    Laura: A single-threaded UCI chess engine written in Rust.
+
+    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+
+    Laura is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laura is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laura. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // src/evaluation.rs
 
-//! Evaluation implementation using PeSTO
-
-use std::ops::{AddAssign, Mul, Sub};
+//! Static board evaluation.
 
 use laura_core::{
     get_bishop_attacks, get_knight_attacks, get_rook_attacks, BitBoard, Board, Color, Piece,
     PieceType, Square,
 };
+use std::ops::{AddAssign, Mul, Sub};
 
-const WHITE: usize = 0;
-const BLACK: usize = 1;
+const WHITE: usize = Color::White as usize;
+const BLACK: usize = Color::Black as usize;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Value(i32, i32);

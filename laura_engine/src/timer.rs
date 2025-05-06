@@ -1,7 +1,29 @@
+/*
+    Laura: A single-threaded UCI chess engine written in Rust.
+
+    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+
+    Laura is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laura is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laura. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // src/timer.rs
 
 //! Timer implementation
 
+use crate::config::{
+    DEFAULT_MOVESTOGO, INCREMENT_TIME_BASE, MINIMUM_TIME, MOVE_OVERHEAD, OPTIMAL_TIME_BASE,
+};
 use std::{
     str::{FromStr, SplitWhitespace},
     sync::{
@@ -9,10 +31,6 @@ use std::{
         Arc,
     },
     time::{Duration, Instant},
-};
-
-use crate::config::{
-    DEFAULT_MOVESTOGO, INCREMENT_TIME_BASE, MINIMUM_TIME, MOVE_OVERHEAD, OPTIMAL_TIME_BASE,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -133,7 +151,8 @@ pub struct TimeManager {
     stop: Arc<AtomicBool>,
     // Node Count
     nodes: Arc<AtomicU64>,
-    last_nodes: u64,
+    // Node Count Buffer
+    buffer: u64,
 }
 
 impl TimeManager {
@@ -183,17 +202,8 @@ impl TimeManager {
             hard_limit,
             stop,
             nodes,
-            last_nodes: 0,
+            buffer: 0,
         }
-    }
-
-    pub fn fixed_depth(depth: usize) -> TimeManager {
-        TimeManager::new(
-            Arc::new(AtomicBool::new(false)),
-            Arc::new(AtomicU64::new(0)),
-            TimeControl::Depth(depth as u32),
-            false,
-        )
     }
 
     pub fn elapsed(&self) -> Duration {
@@ -240,11 +250,11 @@ impl TimeManager {
         if self.stop.load(Ordering::SeqCst) {
             return true;
         }
-        let searched: u64 = nodes - self.last_nodes;
+        let searched: u64 = nodes - self.buffer;
 
         if searched > 1024 {
             self.nodes.fetch_add(searched, Ordering::SeqCst);
-            self.last_nodes = nodes;
+            self.buffer = nodes;
         }
 
         let stop: bool = match self.time_control {
