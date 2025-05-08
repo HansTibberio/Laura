@@ -17,25 +17,35 @@
     along with Laura. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// src/config.rs
+// src/tables.rs
 
-//! Engine configuration constants.
+//! Search tables for move ordering.
 
-// Timer parameters
-pub const MOVE_OVERHEAD: u64 = 50;
-pub const MINIMUM_TIME: u64 = 30;
-pub const OPTIMAL_TIME_BASE: u64 = 65;
-pub const INCREMENT_TIME_BASE: u64 = 85;
-pub const DEFAULT_MOVESTOGO: u64 = 40;
+use crate::config::{KILLER_SLOTS, MAX_PLY};
+use laura_core::Move;
 
-// Search parameters
-pub const INFINITY: i32 = 32_001;
-pub const MATE: i32 = 32_000;
-pub const MAX_MATE: i32 = MATE - MAX_PLY as i32;
-pub const MAX_PLY: usize = 128;
-pub const ASPIRATION_MARGIN: i32 = 25;
-pub const ASPIRATION_DEPTH_THRESHOLD: usize = 5;
-pub const MAX_DELTA: i32 = 1025;
+#[derive(Debug)]
+pub struct KillerMoves {
+    table: [[Option<Move>; KILLER_SLOTS]; MAX_PLY],
+}
 
-// Tables parameters
-pub const KILLER_SLOTS: usize = 2;
+impl Default for KillerMoves {
+    fn default() -> Self {
+        Self {
+            table: [[None; KILLER_SLOTS]; MAX_PLY],
+        }
+    }
+}
+
+impl KillerMoves {
+    pub fn store(&mut self, ply: usize, mv: Move) {
+        if self.table[ply][0] != Some(mv) {
+            self.table[ply][1] = self.table[ply][0];
+            self.table[ply][0] = Some(mv);
+        }
+    }
+
+    pub fn get(&self, ply: usize) -> [Option<Move>; KILLER_SLOTS] {
+        self.table[ply]
+    }
+}

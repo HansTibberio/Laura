@@ -24,6 +24,7 @@
 use crate::{
     position::Position,
     search::{MainThread, PrincipalVariation, WorkerThread},
+    tables::KillerMoves,
     timer::TimeControl,
     TimeManager,
 };
@@ -41,6 +42,7 @@ pub struct Thread {
     pub id: usize,
     pub time_manager: TimeManager,
     pub principal_variation: PrincipalVariation,
+    pub killer: KillerMoves,
     pub nodes: u64,
     pub ply: usize,
     pub seldepth: usize,
@@ -59,6 +61,7 @@ impl Thread {
             score: 0,
             depth: 0,
             time_manager,
+            killer: KillerMoves::default(),
         }
     }
 

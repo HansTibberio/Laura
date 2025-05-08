@@ -34,7 +34,8 @@ pub enum Stage {
 
 pub struct MovePicker {
     tt_move: Option<Move>,
-    killer_move: Option<Move>,
+    killer_move: [Option<Move>; 2],
+    killer_index: usize,
     stage: Stage,
     moves: MoveList,
     index: usize,
@@ -42,7 +43,7 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    pub fn new(tt_move: Option<Move>, killer_move: Option<Move>) -> Self {
+    pub fn new(tt_move: Option<Move>, killer_move: [Option<Move>; 2]) -> Self {
         Self {
             tt_move,
             killer_move,
@@ -50,6 +51,7 @@ impl MovePicker {
             moves: MoveList::default(),
             index: 0,
             skip_quiets: false,
+            killer_index: 0,
         }
     }
 
@@ -84,12 +86,17 @@ impl MovePicker {
                 self.index = 0;
             }
             if self.stage == Stage::Killers {
-                self.stage = Stage::Quiets;
-                if let Some(killer) = self.killer_move {
-                    if Some(killer) != self.tt_move {
-                        return Some(killer);
+                let moves: MoveList = quiet_moves!(position);
+                for i in self.killer_index..2 {
+                    self.killer_index += 1;
+                    match self.killer_move[i] {
+                        Some(killer) if Some(killer) != self.tt_move && moves.contains(&killer) => {
+                            return Some(killer);
+                        }
+                        _ => continue,
                     }
                 }
+                self.stage = Stage::Quiets;
             }
             if self.stage == Stage::Quiets {
                 if self.index == 0 {
@@ -108,7 +115,10 @@ impl MovePicker {
         while self.index < self.moves.len() {
             let mv: Move = self.moves[self.index];
             self.index += 1;
-            if Some(mv) == self.tt_move || Some(mv) == self.killer_move {
+            if Some(mv) == self.tt_move
+                || Some(mv) == self.killer_move[0]
+                || Some(mv) == self.killer_move[1]
+            {
                 continue;
             }
             return Some(mv);
@@ -157,7 +167,7 @@ mod test {
     #[test]
     fn test_picker() {
         let board: Board = Board::from_str("2r1k3/1P6/8/8/5b2/6P1/P7/2Q3K1 w - - 0 1").unwrap();
-        let mut picker: MovePicker = MovePicker::new(None, None);
+        let mut picker: MovePicker = MovePicker::new(None, [None, None]);
         while let Some(mv) = picker.next(&board) {
             println!("{}", mv);
         }
@@ -166,7 +176,7 @@ mod test {
     #[test]
     fn test_captures() {
         let board: Board = Board::from_str("2r1k3/1P6/8/8/5b2/6P1/P7/2Q3K1 w - - 0 1").unwrap();
-        let mut picker: MovePicker = MovePicker::new(None, None);
+        let mut picker: MovePicker = MovePicker::new(None, [None, None]);
         picker.skip_quiets = true;
         while let Some(mv) = picker.next(&board) {
             println!("{}", mv);

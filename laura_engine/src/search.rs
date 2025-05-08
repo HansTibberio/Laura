@@ -270,7 +270,8 @@ impl Position {
         let mut best_score: i32 = -INFINITY;
         let mut move_count: usize = 0;
 
-        let mut picker: MovePicker = MovePicker::new(None, None);
+        let killers: [Option<Move>; 2] = thread.killer.get(thread.ply);
+        let mut picker: MovePicker = MovePicker::new(None, killers);
 
         // Main Alpha-Beta Loop
         while let Some(mv) = picker.next(&self.board()) {
@@ -315,6 +316,9 @@ impl Position {
 
                 // Beta Pruning
                 if score >= beta {
+                    if mv.is_quiet() {
+                        thread.killer.store(thread.ply, mv);
+                    }
                     break;
                 }
             }
@@ -371,7 +375,7 @@ impl Position {
         let mut best_score: i32 = stand_pat;
         let mut best_move: Move = Move::default();
 
-        let mut picker: MovePicker = MovePicker::new(None, None);
+        let mut picker: MovePicker = MovePicker::new(None, [None, None]);
         picker.skip_quiets = true;
 
         // Main Quiescence Loop
