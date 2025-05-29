@@ -57,6 +57,8 @@ pub enum UCICommand {
     Perft(u8),
     Print,
     Eval,
+    License,
+    Help,
 }
 
 #[derive(Debug)]
@@ -187,6 +189,8 @@ impl FromStr for UCICommand {
             },
             Some("print") => Ok(Self::Print),
             Some("eval") => Ok(Self::Eval),
+            Some("license") => Ok(Self::License),
+            Some("help") => Ok(Self::Help),
             _ => Err(UCIError::UnknownCommand(s.to_string())),
         }
     }
@@ -277,6 +281,14 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
                 } else {
                     println!("{}", position.evaluate());
                 }
+            }
+            Ok(UCICommand::License) => {
+                println!("Laura is licensed under the GNU GPL v3.0.");
+                println!("See https://www.gnu.org/licenses/gpl-3.0.html for details.");
+            }
+            Ok(UCICommand::Help) => {
+                println!("Laura: A multi-threaded UCI chess engine written in Rust.");
+                println!("For more information, visit: https://github.com/HansTibberio/Laura");
             }
             Err(UCIError::UnknownCommand(s)) if s.is_empty() => {}
             Err(e) => eprintln!("info string {e}"),
