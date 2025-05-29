@@ -1,6 +1,25 @@
+/*
+    Laura: A multi-threaded UCI chess engine written in Rust.
+
+    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+
+    Laura is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laura is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laura. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // src/position.rs
 
-//! Position implementation
+//! Position management.
 
 use crate::{evaluation, thread::Thread};
 use laura_core::{enumerate_legal_moves, AllMoves, Board, Color, Move};
@@ -64,8 +83,14 @@ pub struct Position {
 }
 
 impl Position {
+    #[inline(always)]
     pub fn board(&self) -> Board {
         self.board
+    }
+
+    #[inline(always)]
+    pub fn key(&self) -> u64 {
+        self.board.zobrist.0
     }
 
     pub fn set_board(&mut self, board: Board) {
@@ -111,14 +136,17 @@ impl Position {
         evaluation::evaluate(&self.board)
     }
 
+    #[inline(always)]
     pub fn ply(&self) -> usize {
         self.game.len()
     }
 
+    #[inline(always)]
     pub fn in_check(&self) -> bool {
         self.board.checkers.count_bits() != 0
     }
 
+    #[inline(always)]
     pub fn white(&self) -> bool {
         self.board.side == Color::White
     }

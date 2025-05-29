@@ -17,8 +17,20 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::BitBoard;
 use core::fmt;
 use core::mem::transmute;
+
+const FILE_BITBOARDS: [BitBoard; 8] = [
+    BitBoard::FILE_A,
+    BitBoard::FILE_B,
+    BitBoard::FILE_C,
+    BitBoard::FILE_D,
+    BitBoard::FILE_E,
+    BitBoard::FILE_F,
+    BitBoard::FILE_G,
+    BitBoard::FILE_H,
+];
 
 /// Enum representing the files (columns) on a chessboard.
 /// Files are labeled from 'A' to 'H', with 'A' being the leftmost column and 'H' the rightmost.
@@ -105,5 +117,11 @@ impl File {
     #[inline(always)]
     pub const fn left(self) -> Self {
         unsafe { transmute((self as u8).wrapping_sub(1) & 7) }
+    }
+
+    /// Gets the Bitboard of the file.
+    #[inline(always)]
+    pub const fn to_bitboard(self) -> BitBoard {
+        FILE_BITBOARDS[self.to_index()]
     }
 }

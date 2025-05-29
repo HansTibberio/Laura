@@ -1,13 +1,34 @@
+/*
+    Laura: A multi-threaded UCI chess engine written in Rust.
+
+    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+
+    Laura is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laura is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laura. If not, see <https://www.gnu.org/licenses/>.
+*/
+
 // src/evaluation.rs
 
-//! Evaluation implementation using PeSTO
+//! Static board evaluation.
 
-use std::ops::{AddAssign, Sub};
+use laura_core::{
+    get_bishop_attacks, get_knight_attacks, get_rook_attacks, BitBoard, Board, Color, Piece,
+    PieceType, Square,
+};
+use std::ops::{AddAssign, Mul, Sub};
 
-use laura_core::{BitBoard, Board, Color, Piece, PieceType, Square};
-
-const WHITE: usize = 0;
-const BLACK: usize = 1;
+const WHITE: usize = Color::White as usize;
+const BLACK: usize = Color::Black as usize;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Value(i32, i32);
@@ -24,6 +45,14 @@ impl Sub for Value {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Value(self.0 - rhs.0, self.1 - rhs.1)
+    }
+}
+
+impl Mul for Value {
+    type Output = Value;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Value(self.0 * rhs.0, self.1 * rhs.1)
     }
 }
 
@@ -136,6 +165,125 @@ const CONNECTED_PAWN_BONUS: [Value; 8] = [
     Value(40, 40), // Rank Seven
     Value(0, 0),   // Rank Eight
 ];
+const CENTRAL_PAWN_BONUS: Value = Value(10, 0);
+const OUTPOST_KNIGHT_BONUS: [Value; 8] = [
+    Value(0, 0),   // Rank One
+    Value(0, 0),   // Rank Two
+    Value(0, 0),   // Rank Three
+    Value(20, 25), // Rank Four
+    Value(25, 30), // Rank Five
+    Value(35, 35), // Rank Six
+    Value(40, 40), // Rank Seven
+    Value(0, 0),   // Rank Eight
+];
+const KNIGHT_MOBILITY_BONUS: [Value; 9] = [
+    Value(-40, -35), // 0
+    Value(-20, -25), // 1
+    Value(-5, -15),  // 2
+    Value(0, -5),    // 3
+    Value(5, 0),     // 4
+    Value(10, 5),    // 5
+    Value(15, 10),   // 6
+    Value(30, 15),   // 7
+    Value(40, 20),   // 8
+];
+const BISHOP_PAIR: Value = Value(30, 60);
+const OUTPOST_BISHOP_BONUS: [Value; 8] = [
+    Value(0, 0),   // Rank One
+    Value(0, 0),   // Rank Two
+    Value(0, 0),   // Rank Three
+    Value(20, 25), // Rank Four
+    Value(25, 30), // Rank Five
+    Value(35, 35), // Rank Six
+    Value(40, 40), // Rank Seven
+    Value(0, 0),   // Rank Eight
+];
+const BISHOP_MOBILITY_BONUS: [Value; 14] = [
+    Value(-60, -80), // 0
+    Value(-30, -50), // 1
+    Value(-20, -30), // 2
+    Value(-10, -15), // 3
+    Value(-5, -10),  // 4
+    Value(0, -5),    // 5
+    Value(5, 0),     // 6
+    Value(10, 5),    // 7
+    Value(15, 10),   // 8
+    Value(20, 15),   // 9
+    Value(25, 20),   // 10
+    Value(30, 25),   // 11
+    Value(35, 30),   // 12
+    Value(40, 35),   // 13
+];
+const OPEN_FILE_ROOK: [Value; 2] = [Value(10, 0), Value(15, 10)];
+const ROOK_MOBILITY_BONUS: [Value; 15] = [
+    Value(-30, -60), // 0
+    Value(-20, -40), // 1
+    Value(-15, -25), // 2
+    Value(-10, -15), // 3
+    Value(-5, -10),  // 4
+    Value(0, -5),    // 5
+    Value(5, 0),     // 6
+    Value(10, 5),    // 7
+    Value(15, 10),   // 8
+    Value(20, 15),   // 9
+    Value(25, 20),   // 10
+    Value(30, 25),   // 11
+    Value(35, 30),   // 12
+    Value(40, 35),   // 13
+    Value(45, 40),   // 14
+];
+const OUTPOST_ROOK_BONUS: [Value; 8] = [
+    Value(0, 0),   // Rank One
+    Value(0, 0),   // Rank Two
+    Value(0, 0),   // Rank Three
+    Value(20, 25), // Rank Four
+    Value(25, 30), // Rank Five
+    Value(35, 35), // Rank Six
+    Value(40, 40), // Rank Seven
+    Value(0, 0),   // Rank Eight
+];
+const QUEEN_MOBILITY_BONUS: [Value; 28] = [
+    Value(-60, -80), // 0
+    Value(-50, -70),
+    Value(-40, -60),
+    Value(-35, -50),
+    Value(-30, -40),
+    Value(-25, -30),
+    Value(-20, -25),
+    Value(-15, -20),
+    Value(-10, -15),
+    Value(-5, -10),
+    Value(0, -5), // 10
+    Value(5, 0),
+    Value(10, 5),
+    Value(15, 10),
+    Value(20, 15),
+    Value(25, 20),
+    Value(30, 25),
+    Value(35, 30),
+    Value(40, 35),
+    Value(45, 40),
+    Value(50, 45),
+    Value(55, 50),
+    Value(60, 55),
+    Value(65, 60),
+    Value(70, 65),
+    Value(75, 70),
+    Value(80, 75),
+    Value(85, 80), // 28
+];
+const OPEN_FILE_KING: [Value; 2] = [Value(-15, -5), Value(-20, -0)];
+const SHIELD_PENALTY: [Value; 4] = [Value(-60, 0), Value(-40, 0), Value(-20, 0), Value(5, 0)];
+const PAWN_STORM: [Value; 8] = [
+    Value(0, 0),
+    Value(-20, 0),
+    Value(-15, 0),
+    Value(-10, 0),
+    Value(-5, 0),
+    Value(0, 0),
+    Value(0, 0),
+    Value(0, 0),
+];
 const TEMPO: i32 = 20;
 
 pub fn evaluate(board: &Board) -> i32 {
@@ -158,6 +306,7 @@ pub fn evaluate(board: &Board) -> i32 {
 fn evaluate_pieces(board: &Board) -> Value {
     let mut eval: Value = Value(0, 0);
     eval += evaluate_pawns::<WHITE>(board) - evaluate_pawns::<BLACK>(board);
+    eval += evaluate_king_pawns::<WHITE>(board) - evaluate_king_pawns::<BLACK>(board);
     eval += evaluate_knights::<WHITE>(board) - evaluate_knights::<BLACK>(board);
     eval += evaluate_bishops::<WHITE>(board) - evaluate_bishops::<BLACK>(board);
     eval += evaluate_rooks::<WHITE>(board) - evaluate_rooks::<BLACK>(board);
@@ -190,18 +339,21 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
         if pawns.0 & DOUBLED_PAWN_MASK[square.to_index()] != 0 {
             eval += DOUBLED_PAWN[square.file().to_index()];
         }
+
+        //Double supported pawn bonus
+        if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones() >= 2 {
+            eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+        }
+
+        // Central pawn bonus
+        if pawns.0 & CENTER_MASK != 0 {
+            eval += CENTRAL_PAWN_BONUS;
+        }
     }
 
     // Connected pawn bonus
     for square in connected {
         eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
-    }
-
-    //Double supported pawn bonus
-    for square in pawns {
-        if pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()] == 0 {
-            eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
-        }
     }
 
     eval
@@ -213,13 +365,70 @@ fn connected_pawns<const COLOR: usize>(pawns: BitBoard) -> BitBoard {
     pawns & (phalanx | supported)
 }
 
+fn evaluate_king_pawns<const COLOR: usize>(board: &Board) -> Value {
+    let mut eval: Value = Value(0, 0);
+    let pawns: BitBoard = board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR];
+    let enemy_pawns: BitBoard =
+        board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR ^ 1];
+    let king: Square = (board.pieces_bitboard[PieceType::KING] & board.sides_bitboard[COLOR])
+        .to_square()
+        .unwrap();
+
+    if king.rank().to_index() ^ (7 * COLOR) <= 1 {
+        // Open/Semi-open file penalty
+        if pawns & king.file().to_bitboard() == BitBoard::EMPTY {
+            let open: usize = (enemy_pawns & king.file().to_bitboard() == BitBoard::EMPTY) as usize;
+            eval += OPEN_FILE_KING[open];
+        }
+
+        // King Shelter
+        let shield_mask: BitBoard = BitBoard(KING_SHELTER_MASK[COLOR][king.to_index()]);
+        let shield_count: usize = (pawns & shield_mask).count_bits() as usize;
+        eval += SHIELD_PENALTY[shield_count];
+
+        // Pawn Storm
+        for pawn in shield_mask {
+            let enemy_pawn: BitBoard = pawn.file().to_bitboard() & enemy_pawns;
+            let distance: usize = if let Some(square) = enemy_pawn.to_square_nearest::<COLOR>() {
+                king.rank().to_index().abs_diff(square.rank().to_index())
+            } else {
+                7
+            };
+
+            eval += PAWN_STORM[distance];
+        }
+    }
+
+    eval
+}
 fn evaluate_knights<const COLOR: usize>(board: &Board) -> Value {
     let mut eval: Value = Value(0, 0);
     let knights: BitBoard = board.pieces_bitboard[PieceType::KNIGHT] & board.sides_bitboard[COLOR];
+    let enemy_pawns: BitBoard =
+        board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR ^ 1];
+    let pawns: BitBoard = board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR];
+    let outpost: BitBoard = knights & OUTPOST_MASK[COLOR];
 
     for square in knights {
         eval += PIECE_VALUE[PieceType::KNIGHT];
         eval += KNIGHT_TABLE[square.to_index() ^ (56 * COLOR)];
+
+        // Knight mobility bonus/penalty
+        let mobility_count: usize =
+            (get_knight_attacks(square) & !board.sides_bitboard[COLOR]).count_bits() as usize;
+        eval += KNIGHT_MOBILITY_BONUS[mobility_count];
+    }
+
+    // Knight Outpost Bonus
+    for square in outpost {
+        if enemy_pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR ^ 1][square.to_index()] == 0 {
+            let count: u32 =
+                (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones();
+
+            // Extra bonus if the knight it's supported by two pawns
+            eval += OUTPOST_KNIGHT_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+                * Value(count as i32, count as i32);
+        }
     }
 
     eval
@@ -228,10 +437,38 @@ fn evaluate_knights<const COLOR: usize>(board: &Board) -> Value {
 fn evaluate_bishops<const COLOR: usize>(board: &Board) -> Value {
     let mut eval: Value = Value(0, 0);
     let bishops: BitBoard = board.pieces_bitboard[PieceType::BISHOP] & board.sides_bitboard[COLOR];
+    let enemy_pawns: BitBoard =
+        board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR ^ 1];
+    let pawns: BitBoard = board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR];
+    let outpost: BitBoard = bishops & OUTPOST_MASK[COLOR];
+
+    // Bishop Pair Bonus
+    if (bishops & BitBoard::LIGHT_SQUARES).count_bits() == 1
+        && (bishops & BitBoard::DARK_SQUARES).count_bits() == 1
+    {
+        eval += BISHOP_PAIR;
+    }
 
     for square in bishops {
         eval += PIECE_VALUE[PieceType::BISHOP];
         eval += BISHOP_TABLE[square.to_index() ^ (56 * COLOR)];
+
+        // Bishop mobility bonus/penalty
+        let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
+        let mobility_count: usize = get_bishop_attacks(square, blockers).count_bits() as usize;
+        eval += BISHOP_MOBILITY_BONUS[mobility_count];
+    }
+
+    // Bishop Outpost Bonus
+    for square in outpost {
+        if enemy_pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR ^ 1][square.to_index()] == 0 {
+            let count: u32 =
+                (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones();
+
+            // Extra bonus if the bishop it's supported by two pawns
+            eval += OUTPOST_BISHOP_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+                * Value(count as i32, count as i32);
+        }
     }
 
     eval
@@ -240,10 +477,49 @@ fn evaluate_bishops<const COLOR: usize>(board: &Board) -> Value {
 fn evaluate_rooks<const COLOR: usize>(board: &Board) -> Value {
     let mut eval: Value = Value(0, 0);
     let rooks: BitBoard = board.pieces_bitboard[PieceType::ROOK] & board.sides_bitboard[COLOR];
+    let pawns: BitBoard = board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR];
+    let enemy_pawns: BitBoard =
+        board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR ^ 1];
+    let enemy_king: Square = (board.pieces_bitboard[PieceType::KING]
+        & board.sides_bitboard[COLOR ^ 1])
+        .to_square()
+        .unwrap();
+    let outpost: BitBoard = rooks & ROOK_OUTPOST_MASK[COLOR];
 
     for square in rooks {
         eval += PIECE_VALUE[PieceType::ROOK];
         eval += ROOK_TABLE[square.to_index() ^ (56 * COLOR)];
+
+        // Open/Semi-open file bonus
+        if pawns & square.file().to_bitboard() == BitBoard::EMPTY {
+            let open: usize =
+                (enemy_pawns & square.file().to_bitboard() == BitBoard::EMPTY) as usize;
+            eval += OPEN_FILE_ROOK[open];
+        }
+
+        // 7 rank bonus
+        if square.rank().to_index() ^ (7 * COLOR) == 6
+            && enemy_king.rank().to_index() ^ (7 * COLOR) >= 6
+        {
+            eval += Value(5, 30);
+        }
+
+        // Rook mobility bonus/penalty
+        let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
+        let mobility_count: usize = get_rook_attacks(square, blockers).count_bits() as usize;
+        eval += ROOK_MOBILITY_BONUS[mobility_count];
+    }
+
+    // Rook Outpost Bonus
+    for square in outpost {
+        if enemy_pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR ^ 1][square.to_index()] == 0 {
+            let count: u32 =
+                (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones();
+
+            // Extra bonus if the rook it's supported by two pawns
+            eval += OUTPOST_ROOK_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+                * Value(count as i32, count as i32);
+        }
     }
 
     eval
@@ -256,6 +532,13 @@ fn evaluate_queens<const COLOR: usize>(board: &Board) -> Value {
     for square in queens {
         eval += PIECE_VALUE[PieceType::QUEEN];
         eval += QUEEN_TABLE[square.to_index() ^ (56 * COLOR)];
+
+        // Queen mobility bonus/penalty
+        let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
+        let mobility_count: usize = (get_rook_attacks(square, blockers)
+            | get_bishop_attacks(square, blockers))
+        .count_bits() as usize;
+        eval += QUEEN_MOBILITY_BONUS[mobility_count];
     }
 
     eval
@@ -364,11 +647,40 @@ pub const DOUBLED_PAWN_MASK: [u64; 64] = [
     72058697861366017, 144117395722732034, 288234791445464068, 576469582890928136, 1152939165781856272, 2305878331563712544, 4611756663127425088, 9223513326254850176,
     282578800148737, 565157600297474, 1130315200594948, 2260630401189896, 4521260802379792, 9042521604759584, 18085043209519168, 36170086419038336,
 ];
+const CENTER_MASK: u64 = 103481868288;
+#[rustfmt::skip]
+pub const KING_SHELTER_MASK: [[u64; 64]; 2] = [
+    [
+        1792, 1792, 3584, 7168, 14336, 28672, 57344, 57344,
+        458752, 458752, 917504, 1835008, 3670016, 7340032, 14680064, 14680064,
+        117440512, 117440512, 234881024, 469762048, 939524096, 1879048192, 3758096384, 3758096384,
+        30064771072, 30064771072, 60129542144, 120259084288, 240518168576, 481036337152, 962072674304, 962072674304,
+        7696581394432, 7696581394432, 15393162788864, 30786325577728, 61572651155456, 123145302310912, 246290604621824, 246290604621824,
+        1970324836974592, 1970324836974592, 3940649673949184, 7881299347898368, 15762598695796736, 31525197391593472, 63050394783186944, 63050394783186944,
+        504403158265495552, 504403158265495552, 1008806316530991104, 2017612633061982208, 4035225266123964416, 8070450532247928832, 16140901064495857664, 16140901064495857664,
+        0, 0, 0, 0, 0, 0, 0, 0,
+    ],
+    [
+        0, 0, 0, 0, 0, 0, 0, 0,
+        7, 7, 14, 28, 56, 112, 224, 224,
+        1792, 1792, 3584, 7168, 14336, 28672, 57344, 57344,
+        458752, 458752, 917504, 1835008, 3670016, 7340032, 14680064, 14680064,
+        117440512, 117440512, 234881024, 469762048, 939524096, 1879048192, 3758096384, 3758096384,
+        30064771072, 30064771072, 60129542144, 120259084288, 240518168576, 481036337152, 962072674304, 962072674304,
+        7696581394432, 7696581394432, 15393162788864, 30786325577728, 61572651155456, 123145302310912, 246290604621824, 246290604621824,
+        1970324836974592, 1970324836974592, 3940649673949184, 7881299347898368, 15762598695796736, 31525197391593472, 63050394783186944, 63050394783186944,
+    ]
+];
+pub const OUTPOST_MASK: [BitBoard; 2] = [BitBoard(16954728004976640), BitBoard(258708618240)];
+pub const ROOK_OUTPOST_MASK: [BitBoard; 2] = [BitBoard(55102866016174080), BitBoard(840803009280)];
 
 #[cfg(test)]
 mod test {
-    use crate::evaluation::{connected_pawns, evaluate, Value, CONNECTED_PAWN_BONUS, WHITE};
-    use laura_core::Board;
+    use crate::evaluation::{
+        connected_pawns, evaluate, Value, CONNECTED_PAWN_BONUS, DOUBLE_SUPPORTED_PAWN_MASKS,
+        OUTPOST_MASK, WHITE,
+    };
+    use laura_core::{BitBoard, Board};
     use std::str::FromStr;
 
     #[test]
@@ -399,25 +711,71 @@ mod test {
 
     #[test]
     fn phalanx() {
-        let board =
+        let board: Board =
             Board::from_str("rnbqkbnr/pppppppp/8/7P/8/8/PPPPPPP1/RNBQKBNR w KQkq - 0 1").unwrap();
-        let pawns = board.allied_pawns();
-        let phalanx = pawns.left_for::<WHITE>() | pawns.right_for::<WHITE>();
+        let pawns: BitBoard = board.allied_pawns();
+        let phalanx: BitBoard = pawns.left_for::<WHITE>() | pawns.right_for::<WHITE>();
         println!("Phalanx: {}", phalanx);
         println!("{}", phalanx & pawns);
     }
 
     #[test]
     fn connected() {
-        let board =
-            Board::from_str("rnbqkbnr/pppppppp/8/8/8/1P6/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        let pawns = board.allied_pawns();
-        let connected = connected_pawns::<WHITE>(pawns);
-        let mut eval = Value(0, 0);
+        let board: Board = Board::from_str(
+            "rnbqkbnr/p4p1p/2p1p1p1/1p1p4/1P6/P3PNP1/2PP1P1P/RNBQKB1R w KQkq - 0 1",
+        )
+        .unwrap();
+        let pawns: BitBoard = board.allied_pawns();
+        let connected: BitBoard = connected_pawns::<WHITE>(pawns);
+        let mut eval: Value = Value(0, 0);
         for square in connected {
             eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * WHITE)]
         }
         println!("{}", connected);
         println!("Connected Pawn Bonus: {:?}", eval);
+    }
+
+    #[test]
+    fn double_supported() {
+        let board: Board = Board::from_str(
+            "rnbqkbnr/p4p1p/2p1p1p1/1p1p4/1P6/P3PNP1/2PP1P1P/RNBQKB1R w KQkq - 0 1",
+        )
+        .unwrap();
+        let pawns: BitBoard = board.allied_pawns();
+        let mut eval: Value = Value(0, 0);
+        let mut supported: BitBoard = BitBoard::EMPTY;
+        for square in pawns {
+            if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE][square.to_index()]).count_ones() >= 2 {
+                supported = supported.set_square(square);
+            }
+        }
+        for square in pawns {
+            if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE][square.to_index()]).count_ones() >= 2 {
+                eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * WHITE)]
+            }
+        }
+        println!("{}", supported);
+        println!("Double Supported Pawn Bonus: {:?}", eval);
+    }
+
+    #[test]
+    fn generate_outpost_knight() {
+        let board: Board =
+            Board::from_str("r2r2k1/pp3pbp/3p2p1/3Np3/2P1P2q/P4P2/1P1Q2PP/1K1R3R w - - 2 21")
+                .unwrap();
+        let knights: BitBoard = board.allied_knights();
+        let pawns: BitBoard = board.allied_pawns();
+        let enemy_pawns: BitBoard = board.enemy_pawns();
+        let candidate: BitBoard = knights & OUTPOST_MASK[WHITE];
+        let mut outpost_knights: BitBoard = BitBoard::EMPTY;
+        for square in candidate {
+            if enemy_pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE ^ 1][square.to_index()] == 0 {
+                let count: u32 =
+                    (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[WHITE][square.to_index()]).count_ones();
+                assert_eq!(count, 2);
+                outpost_knights = outpost_knights.set_square(square);
+            }
+        }
+        println!("Outpost: {}", outpost_knights)
     }
 }
