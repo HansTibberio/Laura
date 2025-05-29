@@ -35,7 +35,22 @@ pub const MAX_MATE: i32 = MATE - MAX_PLY as i32;
 pub const MAX_PLY: usize = 128;
 pub const ASPIRATION_MARGIN: i32 = 25;
 pub const ASPIRATION_DEPTH_THRESHOLD: usize = 5;
-pub const MAX_DELTA: i32 = 1025;
+pub const MAX_DELTA: i32 = 1_025;
 
 // Tables parameters
 pub const KILLER_SLOTS: usize = 2;
+
+// Transposition table parameters
+pub const TTMATE: i32 = 30_000;
+pub const AGE_OFFSET: u8 = 3;
+pub const BOUND_OFFSET: u8 = 1;
+pub const BOUNDTYPE_MASK: u8 = 0x6;
+pub const PV_NODE_MASK: u8 = 0x1;
+pub const MEGABYTE: usize = 1_024 * 1_024;
+pub const ENTRIES_PER_CELL: usize = 3;
+pub const MAX_AGE: u8 = 1 << 5;
+pub const AGE_MASK: u8 = MAX_AGE - 1;
+pub const DEFAULT_SIZE: usize = 16;
+pub const DATA_MASK: u128 = 0xFFFF_FFFF_FFFF_FFFF;
+pub const KEY_MASK: u128 = 0xFFFF;
+pub const KEY_WRAPPER_MASK: u64 = 0xFFFF;

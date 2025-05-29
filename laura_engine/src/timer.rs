@@ -282,6 +282,10 @@ impl TimeManager {
             _ => false,
         }
     }
+
+    pub fn reset_buffer(&mut self) {
+        self.buffer = 0;
+    }
 }
 
 pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) -> (u64, u64) {
@@ -299,8 +303,13 @@ pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) ->
     (soft_time, hard_time)
 }
 
-#[test]
-fn test() {
-    let (soft, hard) = calculate_time(20, 0, None);
-    println!("Soft: {}, Hard: {}", soft, hard);
+#[cfg(test)]
+mod test {
+    use crate::timer::calculate_time;
+
+    #[test]
+    fn test() {
+        let (soft, hard) = calculate_time(20, 0, None);
+        println!("Soft: {}, Hard: {}", soft, hard);
+    }
 }

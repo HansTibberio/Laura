@@ -22,9 +22,11 @@
 //! UCI protocol implementation
 
 use crate::{
+    config::DEFAULT_SIZE,
     position::Position,
     thread::ThreadPool,
     timer::{TimeControl, TimeParserError},
+    transposition::TranspositionTable,
 };
 use laura_core::{Board, Move};
 use std::{

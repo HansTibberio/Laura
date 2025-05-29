@@ -28,6 +28,7 @@ use crate::{
     movepicker::MovePicker,
     position::Position,
     thread::Thread,
+    transposition::{BoundType, EntryHit, TranspositionTable},
 };
 use laura_core::Move;
 use std::fmt;
@@ -131,7 +132,7 @@ impl PrincipalVariation {
 }
 
 impl Position {
-    pub fn iterative_deepening<T>(&mut self, thread: &mut Thread)
+    pub fn iterative_deepening<T>(&mut self, thread: &mut Thread, ttable: &TranspositionTable)
     where
         T: ThreadType,
     {
@@ -148,7 +149,7 @@ impl Position {
                 break;
             }
 
-            let score: i32 = self.aspiration_window(thread, depth);
+            let score: i32 = self.aspiration_window(thread, ttable, depth);
 
             if thread.time_manager.stopped() {
                 break;
@@ -158,16 +159,21 @@ impl Position {
             thread.depth += 1;
 
             if T::MAIN {
-                uci_printer(thread);
+                uci_printer(thread, ttable);
             }
         }
 
         if T::MAIN && thread.time_manager.stopped() {
-            uci_printer(thread);
+            uci_printer(thread, ttable);
         }
     }
 
-    fn aspiration_window(&mut self, thread: &mut Thread, depth: usize) -> i32 {
+    fn aspiration_window(
+        &mut self,
+        thread: &mut Thread,
+        ttable: &TranspositionTable,
+        depth: usize,
+    ) -> i32 {
         let mut root_pv: PrincipalVariation = PrincipalVariation::default();
         let mut delta: i32 = ASPIRATION_MARGIN;
 
@@ -181,7 +187,8 @@ impl Position {
         };
 
         loop {
-            let score: i32 = self.alphabeta::<RootNode>(thread, depth, alpha, beta, &mut root_pv);
+            let score: i32 =
+                self.alphabeta::<RootNode>(thread, ttable, depth, alpha, beta, &mut root_pv);
 
             if thread.time_manager.stopped() {
                 return -INFINITY;
@@ -199,6 +206,7 @@ impl Position {
                 _ => {
                     // Succesful
                     thread.principal_variation = root_pv;
+                    thread.completed = depth;
                     return score;
                 }
             }
@@ -216,6 +224,7 @@ impl Position {
     fn alphabeta<Node: NodeType>(
         &mut self,
         thread: &mut Thread,
+        ttable: &TranspositionTable,
         mut depth: usize,
         mut alpha: i32,
         mut beta: i32,
@@ -245,9 +254,9 @@ impl Position {
         // 2. Quiescence Search
         if depth == 0 || thread.ply >= MAX_PLY {
             if Node::PV_NODE {
-                return self.quiescence::<PvNode>(thread, alpha, beta, node_pv);
+                return self.quiescence::<PvNode>(thread, ttable, alpha, beta, node_pv);
             } else {
-                return self.quiescence::<NonPv>(thread, alpha, beta, node_pv);
+                return self.quiescence::<NonPv>(thread, ttable, alpha, beta, node_pv);
             }
         }
 
@@ -266,16 +275,44 @@ impl Position {
             }
         }
 
+        // 4. Probe the Transposition Table
+        let tt_entry: Option<EntryHit> = ttable.probe(self.key(), thread.ply);
+        let mut tt_move: Option<Move> = None;
+
+        if let Some(entry) = tt_entry {
+            if entry.depth >= depth && !Node::PV_NODE {
+                let entry_score: i32 = entry.score;
+
+                if entry.bound == BoundType::Exact
+                    || (entry.bound == BoundType::LowerBound && entry_score >= beta)
+                    || (entry.bound == BoundType::UpperBound && entry_score <= alpha)
+                {
+                    return entry_score;
+                }
+            }
+
+            if let Some(mv) = entry.legal_move(&self.board()) {
+                tt_move = Some(mv);
+            }
+        }
+
+        // 5. Iternal Iterative Reduction
+        if Node::PV_NODE && depth >= 4 && tt_entry.is_none() {
+            depth -= 1;
+        }
+
+        let alpha_orig: i32 = alpha;
         let mut best_move: Move = Move::default();
         let mut best_score: i32 = -INFINITY;
         let mut move_count: usize = 0;
 
         let killers: [Option<Move>; 2] = thread.killer.get(thread.ply);
-        let mut picker: MovePicker = MovePicker::new(None, killers);
+        let mut picker: MovePicker = MovePicker::new(tt_move, killers);
 
         // Main Alpha-Beta Loop
         while let Some(mv) = picker.next(&self.board()) {
             self.push_move(mv, thread);
+            ttable.prefetch(self.key());
             move_count += 1;
             let mut score: i32;
 
@@ -283,17 +320,31 @@ impl Position {
             if move_count == 1 {
                 // First move: Full Window Search
                 score = if Node::PV_NODE {
-                    -self.alphabeta::<PvNode>(thread, depth - 1, -beta, -alpha, child_pv)
+                    -self.alphabeta::<PvNode>(thread, ttable, depth - 1, -beta, -alpha, child_pv)
                 } else {
-                    -self.alphabeta::<NonPv>(thread, depth - 1, -beta, -alpha, child_pv)
+                    -self.alphabeta::<NonPv>(thread, ttable, depth - 1, -beta, -alpha, child_pv)
                 };
             } else {
                 // Later moves: Null window search
-                score = -self.alphabeta::<NonPv>(thread, depth - 1, -alpha - 1, -alpha, child_pv);
+                score = -self.alphabeta::<NonPv>(
+                    thread,
+                    ttable,
+                    depth - 1,
+                    -alpha - 1,
+                    -alpha,
+                    child_pv,
+                );
 
                 // If it fails high and we are in a PV node, re-search with full window
                 if score > alpha && Node::PV_NODE {
-                    score = -self.alphabeta::<PvNode>(thread, depth - 1, -beta, -alpha, child_pv);
+                    score = -self.alphabeta::<PvNode>(
+                        thread,
+                        ttable,
+                        depth - 1,
+                        -beta,
+                        -alpha,
+                        child_pv,
+                    );
                 }
             }
             self.pop_move(thread);
@@ -334,6 +385,25 @@ impl Position {
             };
         }
 
+        let bound: BoundType = if best_score >= beta {
+            BoundType::LowerBound
+        } else if best_score > alpha_orig {
+            BoundType::Exact
+        } else {
+            BoundType::UpperBound
+        };
+
+        ttable.insert(
+            self.key(),
+            best_move,
+            best_score,
+            0,
+            depth,
+            bound,
+            Node::PV_NODE,
+            thread.ply,
+        );
+
         best_score
     }
 
@@ -341,6 +411,7 @@ impl Position {
     fn quiescence<Node: NodeType>(
         &mut self,
         thread: &mut Thread,
+        ttable: &TranspositionTable,
         mut alpha: i32,
         beta: i32,
         node_pv: &mut PrincipalVariation,
@@ -354,10 +425,35 @@ impl Position {
             return 0;
         }
 
+        let in_check: bool = self.in_check();
+
         // Update thread selective depth
         if thread.ply > thread.seldepth {
             thread.seldepth = thread.ply;
         }
+
+        // Probe the Transposition Table
+        let tt_entry: Option<EntryHit> = ttable.probe(self.key(), thread.ply);
+        let mut tt_move: Option<Move> = None;
+
+        if let Some(entry) = tt_entry {
+            if !Node::PV_NODE {
+                let entry_score: i32 = entry.score;
+
+                if entry.bound == BoundType::Exact
+                    || (entry.bound == BoundType::LowerBound && entry_score >= beta)
+                    || (entry.bound == BoundType::UpperBound && entry_score <= alpha)
+                {
+                    return entry_score;
+                }
+            }
+
+            if let Some(mv) = entry.legal_move(&self.board()) {
+                tt_move = Some(mv);
+            }
+        }
+
+        let alpha_orig: i32 = alpha;
 
         let stand_pat: i32 = self.evaluate();
 
@@ -374,14 +470,17 @@ impl Position {
 
         let mut best_score: i32 = stand_pat;
         let mut best_move: Move = Move::default();
+        let mut move_count: usize = 0;
 
-        let mut picker: MovePicker = MovePicker::new(None, [None, None]);
+        let mut picker: MovePicker = MovePicker::new(tt_move, [None, None]);
         picker.skip_quiets = true;
 
         // Main Quiescence Loop
         while let Some(mv) = picker.next(&self.board()) {
             self.push_move(mv, thread);
-            let score: i32 = -self.quiescence::<Node>(thread, -beta, -alpha, child_pv);
+            ttable.prefetch(self.key());
+            move_count += 1;
+            let score: i32 = -self.quiescence::<Node>(thread, ttable, -beta, -alpha, child_pv);
             self.pop_move(thread);
 
             if thread.time_manager.stopped() {
@@ -407,6 +506,30 @@ impl Position {
             }
         }
 
+        if move_count == 0 && in_check {
+            // We are being mated
+            return mated_in(thread.ply);
+        }
+
+        let bound: BoundType = if best_score >= beta {
+            BoundType::LowerBound
+        } else if best_score > alpha_orig {
+            BoundType::Exact
+        } else {
+            BoundType::UpperBound
+        };
+
+        ttable.insert(
+            self.key(),
+            best_move,
+            best_score,
+            0,
+            0,
+            bound,
+            Node::PV_NODE,
+            thread.ply,
+        );
+
         best_score
     }
 }
@@ -421,7 +544,7 @@ fn mated_in(ply: usize) -> i32 {
     -MATE + ply as i32
 }
 
-fn uci_printer(thread: &mut Thread) {
+fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable) {
     let score: String = if thread.score.abs() >= MAX_MATE {
         let mate_in: i32 = (MATE - thread.score.abs() + 1) / 2;
 
@@ -438,7 +561,14 @@ fn uci_printer(thread: &mut Thread) {
     let nodes: u64 = thread.time_manager.nodes();
     let nps: u128 = (nodes as u128 * 1000) / time;
     println!(
-        "info depth {} seldepth {} score {} time {} nodes {} nps {} {}",
-        thread.depth, thread.seldepth, score, time, nodes, nps, thread.principal_variation
+        "info depth {} seldepth {} score {} time {} nodes {} nps {} hashfull {} {}",
+        thread.depth,
+        thread.seldepth,
+        score,
+        time,
+        nodes,
+        nps,
+        ttable.hash_full(),
+        thread.principal_variation
     );
 }

@@ -26,10 +26,13 @@ use crate::{
     search::{MainThread, PrincipalVariation, WorkerThread},
     tables::KillerMoves,
     timer::TimeControl,
+    transposition::TranspositionTable,
     TimeManager,
 };
 use laura_core::{legal_moves, Move, MoveList};
 use std::{
+    collections::HashMap,
+    iter::once,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
@@ -48,6 +51,7 @@ pub struct Thread {
     pub seldepth: usize,
     pub score: i32,
     pub depth: usize,
+    pub completed: usize,
 }
 
 impl Thread {
@@ -62,6 +66,7 @@ impl Thread {
             depth: 0,
             time_manager,
             killer: KillerMoves::default(),
+            completed: 0,
         }
     }
 
@@ -78,11 +83,13 @@ impl Thread {
 
     pub fn set_up(&mut self) {
         self.principal_variation = PrincipalVariation::default();
+        self.time_manager.reset_buffer();
         self.nodes = 0;
         self.ply = 0;
         self.seldepth = 0;
         self.score = 0;
         self.depth = 0;
+        self.completed = 0;
     }
 }
 
@@ -90,6 +97,7 @@ impl Thread {
 pub struct ThreadPool {
     main: Thread,
     pool: Vec<Thread>,
+    pub threads: usize,
     stop: Arc<AtomicBool>,
     nodes: Arc<AtomicU64>,
 }
@@ -100,6 +108,7 @@ impl ThreadPool {
         Self {
             main: Thread::smp(stop.clone(), nodes.clone(), 0),
             pool: Vec::new(),
+            threads: 1,
             stop,
             nodes,
         }
@@ -109,26 +118,29 @@ impl ThreadPool {
         self.stop.store(true, Ordering::SeqCst);
     }
 
-    pub fn set_up(&mut self) {
-        self.main.set_up();
-        self.pool
-            .iter_mut()
-            .for_each(|thread: &mut Thread| thread.set_up());
-    }
-
     pub fn resize(&mut self, threads: usize) {
-        let mut id: usize = 1;
-        self.main = Thread::smp(self.stop.clone(), self.nodes.clone(), 0);
-        self.pool.resize_with(threads.saturating_sub(1), || {
+        let desired_size: usize = threads.saturating_sub(1);
+        let current_size: usize = self.pool.len();
+
+        if desired_size < current_size {
+            self.pool.drain(desired_size..);
+        }
+
+        let mut id: usize = current_size + 1;
+        self.pool.resize_with(desired_size, || {
             let thread_id: usize = id;
             id += 1;
             Thread::smp(self.stop.clone(), self.nodes.clone(), thread_id)
         });
+
+        self.main = Thread::smp(self.stop.clone(), self.nodes.clone(), 0);
+        self.threads = threads.max(1);
     }
 
     pub fn start_search(
         &mut self,
         position: &mut Position,
+        ttable: &TranspositionTable,
         time_control: TimeControl,
     ) -> Option<Move> {
         self.main.time_manager = TimeManager::new(
@@ -152,7 +164,6 @@ impl ThreadPool {
             return Some(moves[0]);
         }
 
-        self.set_up();
         self.stop.store(false, Ordering::SeqCst);
         self.nodes.store(0, Ordering::SeqCst);
 
@@ -160,14 +171,14 @@ impl ThreadPool {
         thread::scope(|s| {
             s.spawn(|| {
                 self.main.set_up();
-                position.iterative_deepening::<MainThread>(&mut self.main);
+                position.iterative_deepening::<MainThread>(&mut self.main, ttable);
                 self.stop.store(true, Ordering::SeqCst);
             });
             for thread in self.pool.iter_mut() {
                 s.spawn(|| {
                     let mut position: Position = pcopy.clone();
                     thread.set_up();
-                    position.iterative_deepening::<WorkerThread>(thread);
+                    position.iterative_deepening::<WorkerThread>(thread, ttable);
                 });
             }
         });

@@ -87,6 +87,11 @@ impl Position {
         self.board
     }
 
+    #[inline(always)]
+    pub fn key(&self) -> u64 {
+        self.board.zobrist.0
+    }
+
     pub fn set_board(&mut self, board: Board) {
         self.board = board
     }
