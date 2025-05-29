@@ -1,5 +1,5 @@
 /*
-    Laura: A single-threaded UCI chess engine written in Rust.
+    Laura: A multi-threaded UCI chess engine written in Rust.
 
     Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
 
@@ -83,6 +83,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[inline(always)]
     pub fn board(&self) -> Board {
         self.board
     }
@@ -135,14 +136,17 @@ impl Position {
         evaluation::evaluate(&self.board)
     }
 
+    #[inline(always)]
     pub fn ply(&self) -> usize {
         self.game.len()
     }
 
+    #[inline(always)]
     pub fn in_check(&self) -> bool {
         self.board.checkers.count_bits() != 0
     }
 
+    #[inline(always)]
     pub fn white(&self) -> bool {
         self.board.side == Color::White
     }

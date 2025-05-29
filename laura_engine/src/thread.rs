@@ -1,5 +1,5 @@
 /*
-    Laura: A single-threaded UCI chess engine written in Rust.
+    Laura: A multi-threaded UCI chess engine written in Rust.
 
     Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
 
@@ -182,14 +182,32 @@ impl ThreadPool {
                 });
             }
         });
-        let best: Move = self.main.best_move();
-        Some(best)
+
+        let threads = once(&self.main).chain(self.pool.iter());
+
+        let max_depth: usize = threads.clone().map(|t| t.completed).max().unwrap_or(0);
+
+        let mut freq: HashMap<Move, usize> = HashMap::new();
+        for thread in threads {
+            if thread.completed == max_depth {
+                if let Some(&mv) = thread.principal_variation.as_slice().first() {
+                    *freq.entry(mv).or_insert(0) += 1;
+                }
+            }
+        }
+
+        let best_move: Option<Move> = freq
+            .into_iter()
+            .max_by_key(|&(_, count)| count)
+            .map(|(mv, _)| mv);
+
+        best_move
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{timer::TimeControl, Position, ThreadPool};
+    use crate::{timer::TimeControl, transposition::TranspositionTable, Position, ThreadPool};
     use laura_core::Move;
     use std::sync::{atomic::AtomicBool, Arc};
 
@@ -197,7 +215,23 @@ mod test {
     fn test_best_move() {
         let mut threadpool: ThreadPool = ThreadPool::new(Arc::new(AtomicBool::new(false)));
         let mut position: Position = Position::default();
-        let best: Option<Move> = threadpool.start_search(&mut position, TimeControl::Depth(4));
-        println!("Best: {}", best.unwrap());
+        let mut ttable: TranspositionTable = TranspositionTable::default();
+        ttable.resize(1);
+        let best: Option<Move> =
+            threadpool.start_search(&mut position, &ttable, TimeControl::Depth(4));
+        println!("bestmove {}", best.unwrap());
+    }
+
+    #[test]
+    fn test_resize() {
+        let mut threadpool = ThreadPool::new(Arc::new(AtomicBool::new(false)));
+        threadpool.resize(4);
+        for t in &threadpool.pool {
+            println!("ID: {}", t.id)
+        }
+        threadpool.resize(6);
+        for t in threadpool.pool {
+            println!("ID: {}", t.id)
+        }
     }
 }

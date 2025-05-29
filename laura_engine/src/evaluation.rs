@@ -1,5 +1,5 @@
 /*
-    Laura: A single-threaded UCI chess engine written in Rust.
+    Laura: A multi-threaded UCI chess engine written in Rust.
 
     Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
 

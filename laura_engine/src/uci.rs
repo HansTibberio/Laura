@@ -1,5 +1,5 @@
 /*
-    Laura: A single-threaded UCI chess engine written in Rust.
+    Laura: A multi-threaded UCI chess engine written in Rust.
 
     Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
 
@@ -44,6 +44,11 @@ const AUTHOR: &str = "HansTibberio";
 const NAME: &str = "Laura";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const THREADS_MIN: usize = 1;
+const THREADS_MAX: usize = 512;
+const HASH_MIN: usize = 1;
+const HASH_MAX: usize = 1048576;
+
 #[derive(Debug)]
 pub enum UCICommand {
     Uci,
@@ -53,6 +58,7 @@ pub enum UCICommand {
     Go(TimeControl),
     Stop,
     Quit,
+    SetOption { name: String, value: String },
     DividePerft(u8),
     Perft(u8),
     Print,
@@ -68,6 +74,7 @@ pub enum UCIError {
     InvalidOptionValue,
     InvalidFenPosition,
     InvalidPositionFormat(String),
+    InvalidSetOption,
     InvalidGo(TimeParserError),
     IlegalUciMove(String),
 }
@@ -80,6 +87,7 @@ impl std::fmt::Display for UCIError {
             UCIError::InvalidOptionValue => write!(f, "[error] invalid option value."),
             UCIError::InvalidFenPosition => write!(f, "[error] invalid fen position format."),
             UCIError::InvalidPositionFormat(s) => write!(f, "[error] {s}"),
+            UCIError::InvalidSetOption => write!(f, "[error] invalid setoption."),
             UCIError::InvalidGo(err) => write!(f, "[error] '{err:?}'"),
             UCIError::IlegalUciMove(s) => write!(f, "[error] ilegal uci move '{s}'."),
         }
@@ -178,7 +186,18 @@ impl FromStr for UCICommand {
             }
             Some("stop") => Ok(Self::Stop),
             Some("quit") => Ok(Self::Quit),
+            Some("setoption") => {
+                let name = match tokens.next() {
+                    Some("name") => tokens.next().ok_or(UCIError::NoOptionValue)?.to_string(),
+                    _ => return Err(UCIError::InvalidSetOption),
+                };
+                let value = match tokens.next() {
+                    Some("value") => tokens.next().ok_or(UCIError::NoOptionValue)?.to_string(),
+                    _ => return Err(UCIError::InvalidSetOption),
+                };
 
+                Ok(Self::SetOption { name, value })
+            }
             Some("dperft") => match tokens.next().ok_or(UCIError::NoOptionValue)?.parse::<u8>() {
                 Ok(depth) if depth > 0 => Ok(Self::DividePerft(depth)),
                 _ => Err(UCIError::InvalidOptionValue),
@@ -239,12 +258,19 @@ pub fn uci_listener() {
 pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<AtomicBool>) {
     let mut position: Position = Position::default();
     let mut threadpool: ThreadPool = ThreadPool::new(stop);
+    let mut ttable: TranspositionTable = TranspositionTable::default();
+    ttable.resize(DEFAULT_SIZE);
 
     while let Ok(command) = receiver.recv() {
         match command {
             Ok(UCICommand::Uci) => {
                 println!("id name {} {}", NAME, VERSION);
                 println!("id author {}", AUTHOR);
+
+                // UCI options
+                println!("option name Hash type spin default 16 min 1 max 1048576");
+                println!("option name Threads type spin default 1 min 1 max 512");
+
                 println!("uciok");
             }
             Ok(UCICommand::IsReady) => {
@@ -252,12 +278,15 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
             }
             Ok(UCICommand::UciNewGame) => {
                 position.set_board(Board::default());
+                ttable.clear(threadpool.threads);
             }
             Ok(UCICommand::Position(pos)) => {
                 position.set_board(pos);
             }
             Ok(UCICommand::Go(time_control)) => {
-                let best: Option<Move> = threadpool.start_search(&mut position, time_control);
+                ttable.age();
+                let best: Option<Move> =
+                    threadpool.start_search(&mut position, &ttable, time_control);
                 if let Some(mv) = best {
                     println!("bestmove {}", mv);
                 }
@@ -266,6 +295,29 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
                 eprintln!("info string [warning] unexpected stop/quit.");
                 continue;
             }
+            Ok(UCICommand::SetOption { name, value }) => match name.to_lowercase().as_str() {
+                "hash" => match value.parse::<usize>() {
+                    Ok(mb) if (HASH_MIN..=HASH_MAX).contains(&mb) => {
+                        ttable.resize(mb);
+                        println!("info string Hash size set to {} MB", mb);
+                    }
+                    _ => eprintln!(
+                        "info string [error] Invalid value for Hash: '{}'. Must be between {} and {}.",
+                        value, HASH_MIN, HASH_MAX
+                    ),
+                },
+                "threads" => match value.parse::<usize>() {
+                    Ok(n) if (THREADS_MIN..=THREADS_MAX).contains(&n) => {
+                        threadpool.resize(n);
+                        println!("info string Threads set to {}", n);
+                    }
+                    _ => eprintln!(
+                        "info string [error] Invalid value for Threads: '{}'. Must be between {} and {}.",
+                        value, THREADS_MIN, THREADS_MAX
+                    ),
+                },
+                _ => eprintln!("info string [error] unrecognized option '{}'", name),
+            },
             Ok(UCICommand::DividePerft(depth)) => {
                 position.divided_perft(depth);
             }
