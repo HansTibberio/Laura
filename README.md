@@ -47,6 +47,7 @@ You can also download a precompiled binary from the [Releases][release-link] sec
 
 ## Features
 
+-   Hand-crafted static evaluation function
 -   Super-fast legal move generation
 -   Fail-soft negamax with alpha-beta pruning
 -   Iterative deepening
