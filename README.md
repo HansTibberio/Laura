@@ -67,11 +67,11 @@ You can also download a precompiled binary from the [Releases][release-link] sec
 This project is licensed under **GPLv3**. See the [LICENSE][license-link] file for details.
 
 [build-link]:https://github.com/HansTibberio/Laura/actions/workflows/build.yml
-[build-badge]:https://img.shields.io/github/actions/workflow/status/HansTibberio/Laura/build.yml?style=for-the-badge
+[build-badge]:https://img.shields.io/github/actions/workflow/status/HansTibberio/Laura/build.yml
 [license-link]:https://github.com/hanstibberio/Laura/blob/master/LICENSE
-[license-badge]:https://img.shields.io/github/license/hanstibberio/laura?style=for-the-badge&label=license&color=success
+[license-badge]:https://img.shields.io/github/license/hanstibberio/laura?label=license&color=success
 [release-link]:https://github.com/HansTibberio/Laura/releases/latest
-[release-badge]:https://img.shields.io/github/v/release/HansTibberio/Laura?label=official%20release&style=for-the-badge
+[release-badge]:https://img.shields.io/github/v/release/HansTibberio/Laura?label=official%20release
 
 [uci-link]:https://en.wikipedia.org/wiki/Universal_Chess_Interface
 [rust-link]:https://www.rust-lang.org/
