@@ -1,0 +1,126 @@
+name: Release Build & Upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Application version'
+        default: '0.1.0'
+        required: false
+
+permissions:
+    contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - bin_initials: "x86-64"
+            rustflags: "-Ctarget-cpu=x86-64"
+          - bin_initials: "x86-64-v2"
+            rustflags: "-Ctarget-cpu=x86-64-v2"
+          - bin_initials: "x86-64-v3"
+            rustflags: "-Ctarget-cpu=x86-64-v3"
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup update stable
+
+      - name: Set Version
+        run: |
+          echo "Application version: ${{ github.event.inputs.version }}"
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+        shell: bash
+      
+      - name: Build Binaries
+        env:
+          RUSTFLAGS: '${{ matrix.rustflags }}'
+        run: |
+          if [ "${{ matrix.bin_initials}}" == "x86-64-v3" ]; then
+            cargo build --release --bin laura --features=bmi2
+          else
+            cargo build --release --bin laura
+          fi
+          mv target/release/laura laura-${{ env.version }}-ubuntu-${{ matrix.bin_initials }}
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+            name: laura-${{ env.version }}-ubuntu-${{ matrix.bin_initials }}
+            path: ./laura-${{ env.version }}-ubuntu-${{ matrix.bin_initials }}
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - bin_initials: "x86-64"
+            rustflags: "-Ctarget-cpu=x86-64"
+          - bin_initials: "x86-64-v2"
+            rustflags: "-Ctarget-cpu=x86-64-v2"
+          - bin_initials: "x86-64-v3"
+            rustflags: "-Ctarget-cpu=x86-64-v3"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup update stable
+      
+      - name: Set Version
+        run: |
+          echo "Application version: ${{ github.event.inputs.version }}"
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Build Binaries
+        env:
+          RUSTFLAGS: '${{ matrix.rustflags }}'
+        run: |
+          if ("${{ matrix.bin_initials }}" -match "x86-64-v3") {
+            cargo build --release --bin laura --features=bmi2
+          } else {
+            cargo build --release --bin laura
+          }
+          mv .\target\release\laura.exe laura-${{ env.version }}-windows-${{ matrix.bin_initials }}.exe
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+            name: laura-${{ env.version }}-windows-${{ matrix.bin_initials }}
+            path: .\laura-${{ env.version }}-windows-${{ matrix.bin_initials }}.exe
+
+            
+  release:
+      if: github.repository == 'HansTibberio/Laura'
+      needs: [build-ubuntu, build-windows]
+      name: Publish Release
+      runs-on: ubuntu-latest
+      steps:
+        - name: Download All Artifacts
+          uses: actions/download-artifact@v4
+          with:
+            path: binaries/
+            pattern: laura-*
+            merge-multiple: true
+        
+        - name: Checksum
+          run: |
+            (cd binaries && sha256sum laura-* | sed 's| \*binaries/| |' > laura.sha256)
+
+        - name: Create Release
+          uses: softprops/action-gh-release@v2
+          with:
+            files: binaries/*
+            tag_name: ${{ env.version }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            draft: true
