@@ -115,4 +115,19 @@ impl Rank {
     pub const fn to_bitboard(self) -> BitBoard {
         RANK_BITBOARDS[self.to_index()]
     }
+
+    /// Returns the corresponding character for the `Rank`.
+    #[inline(always)]
+    pub const fn to_char(&self) -> char {
+        match self {
+            Rank::One => '1',
+            Rank::Two => '2',
+            Rank::Three => '3',
+            Rank::Four => '4',
+            Rank::Five => '5',
+            Rank::Six => '6',
+            Rank::Seven => '7',
+            Rank::Eight => '8',
+        }
+    }
 }
