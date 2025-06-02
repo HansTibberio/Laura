@@ -124,4 +124,19 @@ impl File {
     pub const fn to_bitboard(self) -> BitBoard {
         FILE_BITBOARDS[self.to_index()]
     }
+
+    /// Returns the corresponding character for the `File`.
+    #[inline(always)]
+    pub const fn to_char(&self) -> char {
+        match self {
+            File::A => 'a',
+            File::B => 'b',
+            File::C => 'c',
+            File::D => 'd',
+            File::E => 'e',
+            File::F => 'f',
+            File::G => 'g',
+            File::H => 'h',
+        }
+    }
 }

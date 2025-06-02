@@ -31,6 +31,7 @@ mod move_list;
 mod moves;
 mod piece;
 mod rank;
+mod san;
 mod square;
 mod zobrist;
 
@@ -49,5 +50,6 @@ pub use move_list::*;
 pub use moves::*;
 pub use piece::*;
 pub use rank::*;
+pub use san::*;
 pub use square::*;
 pub use zobrist::*;

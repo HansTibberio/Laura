@@ -17,9 +17,8 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use core::fmt;
-
 use crate::Color;
+use core::fmt;
 
 /// Enum representing the different types of chess pieces.
 #[derive(PartialEq, Eq, Ord, PartialOrd, Copy, Clone, Debug, Hash)]
@@ -86,6 +85,19 @@ impl PieceType {
     #[inline(always)]
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
         core::mem::transmute(index)
+    }
+
+    /// Returns the corresponding character for the `PieceType`.
+    #[inline(always)]
+    pub const fn to_char(&self) -> char {
+        match self {
+            Self::Pawn => 'P',
+            Self::Knight => 'N',
+            Self::Bishop => 'B',
+            Self::Rook => 'R',
+            Self::Queen => 'Q',
+            Self::King => 'K',
+        }
     }
 }
 

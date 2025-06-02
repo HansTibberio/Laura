@@ -1,4 +1,3 @@
-use crate::{gen_moves, AllMoves};
 /*
     Laura-Core: a fast and efficient move generator for chess engines.
 
@@ -17,10 +16,11 @@ use crate::{gen_moves, AllMoves};
     You should have received a copy of the GNU General Public License
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
+
 #[allow(unused_imports)]
 use crate::{
-    get_rook_castling, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece, PieceType,
-    Square, Zobrist,
+    gen_moves, get_rook_castling, to_san, AllMoves, BitBoard, Board, CastleRights, Color, Move,
+    MoveType, Piece, PieceType, SanBuffered, Square, Zobrist,
 };
 
 // This implementation is based on the approach used in Carp,
@@ -167,5 +167,10 @@ impl Board {
         self.find_move(uci_move)
             .map(|mv| self.make_move(mv))
             .ok_or("Ilegal UCI move from the current board")
+    }
+
+    /// Converts the move to a San
+    pub fn to_san(&self, mv: Move) -> SanBuffered {
+        to_san(mv, self)
     }
 }
