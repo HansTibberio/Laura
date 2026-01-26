@@ -22,17 +22,17 @@
 //! Lockless Transposition Table.
 
 use std::{
-    alloc::{alloc_zeroed, Layout},
+    alloc::{Layout, alloc_zeroed},
     mem::MaybeUninit,
     ptr,
-    sync::atomic::{AtomicU16, AtomicU64, AtomicU8, Ordering},
+    sync::atomic::{AtomicU8, AtomicU16, AtomicU64, Ordering},
     thread,
 };
 
-use laura_core::{gen_moves, AllMoves, Board, Move};
+use laura_core::{AllMoves, Board, Move, gen_moves};
 
 use crate::config::{
-    AGE_MASK, AGE_OFFSET, BOUNDTYPE_MASK, BOUND_OFFSET, DATA_MASK, ENTRIES_PER_CELL, KEY_MASK,
+    AGE_MASK, AGE_OFFSET, BOUND_OFFSET, BOUNDTYPE_MASK, DATA_MASK, ENTRIES_PER_CELL, KEY_MASK,
     KEY_WRAPPER_MASK, MEGABYTE, PV_NODE_MASK, TTMATE,
 };
 
@@ -299,7 +299,7 @@ impl TranspositionTable {
     pub fn prefetch(&self, key: u64) {
         #[cfg(target_arch = "x86_64")]
         unsafe {
-            use core::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+            use core::arch::x86_64::{_MM_HINT_T0, _mm_prefetch};
 
             let index: usize = self.index(key);
             let ptr: *const i8 = &self.entries[index] as *const Cell as *const i8;
@@ -422,7 +422,7 @@ fn parallel_clear(ptr: *mut MaybeUninit<u8>, threads: usize, len: usize) {
 #[cfg(test)]
 mod test {
     use std::{
-        alloc::{alloc_zeroed, Layout},
+        alloc::{Layout, alloc_zeroed},
         sync::atomic::AtomicU8,
         time::Instant,
     };
@@ -431,7 +431,7 @@ mod test {
 
     use crate::transposition::{BoundType, Cell, Entry, PackedData};
 
-    use super::{parallel_clear, TranspositionTable, MEGABYTE};
+    use super::{MEGABYTE, TranspositionTable, parallel_clear};
 
     #[test]
     fn test_table() {

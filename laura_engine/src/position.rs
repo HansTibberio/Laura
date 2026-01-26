@@ -22,7 +22,7 @@
 //! Position management.
 
 use crate::{evaluation, thread::Thread};
-use laura_core::{enumerate_legal_moves, AllMoves, Board, Color, Move};
+use laura_core::{AllMoves, Board, Color, Move, enumerate_legal_moves};
 use std::{
     mem::replace,
     time::{Duration, Instant},

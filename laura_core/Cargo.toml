@@ -1,7 +1,7 @@
 [package]
 name = "laura_core"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
 authors = ["HansTibberio <hanstiberio@proton.me>"]
 description = "A fast and efficient move generator for chess engines."
 license = "GPL-3.0"
@@ -10,6 +10,7 @@ keywords = ["chess", "game"]
 categories = ["games"]
 homepage = "https://github.com/HansTibberio/laura"
 repository = "https://github.com/HansTibberio/Laura/tree/master/laura_core"
+rust-version = "1.85.0"
 
 include = ["src/*", "cargo.toml", "build_dep/*", "build.rs", "README.md"]
 

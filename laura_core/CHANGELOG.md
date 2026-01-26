@@ -7,6 +7,14 @@ This project follows [Keep a Changelog][changelog-link] and adheres to [Semantic
 
 ## [Unreleased]
 
+### Added
+
+- Added support for parsing **Standard Algebraic Notation (SAN)** moves.
+
+### Changed
+
+- Updated to the Rust 2024 Edition and raised the MSRV to **1.85.0**.
+
 ---
 
 ## [0.3.0] - 2025-04-26

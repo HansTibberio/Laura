@@ -20,8 +20,8 @@
 use crate::get_king_attacks;
 use crate::get_knight_attacks;
 use crate::get_pawn_attacks;
-use crate::{get_bishop_attacks, get_rook_attacks};
 use crate::{BitBoard, Board, Color, Piece, Square};
+use crate::{get_bishop_attacks, get_rook_attacks};
 
 impl Board {
     /// Returns the [`BitBoard`] representing all pieces for the white side.

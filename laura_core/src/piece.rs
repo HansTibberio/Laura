@@ -84,7 +84,7 @@ impl PieceType {
     /// This is an unsafe operation as it directly converts the index to `PieceType`.
     #[inline(always)]
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
-        core::mem::transmute(index)
+        unsafe { core::mem::transmute(index) }
     }
 
     /// Returns the corresponding character for the `PieceType`.

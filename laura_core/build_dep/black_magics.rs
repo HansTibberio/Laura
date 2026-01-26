@@ -164,7 +164,7 @@ impl BlackMagics {
     ///   the relevant blocker mask for each square.
     /// - For each blocker configuration, it calculates the magic index and stores
     ///   the precomputed moves in the attack table.
-    pub fn gen(
+    pub fn generate(
         attacks: &mut [BitBoard; TABLE_SIZE],
         black_magics: [BlackMagicEntry; Square::NUM_SQUARES],
         shift: usize,

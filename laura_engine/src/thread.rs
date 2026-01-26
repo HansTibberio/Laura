@@ -22,20 +22,20 @@
 //! Thread management for parallel search.
 
 use crate::{
+    TimeManager,
     position::Position,
     search::{MainThread, PrincipalVariation, WorkerThread},
     tables::KillerMoves,
     timer::TimeControl,
     transposition::TranspositionTable,
-    TimeManager,
 };
-use laura_core::{legal_moves, Move, MoveList};
+use laura_core::{Move, MoveList, legal_moves};
 use std::{
     collections::HashMap,
     iter::once,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     thread,
 };
@@ -189,10 +189,10 @@ impl ThreadPool {
 
         let mut freq: HashMap<Move, usize> = HashMap::new();
         for thread in threads {
-            if thread.completed == max_depth {
-                if let Some(&mv) = thread.principal_variation.as_slice().first() {
-                    *freq.entry(mv).or_insert(0) += 1;
-                }
+            if thread.completed == max_depth
+                && let Some(&mv) = thread.principal_variation.as_slice().first()
+            {
+                *freq.entry(mv).or_insert(0) += 1;
             }
         }
 
@@ -207,9 +207,9 @@ impl ThreadPool {
 
 #[cfg(test)]
 mod test {
-    use crate::{timer::TimeControl, transposition::TranspositionTable, Position, ThreadPool};
+    use crate::{Position, ThreadPool, timer::TimeControl, transposition::TranspositionTable};
     use laura_core::Move;
-    use std::sync::{atomic::AtomicBool, Arc};
+    use std::sync::{Arc, atomic::AtomicBool};
 
     #[test]
     fn test_best_move() {

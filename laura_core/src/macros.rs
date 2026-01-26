@@ -17,7 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 #[allow(unused_imports)]
-use crate::{gen_moves, BitBoard, Board, MoveList, QuietMoves, TacticalMoves};
+use crate::{BitBoard, Board, MoveList, QuietMoves, TacticalMoves, gen_moves};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign};
 

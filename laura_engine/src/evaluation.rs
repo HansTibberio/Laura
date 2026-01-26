@@ -22,8 +22,8 @@
 //! Static board evaluation.
 
 use laura_core::{
-    get_bishop_attacks, get_knight_attacks, get_rook_attacks, BitBoard, Board, Color, Piece,
-    PieceType, Square,
+    BitBoard, Board, Color, Piece, PieceType, Square, get_bishop_attacks, get_knight_attacks,
+    get_rook_attacks,
 };
 use std::ops::{AddAssign, Mul, Sub};
 
@@ -677,8 +677,8 @@ pub const ROOK_OUTPOST_MASK: [BitBoard; 2] = [BitBoard(55102866016174080), BitBo
 #[cfg(test)]
 mod test {
     use crate::evaluation::{
-        connected_pawns, evaluate, Value, CONNECTED_PAWN_BONUS, DOUBLE_SUPPORTED_PAWN_MASKS,
-        OUTPOST_MASK, WHITE,
+        CONNECTED_PAWN_BONUS, DOUBLE_SUPPORTED_PAWN_MASKS, OUTPOST_MASK, Value, WHITE,
+        connected_pawns, evaluate,
     };
     use laura_core::{BitBoard, Board};
     use std::str::FromStr;

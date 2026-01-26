@@ -1,8 +1,9 @@
 [package]
 name = "laura_engine"
-version = "0.1.0"
-edition = "2021"
+version = "1.1.0"
+edition = "2024"
 authors = ["HansTibberio <hanstiberio@proton.me>"]
+rust-version = "1.85.0"
 
 [dependencies]
 laura_core = { path = "../laura_core", version = "0.3.0" }

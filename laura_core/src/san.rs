@@ -18,7 +18,7 @@
 */
 
 use crate::{
-    enumerate_legal_moves, gen_moves, AllMoves, Board, Color, Move, Piece, PieceType, Square,
+    AllMoves, Board, Color, Move, Piece, PieceType, Square, enumerate_legal_moves, gen_moves,
 };
 use core::fmt;
 
@@ -131,17 +131,18 @@ impl SanBuffered {
                         return true;
                     }
                     let candidate_src: Square = candidate_mv.get_src();
-                    if let Some(candidate_piece) = self.board.piece_on(candidate_src) {
-                        if candidate_piece.piece_type() == piece_type {
-                            ambiguous = true;
-                            if candidate_src.file() == src.file() {
-                                file_disambiguates = false;
-                            }
-                            if candidate_src.rank() == src.rank() {
-                                rank_disambiguates = false;
-                            }
+                    if let Some(candidate_piece) = self.board.piece_on(candidate_src)
+                        && candidate_piece.piece_type() == piece_type
+                    {
+                        ambiguous = true;
+                        if candidate_src.file() == src.file() {
+                            file_disambiguates = false;
+                        }
+                        if candidate_src.rank() == src.rank() {
+                            rank_disambiguates = false;
                         }
                     }
+
                     true
                 });
 

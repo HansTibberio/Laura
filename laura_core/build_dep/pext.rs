@@ -18,7 +18,7 @@
 */
 
 use super::{
-    sliders::{Slider, BISHOP_SLIDER, ROOK_SLIDER},
+    sliders::{BISHOP_SLIDER, ROOK_SLIDER, Slider},
     types::{BitBoard, Square},
 };
 use std::io::Result;

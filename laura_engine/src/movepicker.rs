@@ -21,7 +21,7 @@
 
 //! Move picker for search.
 
-use laura_core::{quiet_moves, tactical_moves, Board, Move, MoveList, MoveType, Piece, PieceType};
+use laura_core::{Board, Move, MoveList, MoveType, Piece, PieceType, quiet_moves, tactical_moves};
 
 #[derive(PartialEq, PartialOrd, Clone, Copy)]
 pub enum Stage {

@@ -30,12 +30,12 @@ use crate::{
 };
 use laura_core::{Board, Move};
 use std::{
-    io::{stdin, BufRead, Stdin},
+    io::{BufRead, Stdin, stdin},
     str::FromStr,
     sync::{
+        Arc,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver},
-        Arc,
     },
     thread,
 };

@@ -19,8 +19,8 @@
 
 #[allow(unused_imports)]
 use crate::{
-    gen_moves, get_rook_castling, to_san, AllMoves, BitBoard, Board, CastleRights, Color, Move,
-    MoveType, Piece, PieceType, SanBuffered, Square, Zobrist,
+    AllMoves, BitBoard, Board, CastleRights, Color, Move, MoveType, Piece, PieceType, SanBuffered,
+    Square, Zobrist, gen_moves, get_rook_castling, to_san,
 };
 
 // This implementation is based on the approach used in Carp,

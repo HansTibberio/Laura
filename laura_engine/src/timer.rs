@@ -27,8 +27,8 @@ use crate::config::{
 use std::{
     str::{FromStr, SplitWhitespace},
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{Duration, Instant},
 };

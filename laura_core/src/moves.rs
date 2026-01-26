@@ -17,7 +17,7 @@
     along with Laura-Core. If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::{piece::PROM_PIECES, Color, Piece, Square};
+use crate::{Color, Piece, Square, piece::PROM_PIECES};
 use core::fmt;
 use core::mem::transmute;
 

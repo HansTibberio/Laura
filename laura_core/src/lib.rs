@@ -25,7 +25,7 @@ mod board;
 mod castle_rights;
 mod color;
 mod file;
-mod gen;
+mod generate;
 mod macros;
 mod move_list;
 mod moves;
@@ -42,10 +42,10 @@ pub use castle_rights::*;
 pub use color::*;
 pub use file::*;
 #[cfg(not(feature = "bmi2"))]
-pub use gen::black_magics::*;
+pub use generate::black_magics::*;
 #[cfg(feature = "bmi2")]
-pub use gen::pext::*;
-pub use gen::{king::*, knight::*, pawn::*, rays::*};
+pub use generate::pext::*;
+pub use generate::{king::*, knight::*, pawn::*, rays::*};
 pub use move_list::*;
 pub use moves::*;
 pub use piece::*;

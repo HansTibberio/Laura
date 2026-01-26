@@ -55,8 +55,8 @@ fn main() {
         // Generate attack bitboards and black magic numbers for non-BMI2 feature enabled systems
         let mut attacks: [BitBoard; TABLE_SIZE] = [BitBoard::EMPTY; TABLE_SIZE];
         let rook_bmagics: BlackMagics =
-            BlackMagics::gen(&mut attacks, ROOK_BLACK_MAGICS, ROOK_SHIFT, ROOK_SLIDER);
-        let bishop_bmagics: BlackMagics = BlackMagics::gen(
+            BlackMagics::generate(&mut attacks, ROOK_BLACK_MAGICS, ROOK_SHIFT, ROOK_SLIDER);
+        let bishop_bmagics: BlackMagics = BlackMagics::generate(
             &mut attacks,
             BISHOP_BLACK_MAGICS,
             BISHOP_SHIFT,
