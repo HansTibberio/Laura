@@ -26,6 +26,8 @@ jobs:
             rustflags: "-Ctarget-cpu=x86-64-v2"
           - bin_initials: "x86-64-v3"
             rustflags: "-Ctarget-cpu=x86-64-v3"
+          - bin_initials: "x86-64-v4"
+            rustflags: "-Ctarget-cpu=x86-64-v4"
     
     steps:
       - name: Checkout Code
@@ -44,7 +46,7 @@ jobs:
         env:
           RUSTFLAGS: '${{ matrix.rustflags }}'
         run: |
-          if [ "${{ matrix.bin_initials}}" == "x86-64-v3" ]; then
+          if [ "${{ matrix.bin_initials}}" == "x86-64-v3" || "${{ matrix.bin_initials}}" == "x86-64-v4" ]; then
             cargo build --release --bin laura --features=bmi2
           else
             cargo build --release --bin laura
@@ -68,6 +70,8 @@ jobs:
             rustflags: "-Ctarget-cpu=x86-64-v2"
           - bin_initials: "x86-64-v3"
             rustflags: "-Ctarget-cpu=x86-64-v3"
+          - bin_initials: "x86-64-v4"
+            rustflags: "-Ctarget-cpu=x86-64-v4"
 
     steps:
       - name: Checkout Code
@@ -86,7 +90,7 @@ jobs:
         env:
           RUSTFLAGS: '${{ matrix.rustflags }}'
         run: |
-          if ("${{ matrix.bin_initials }}" -match "x86-64-v3") {
+          if ("${{ matrix.bin_initials }}" -in @("x86-64-v3", "x86-64-v4")) {
             cargo build --release --bin laura --features=bmi2
           } else {
             cargo build --release --bin laura
