@@ -18,7 +18,7 @@
 
 The project is divided into two main components:
 
-- **`laura_core`** – A fast and efficient legal [move generator][laura-link] for chess engines.
+- **`laura_core`** – A fast and efficient legal [move generator][laura_core-link] for chess engines.
 - **`laura_engine`** – The UCI-compatible chess engine currently under active development.
 
 ## Installation & Compilation
@@ -75,4 +75,4 @@ This project is licensed under **GPLv3**. See the [LICENSE][license-link] file f
 
 [uci-link]:https://en.wikipedia.org/wiki/Universal_Chess_Interface
 [rust-link]:https://www.rust-lang.org/
-[laura-link]:https://github.com/HansTibberio/Laura/tree/master/laura_core
+[laura_core-link]:https://github.com/HansTibberio/laura_core

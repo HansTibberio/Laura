@@ -1,7 +1,7 @@
 /*
     Laura: A multi-threaded UCI chess engine written in Rust.
 
-    Copyright (C) 2024-2025 HansTibberio <hanstiberio@proton.me>
+    Copyright (C) 2024-2026 HansTibberio <hanstiberio@proton.me>
 
     Laura is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

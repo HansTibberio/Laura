@@ -1,7 +1,19 @@
-[workspace]
-members = ["laura_core", "laura_engine"]
-default-members = ["laura_core", "laura_engine"]
-resolver = "2"
+[package]
+name = "laura_engine"
+version = "1.1.0"
+edition = "2024"
+authors = ["HansTibberio <hanstiberio@proton.me>"]
+rust-version = "1.85.0"
+
+[dependencies]
+laura_core = "0.4.0"
+
+[[bin]]
+name = "laura"
+path = "src/main.rs"
+
+[features]
+bmi2 = ["laura_core/bmi2"]
 
 [profile.release]
 opt-level = 3
