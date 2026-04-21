@@ -4,6 +4,7 @@ mod evaluation;
 mod movepicker;
 mod position;
 mod search;
+mod sse;
 mod tables;
 mod thread;
 mod timer;

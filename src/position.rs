@@ -150,4 +150,10 @@ impl Position {
     pub fn white(&self) -> bool {
         self.board.side == Color::White
     }
+
+    #[inline(always)]
+    pub fn possible_zugzwang(&self) -> bool {
+        (self.board.allied_presence() ^ self.board.allied_king() ^ self.board.allied_pawns())
+            .is_empty()
+    }
 }

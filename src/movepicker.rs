@@ -21,14 +21,18 @@
 
 //! Move picker for search.
 
-use laura_core::{Board, Move, MoveList, MoveType, Piece, PieceType, quiet_moves, tactical_moves};
+use crate::sse::SEE;
+use crate::tables::HistoryTable;
+use laura_core::{Board, Color, Move, MoveList, quiet_moves, tactical_moves};
 
-#[derive(PartialEq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug)]
 pub enum Stage {
     TTMove,
-    Captures,
+    GenCaptures,
+    GoodCaptures,
     Killers,
     Quiets,
+    BadCaptures,
     Done,
 }
 
@@ -37,7 +41,11 @@ pub struct MovePicker {
     killer_move: [Option<Move>; 2],
     killer_index: usize,
     stage: Stage,
-    moves: MoveList,
+
+    good_captures: MoveList,
+    bad_captures: MoveList,
+    quiets: MoveList,
+
     index: usize,
     pub skip_quiets: bool,
 }
@@ -48,7 +56,9 @@ impl MovePicker {
             tt_move,
             killer_move,
             stage: Stage::TTMove,
-            moves: MoveList::default(),
+            good_captures: MoveList::default(),
+            bad_captures: MoveList::default(),
+            quiets: MoveList::default(),
             index: 0,
             skip_quiets: false,
             killer_index: 0,
@@ -59,127 +69,158 @@ impl MovePicker {
         self.stage
     }
 
-    pub fn next(&mut self, position: &Board) -> Option<Move> {
+    pub fn next(&mut self, position: &Board, history: &HistoryTable) -> Option<Move> {
         loop {
-            if self.stage == Stage::Done {
-                return None;
-            }
-            if self.stage == Stage::TTMove {
-                self.stage = Stage::Captures;
-                if let Some(tt_move) = self.tt_move {
-                    return Some(tt_move);
+            match self.stage {
+                Stage::Done => {
+                    return None;
                 }
-            }
-            if self.stage == Stage::Captures {
-                if self.index == 0 {
-                    self.moves = tactical_moves!(position);
-                }
-                self.score_captures(position);
-                if let Some(mv) = self.yield_once() {
-                    return Some(mv);
-                }
-                self.stage = if self.skip_quiets {
-                    Stage::Done
-                } else {
-                    Stage::Killers
-                };
-                self.index = 0;
-            }
-            if self.stage == Stage::Killers {
-                let moves: MoveList = quiet_moves!(position);
-                for i in self.killer_index..2 {
-                    self.killer_index += 1;
-                    match self.killer_move[i] {
-                        Some(killer) if Some(killer) != self.tt_move && moves.contains(&killer) => {
-                            return Some(killer);
-                        }
-                        _ => continue,
+                Stage::TTMove => {
+                    self.stage = Stage::GenCaptures;
+                    if let Some(tt_move) = self.tt_move {
+                        return Some(tt_move);
                     }
                 }
-                self.stage = Stage::Quiets;
-            }
-            if self.stage == Stage::Quiets {
-                if self.index == 0 {
-                    self.moves = quiet_moves!(position);
+                Stage::GenCaptures => {
+                    self.generate_and_score_captures(position);
+                    self.stage = Stage::GoodCaptures;
+                    self.index = 0;
                 }
-                if let Some(mv) = self.yield_once() {
-                    return Some(mv);
+                Stage::GoodCaptures => {
+                    if let Some(mv) = self.next_from_list(&self.good_captures.clone()) {
+                        return Some(mv);
+                    }
+                    self.stage = if self.skip_quiets {
+                        Stage::BadCaptures
+                    } else {
+                        Stage::Killers
+                    };
+                    self.index = 0;
                 }
-                self.stage = Stage::Done;
-                self.index = 0;
+                Stage::Killers => {
+                    if self.index == 0 {
+                        self.quiets = quiet_moves!(position);
+                        self.score_quiets(position, history);
+                    }
+
+                    for i in self.killer_index..2 {
+                        self.killer_index += 1;
+                        match self.killer_move[i] {
+                            Some(killer)
+                                if Some(killer) != self.tt_move
+                                    && self.quiets.contains(&killer) =>
+                            {
+                                return Some(killer);
+                            }
+                            _ => continue,
+                        }
+                    }
+
+                    self.stage = Stage::Quiets;
+                }
+                Stage::Quiets => {
+                    if let Some(mv) = self.next_from_list(&self.quiets.clone()) {
+                        return Some(mv);
+                    }
+                    self.stage = Stage::BadCaptures;
+                    self.index = 0;
+                }
+                Stage::BadCaptures => {
+                    if let Some(mv) = self.next_from_list(&self.bad_captures.clone()) {
+                        return Some(mv);
+                    }
+                    self.stage = Stage::Done;
+                    self.index = 0;
+                }
             }
         }
     }
 
-    fn yield_once(&mut self) -> Option<Move> {
-        while self.index < self.moves.len() {
-            let mv: Move = self.moves[self.index];
+    fn generate_and_score_captures(&mut self, position: &Board) {
+        let all_captures: MoveList = tactical_moves!(position);
+
+        self.good_captures.clear();
+        self.bad_captures.clear();
+
+        for mv in all_captures.iter() {
+            if Some(*mv) == self.tt_move {
+                continue;
+            }
+
+            let is_good: bool = SEE::see(position, *mv, 0);
+
+            if is_good {
+                self.good_captures.push(*mv);
+            } else {
+                self.bad_captures.push(*mv);
+            }
+        }
+    }
+
+    fn next_from_list(&mut self, list: &MoveList) -> Option<Move> {
+        while self.index < list.len() {
+            let mv: Move = list[self.index];
             self.index += 1;
+
             if Some(mv) == self.tt_move
                 || Some(mv) == self.killer_move[0]
                 || Some(mv) == self.killer_move[1]
             {
                 continue;
             }
+
             return Some(mv);
         }
         None
     }
 
-    fn score_captures(&mut self, position: &Board) {
-        self.moves.sort_unstable_by_key(|mv| {
-            let victim_value: i32 = position
-                .piece_on(mv.get_dest())
-                .map(piece_value)
-                .unwrap_or(0);
-            let mut attacker_value: i32 = position
-                .piece_on(mv.get_src())
-                .map(piece_value)
-                .unwrap_or(0);
+    fn score_quiets(&mut self, position: &Board, history: &HistoryTable) {
+        let color: Color = position.side();
 
-            if mv.get_type() == MoveType::CapPromoQueen {
-                attacker_value = 936
-            }
-
-            -(victim_value * 100 - attacker_value)
-        });
-    }
-}
-
-fn piece_value(piece: Piece) -> i32 {
-    match piece.piece_type() {
-        PieceType::Pawn => 94,
-        PieceType::Knight => 281,
-        PieceType::Bishop => 297,
-        PieceType::Rook => 512,
-        PieceType::Queen => 936,
-        PieceType::King => 0,
+        self.quiets
+            .sort_unstable_by_key(|mv| -history.get_score(*mv, color));
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::MovePicker;
+    use crate::sse::SEE;
+    use crate::tables::HistoryTable;
+    use laura_core::Board;
     use std::str::FromStr;
 
-    use super::MovePicker;
-    use laura_core::Board;
-
     #[test]
-    fn test_picker() {
-        let board: Board = Board::from_str("2r1k3/1P6/8/8/5b2/6P1/P7/2Q3K1 w - - 0 1").unwrap();
+    fn test_good_bad_captures() {
+        let board: Board = Board::from_str("4k3/4p3/8/1p1p4/r3Q3/8/8/4K3 w - - 0 1").unwrap();
         let mut picker: MovePicker = MovePicker::new(None, [None, None]);
-        while let Some(mv) = picker.next(&board) {
-            println!("{}", mv);
+        let history: HistoryTable = HistoryTable::default();
+
+        while let Some(mv) = picker.next(&board, &history) {
+            println!("{} - Stage: {:?}", mv, picker.stage);
         }
     }
 
     #[test]
-    fn test_captures() {
-        let board: Board = Board::from_str("2r1k3/1P6/8/8/5b2/6P1/P7/2Q3K1 w - - 0 1").unwrap();
+    fn test_see_ordering() {
+        let board: Board =
+            Board::from_str("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/7P/P1P1P3/RNBQKBNR w KQkq e6 0 1")
+                .unwrap();
         let mut picker: MovePicker = MovePicker::new(None, [None, None]);
-        picker.skip_quiets = true;
-        while let Some(mv) = picker.next(&board) {
-            println!("{}", mv);
+
+        picker.generate_and_score_captures(&board);
+
+        println!("Good captures: {}", picker.good_captures.len());
+        for mv in picker.good_captures.iter() {
+            let see: bool = SEE::see(&board, *mv, 0);
+            println!("Good: {} (SEE: {})", mv, see);
+            assert_eq!(see, true);
+        }
+        println!("Bad captures: {}", picker.bad_captures.len());
+        for mv in picker.bad_captures.iter() {
+            let see: bool = SEE::see(&board, *mv, 0);
+            println!("Bad: {} (SEE: {})", mv, see);
+            assert_eq!(see, false);
         }
     }
 }

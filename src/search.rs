@@ -21,6 +21,8 @@
 
 //! Search implementation
 
+use crate::config::lmr_reduction;
+use crate::tables::HistoryTable;
 use crate::{
     config::{
         ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, MATE, MAX_DELTA, MAX_MATE, MAX_PLY,
@@ -180,7 +182,7 @@ impl Position {
         let (mut alpha, mut beta) = if depth >= ASPIRATION_DEPTH_THRESHOLD {
             (
                 (-INFINITY).max(thread.score - delta),
-                (INFINITY).min(thread.score + delta),
+                INFINITY.min(thread.score + delta),
             )
         } else {
             (-INFINITY, INFINITY)
@@ -253,10 +255,10 @@ impl Position {
 
         // 2. Quiescence Search
         if depth == 0 || thread.ply >= MAX_PLY {
-            if Node::PV_NODE {
-                return self.quiescence::<PvNode>(thread, ttable, alpha, beta, node_pv);
+            return if Node::PV_NODE {
+                self.quiescence::<PvNode>(thread, ttable, alpha, beta, node_pv)
             } else {
-                return self.quiescence::<NonPv>(thread, ttable, alpha, beta, node_pv);
+                self.quiescence::<NonPv>(thread, ttable, alpha, beta, node_pv)
             }
         }
 
@@ -296,8 +298,21 @@ impl Position {
             }
         }
 
-        // 5. Iternal Iterative Reduction
-        if Node::PV_NODE && depth >= 4 && tt_entry.is_none() {
+        // 5. Null Move Pruning
+        if !in_check && !Node::PV_NODE && depth > 3 && !self.possible_zugzwang() {
+            let r: usize = 3 + depth / 4;
+            self.push_null(thread);
+            let null_score =
+                -self.alphabeta::<NonPv>(thread, ttable, depth - r, -beta, -beta + 1, child_pv);
+            self.pop_move(thread);
+
+            if null_score >= beta {
+                return beta;
+            }
+        }
+
+        // 6. Iternal Iterative Reduction
+        if !Node::ROOT_NODE && depth >= 4 && tt_entry.is_none() {
             depth -= 1;
         }
 
@@ -309,8 +324,10 @@ impl Position {
         let killers: [Option<Move>; 2] = thread.killer.get(thread.ply);
         let mut picker: MovePicker = MovePicker::new(tt_move, killers);
 
+        let mut quiets_tried: Vec<Move> = Vec::with_capacity(32);
+
         // Main Alpha-Beta Loop
-        while let Some(mv) = picker.next(&self.board()) {
+        while let Some(mv) = picker.next(&self.board(), &thread.history) {
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
             move_count += 1;
@@ -325,17 +342,37 @@ impl Position {
                     -self.alphabeta::<NonPv>(thread, ttable, depth - 1, -beta, -alpha, child_pv)
                 };
             } else {
-                // Later moves: Null window search
+                // Later moves: Null window search + Late Moves Reduction
+                let reduction: usize = if move_count >= 3 && depth >= 3 && !in_check && mv.is_quiet() {
+                    let r: usize = lmr_reduction(depth, move_count);
+                    r.clamp(1, depth - 1)
+                } else {
+                    0
+                };
+
+                // Reduced depth Null window search
                 score = -self.alphabeta::<NonPv>(
                     thread,
                     ttable,
-                    depth - 1,
+                    depth - 1 - reduction,
                     -alpha - 1,
                     -alpha,
                     child_pv,
                 );
 
-                // If it fails high and we are in a PV node, re-search with full window
+                // If it fails high, and it has been reduced, let's re-search with full window
+                if score > alpha && reduction > 0 {
+                    score = -self.alphabeta::<NonPv>(
+                        thread,
+                        ttable,
+                        depth - 1,
+                        -alpha - 1,
+                        -alpha,
+                        child_pv,
+                    );
+                }
+
+                // If it fails high, and we are in a PV node, re-search with full window
                 if score > alpha && Node::PV_NODE {
                     score = -self.alphabeta::<PvNode>(
                         thread,
@@ -353,6 +390,11 @@ impl Position {
                 return 0;
             }
 
+            // Tracks quiet moves
+            if mv.is_quiet() {
+                quiets_tried.push(mv);
+            }
+
             // Best move and alpha update
             if score > best_score {
                 best_score = score;
@@ -368,6 +410,16 @@ impl Position {
                 // Beta Pruning
                 if score >= beta {
                     if mv.is_quiet() {
+                        // Bonus to cutoff move
+                        thread.history.update_cutoff(mv, depth, self.board().side);
+
+                        // Penalties
+                        quiets_tried.pop();
+                        thread
+                            .history
+                            .update_non_cutoffs(&quiets_tried, depth, self.board().side);
+
+                        // Killers updates
                         thread.killer.store(thread.ply, mv);
                     }
                     break;
@@ -475,8 +527,10 @@ impl Position {
         let mut picker: MovePicker = MovePicker::new(tt_move, [None, None]);
         picker.skip_quiets = true;
 
+        let history: HistoryTable = HistoryTable::default();
+
         // Main Quiescence Loop
-        while let Some(mv) = picker.next(&self.board()) {
+        while let Some(mv) = picker.next(&self.board(), &history) {
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
             move_count += 1;
