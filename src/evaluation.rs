@@ -143,9 +143,18 @@ const KING_TABLE: [Value; 64] = [
     Value(-15,-53),  Value(36,-34),  Value(12,-21),  Value(-54,-11), Value(8,-28),   Value(-28,-14), Value(24,-24),  Value(14,-43),
 ];
 
-const PASSED_PAWN: Value = Value(40, 80);
+const PASSED_PAWN_BONUS: [Value; 8] = [
+    Value(0, 0),     // Rank 1
+    Value(5, 10),    // Rank 2
+    Value(10, 20),   // Rank 3
+    Value(20, 40),   // Rank 4
+    Value(40, 70),   // Rank 5
+    Value(70, 120),  // Rank 6
+    Value(100, 180), // Rank 7
+    Value(0, 0),     // Rank 8
+];
 const ISOLATED_PAWN: Value = Value(-3, -15);
-const DOUBLED_PAWN: [Value; 8] = [
+const DOUBLED_PAWN_PENALTY: [Value; 8] = [
     Value(-15, -30), // File A
     Value(-10, -25), // File B
     Value(-7, -15),  // File C
@@ -165,7 +174,7 @@ const CONNECTED_PAWN_BONUS: [Value; 8] = [
     Value(40, 40), // Rank Seven
     Value(0, 0),   // Rank Eight
 ];
-const CENTRAL_PAWN_BONUS: Value = Value(10, 0);
+const CENTRAL_PAWN_BONUS: Value = Value(25, 50);
 const OUTPOST_KNIGHT_BONUS: [Value; 8] = [
     Value(0, 0),   // Rank One
     Value(0, 0),   // Rank Two
@@ -329,7 +338,7 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
 
         // Passed pawn bonus
         if enemy_pawns.0 & PASSED_PAWN_MASKS[COLOR][square.to_index()] == 0 {
-            eval += PASSED_PAWN;
+            eval += PASSED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)];
         }
         // Isolated pawn penalties
         if pawns.0 & ISOLATED_PAWN_MASKS[square.file().to_index()] == 0 {
@@ -337,7 +346,7 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
         }
         // Penalty for doubled pawns
         if pawns.0 & DOUBLED_PAWN_MASK[square.to_index()] != 0 {
-            eval += DOUBLED_PAWN[square.file().to_index()];
+            eval += DOUBLED_PAWN_PENALTY[square.file().to_index()];
         }
 
         //Double supported pawn bonus
@@ -346,7 +355,7 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
         }
 
         // Central pawn bonus
-        if pawns.0 & CENTER_MASK != 0 {
+        if CENTER_MASK & (1u64 << square.to_index()) != 0 {
             eval += CENTRAL_PAWN_BONUS;
         }
     }
@@ -449,12 +458,13 @@ fn evaluate_bishops<const COLOR: usize>(board: &Board) -> Value {
         eval += BISHOP_PAIR;
     }
 
+    let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
+
     for square in bishops {
         eval += PIECE_VALUE[PieceType::BISHOP];
         eval += BISHOP_TABLE[square.to_index() ^ (56 * COLOR)];
 
         // Bishop mobility bonus/penalty
-        let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
         let mobility_count: usize = get_bishop_attacks(square, blockers).count_bits() as usize;
         eval += BISHOP_MOBILITY_BONUS[mobility_count];
     }
@@ -486,6 +496,8 @@ fn evaluate_rooks<const COLOR: usize>(board: &Board) -> Value {
         .unwrap();
     let outpost: BitBoard = rooks & ROOK_OUTPOST_MASK[COLOR];
 
+    let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
+
     for square in rooks {
         eval += PIECE_VALUE[PieceType::ROOK];
         eval += ROOK_TABLE[square.to_index() ^ (56 * COLOR)];
@@ -505,7 +517,6 @@ fn evaluate_rooks<const COLOR: usize>(board: &Board) -> Value {
         }
 
         // Rook mobility bonus/penalty
-        let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
         let mobility_count: usize = get_rook_attacks(square, blockers).count_bits() as usize;
         eval += ROOK_MOBILITY_BONUS[mobility_count];
     }
@@ -529,12 +540,13 @@ fn evaluate_queens<const COLOR: usize>(board: &Board) -> Value {
     let mut eval: Value = Value(0, 0);
     let queens: BitBoard = board.pieces_bitboard[PieceType::QUEEN] & board.sides_bitboard[COLOR];
 
+    let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
+
     for square in queens {
         eval += PIECE_VALUE[PieceType::QUEEN];
         eval += QUEEN_TABLE[square.to_index() ^ (56 * COLOR)];
 
         // Queen mobility bonus/penalty
-        let blockers: BitBoard = board.sides_bitboard[COLOR] | board.sides_bitboard[COLOR ^ 1];
         let mobility_count: usize = (get_rook_attacks(square, blockers)
             | get_bishop_attacks(square, blockers))
         .count_bits() as usize;
@@ -570,13 +582,10 @@ fn phase(board: &Board) -> i32 {
     const MG_LIMIT: i32 = 15258;
     const EG_LIMIT: i32 = 3915;
 
-    let mut npm: i32 = 0;
-
-    for square in BitBoard::FULL {
-        if let Some(piece) = board.piece_on(square) {
-            npm += non_pawn_material(piece);
-        }
-    }
+    let mut npm: i32 = board.pieces_bitboard[PieceType::KNIGHT].count_bits() as i32 * 781
+        + board.pieces_bitboard[PieceType::BISHOP].count_bits() as i32 * 825
+        + board.pieces_bitboard[PieceType::ROOK].count_bits() as i32 * 1276
+        + board.pieces_bitboard[PieceType::QUEEN].count_bits() as i32 * 2538;
 
     npm = EG_LIMIT.max(MG_LIMIT.min(npm));
 
