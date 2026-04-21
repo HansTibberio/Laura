@@ -21,6 +21,7 @@
 
 //! Thread management for parallel search.
 
+use crate::tables::HistoryTable;
 use crate::{
     TimeManager,
     position::Position,
@@ -46,6 +47,7 @@ pub struct Thread {
     pub time_manager: TimeManager,
     pub principal_variation: PrincipalVariation,
     pub killer: KillerMoves,
+    pub history: HistoryTable,
     pub nodes: u64,
     pub ply: usize,
     pub seldepth: usize,
@@ -66,6 +68,7 @@ impl Thread {
             depth: 0,
             time_manager,
             killer: KillerMoves::default(),
+            history: HistoryTable::default(),
             completed: 0,
         }
     }

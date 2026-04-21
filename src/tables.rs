@@ -22,7 +22,7 @@
 //! Search tables for move ordering.
 
 use crate::config::{KILLER_SLOTS, MAX_PLY};
-use laura_core::Move;
+use laura_core::{Color, Move};
 
 #[derive(Debug)]
 pub struct KillerMoves {
@@ -47,5 +47,61 @@ impl KillerMoves {
 
     pub fn get(&self, ply: usize) -> [Option<Move>; KILLER_SLOTS] {
         self.table[ply]
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct HistoryTable {
+    // [side_to_move][from_square][to_square]
+    table: [[[i32; 64]; 64]; 2],
+}
+
+impl Default for HistoryTable {
+    fn default() -> Self {
+        Self {
+            table: [[[0; 64]; 64]; 2],
+        }
+    }
+}
+
+impl HistoryTable {
+    /// Updates de move that causes the beta cutoff
+    pub fn update_cutoff(&mut self, mv: Move, depth: usize, color: Color) {
+        let bonus: i32 = self.calculate_bonus(depth as i32);
+        self.add_score(mv, color, bonus);
+    }
+
+    /// Penalizes the moves that were searched but didn't cause a beta cutoff
+    pub fn update_non_cutoffs(&mut self, quiets: &[Move], depth: usize, color: Color) {
+        let penalty: i32 = -self.calculate_bonus(depth as i32);
+        for &mv in quiets {
+            self.add_score(mv, color, penalty);
+        }
+    }
+
+    /// Gets the score of a Move
+    pub fn get_score(&self, mv: Move, color: Color) -> i32 {
+        let color_idx: usize = color as usize;
+        let from: usize = mv.get_src() as usize;
+        let to: usize = mv.get_dest() as usize;
+
+        self.table[color_idx][from][to]
+    }
+
+    /// Adds a score (bonus or penalties) to a move
+    fn add_score(&mut self, mv: Move, color: Color, delta: i32) {
+        let color_idx: usize = color as usize;
+        let from: usize = mv.get_src() as usize;
+        let to: usize = mv.get_dest() as usize;
+
+        let old_score: i32 = self.table[color_idx][from][to];
+        let new_score: i32 = old_score + delta - (old_score * delta.abs()) / 16384;
+
+        self.table[color_idx][from][to] = new_score.clamp(-16384, 16384);
+    }
+
+    fn calculate_bonus(&self, depth: i32) -> i32 {
+        let depth: i32 = depth.min(12);
+        depth * depth + 2 * depth - 2
     }
 }
