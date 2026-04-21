@@ -259,7 +259,7 @@ impl Position {
                 self.quiescence::<PvNode>(thread, ttable, alpha, beta, node_pv)
             } else {
                 self.quiescence::<NonPv>(thread, ttable, alpha, beta, node_pv)
-            }
+            };
         }
 
         node_pv.len = 0;
@@ -343,12 +343,13 @@ impl Position {
                 };
             } else {
                 // Later moves: Null window search + Late Moves Reduction
-                let reduction: usize = if move_count >= 3 && depth >= 3 && !in_check && mv.is_quiet() {
-                    let r: usize = lmr_reduction(depth, move_count);
-                    r.clamp(1, depth - 1)
-                } else {
-                    0
-                };
+                let reduction: usize =
+                    if move_count >= 3 && depth >= 3 && !in_check && mv.is_quiet() {
+                        let r: usize = lmr_reduction(depth, move_count);
+                        r.clamp(1, depth - 1)
+                    } else {
+                        0
+                    };
 
                 // Reduced depth Null window search
                 score = -self.alphabeta::<NonPv>(
