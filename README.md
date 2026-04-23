@@ -16,10 +16,7 @@
 
 **Laura** is a multi-threaded, [UCI][uci-link]-compatible chess engine written in Rust, designed with a focus on speed, modularity, and tactical strength.
 
-The project is divided into two main components:
-
-- **`laura_core`** – A fast and efficient legal [move generator][laura_core-link] for chess engines.
-- **`laura_engine`** – The UCI-compatible chess engine currently under active development.
+The engine is built on top of [laura_core][laura_core-link], a dedicated high-performance move generation library developed as a separate project.
 
 ## Installation & Compilation
 
@@ -48,16 +45,22 @@ You can also download a precompiled binary from the [Releases][release-link] sec
 ## Features
 
 -   Hand-crafted static evaluation function
--   Super-fast legal move generation
+-   High-performance legal move generation via **laura_core**
 -   Fail-soft negamax with alpha-beta pruning
 -   Iterative deepening
 -   Aspiration windows
 -   Principal variation search (PVS)
+-   Null Move Pruning (NMP)
+-   Late Move Reductions (LMR, basic implementation)
 -   Lockless transposition table
 -   Lazy SMP (multithreaded search)
--   Advanced move ordering:
-    -   Killer heuristic
-    -   MVV/LVA (Most Valuable Victim / Least Valuable Attacker)
+-   Enhanced move ordering:
+    -   TT move
+    -   Good captures
+    -   Killer moves
+    -   Quiets (ordered via history heuristic table)
+    -   Bad captures
+-   Static Exchange Evaluation (SEE)
 -   Mate distance pruning
 -   Internal iterative reductions (IIR)
 -   Quiescence search
