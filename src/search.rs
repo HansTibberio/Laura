@@ -199,21 +199,22 @@ impl Position {
             match score {
                 s if s <= alpha => {
                     // Fail-low, expand window down
-                    alpha -= delta;
+                    beta = (alpha - beta) / 2; // Midpoint collapse of beta
+                    alpha = (-INFINITY).max(alpha - delta);
                 }
                 s if s >= beta => {
                     // Fail-high, expand window up
-                    beta += delta;
+                    beta = (INFINITY).min(beta + delta);
                 }
                 _ => {
-                    // Succesful
+                    // Successful
                     thread.principal_variation = root_pv;
                     thread.completed = depth;
                     return score;
                 }
             }
 
-            delta *= 2;
+            delta += delta / 2;
             if delta >= MAX_DELTA {
                 alpha = -INFINITY;
                 beta = INFINITY;
