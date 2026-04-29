@@ -331,7 +331,7 @@ impl Position {
 
         let mut quiets_tried: Vec<Move> = Vec::with_capacity(32);
 
-        // Main Alpha-Beta Loop
+        // 7. Main Alpha-Beta Loop
         while let Some(mv) = picker.next(&self.board(), &thread.history) {
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
@@ -347,7 +347,7 @@ impl Position {
                     -self.alphabeta::<NonPv>(thread, ttable, depth - 1, -beta, -alpha, child_pv)
                 };
             } else {
-                // Later moves: Null window search + Late Moves Reduction
+                // Later moves: Null Window Search + Late Moves Reduction
                 let reduction: usize =
                     if move_count >= 3 && depth >= 3 && !in_check && mv.is_quiet() {
                         let r: usize = lmr_reduction(depth, move_count);
@@ -356,7 +356,7 @@ impl Position {
                         0
                     };
 
-                // Reduced depth Null window search
+                // Reduced depth + Null Window Search
                 score = -self.alphabeta::<NonPv>(
                     thread,
                     ttable,
@@ -366,7 +366,7 @@ impl Position {
                     child_pv,
                 );
 
-                // If it fails high, and it has been reduced, let's re-search with full window
+                // If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
                 if score > alpha && reduction > 0 {
                     score = -self.alphabeta::<NonPv>(
                         thread,
@@ -378,7 +378,7 @@ impl Position {
                     );
                 }
 
-                // If it fails high, and we are in a PV node, re-search with full window
+                // If it fails high, and we are in a PV node, re-search with Full Window
                 if score > alpha && Node::PV_NODE {
                     score = -self.alphabeta::<PvNode>(
                         thread,
@@ -610,6 +610,7 @@ fn mated_in(ply: usize) -> i32 {
     -MATE + ply as i32
 }
 
+#[inline(always)]
 fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable) {
     let score: String = if thread.score.abs() >= MAX_MATE {
         let mate_in: i32 = (MATE - thread.score.abs() + 1) / 2;
