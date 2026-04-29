@@ -22,7 +22,6 @@
 //! Search implementation
 
 use crate::config::lmr_reduction;
-use crate::tables::HistoryTable;
 use crate::{
     config::{
         ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, MATE, MAX_DELTA, MAX_MATE, MAX_PLY,
@@ -529,10 +528,8 @@ impl Position {
         let mut picker: MovePicker = MovePicker::new(tt_move, [None, None]);
         picker.skip_quiets = true;
 
-        let history: HistoryTable = HistoryTable::default();
-
         // Main Quiescence Loop
-        while let Some(mv) = picker.next(&self.board(), &history) {
+        while let Some(mv) = picker.next(&self.board(), &thread.history) {
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
             move_count += 1;
