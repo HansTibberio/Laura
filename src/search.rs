@@ -300,7 +300,7 @@ impl Position {
 
         // 5. Null Move Pruning
         if !in_check && !Node::PV_NODE && depth > 3 && !self.possible_zugzwang() {
-            let r: usize = 3 + depth / 4;
+            let r: usize = (4 + depth / 4).min(depth);
             self.push_null(thread);
             let null_score =
                 -self.alphabeta::<NonPv>(thread, ttable, depth - r, -beta, -beta + 1, child_pv);
