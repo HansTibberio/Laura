@@ -93,6 +93,7 @@ impl Position {
         self.board.zobrist.0
     }
 
+    #[inline(always)]
     pub fn set_board(&mut self, board: Board) {
         self.board = board
     }
@@ -107,6 +108,7 @@ impl Position {
         total_nodes
     }
 
+    #[inline(always)]
     pub fn push_move(&mut self, mv: Move, thread: &mut Thread) {
         let new: Board = self.board.make_move(mv);
         let old: Board = replace(&mut self.board, new);
@@ -116,6 +118,7 @@ impl Position {
         thread.nodes += 1;
     }
 
+    #[inline(always)]
     pub fn push_null(&mut self, thread: &mut Thread) {
         let new: Board = self.board.null_move();
         let old: Board = replace(&mut self.board, new);
@@ -125,6 +128,7 @@ impl Position {
         thread.nodes += 1;
     }
 
+    #[inline(always)]
     pub fn pop_move(&mut self, thread: &mut Thread) {
         let old: Board = self.game.pop().unwrap();
         self.board = old;
@@ -132,6 +136,7 @@ impl Position {
         thread.ply -= 1;
     }
 
+    #[inline(always)]
     pub fn evaluate(&self) -> i32 {
         evaluation::evaluate(&self.board)
     }
