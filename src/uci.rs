@@ -54,7 +54,7 @@ pub enum UCICommand {
     Uci,
     IsReady,
     UciNewGame,
-    Position(Board),
+    Position(Board, Vec<Board>),
     Go(TimeControl),
     Stop,
     Quit,
@@ -117,27 +117,23 @@ impl FromStr for UCICommand {
             Some("isready") => Ok(Self::IsReady),
             Some("ucinewgame") => Ok(Self::UciNewGame),
             Some("position") => {
-                let board: Board = match tokens.next() {
-                    Some("startpos") => match tokens.next() {
-                        Some("moves") => {
-                            let mut board: Board = Board::default();
+                let (board, history) = match tokens.next() {
+                    Some("startpos") => {
+                        let mut board: Board = Board::default();
+                        let mut history: Vec<Board> = Vec::with_capacity(16);
+
+                        if matches!(tokens.next(), Some("moves")) {
                             for uci_move in tokens {
                                 if let Some(mv) = board.find_move(uci_move) {
-                                    let board_res: Board = board.make_move(mv);
-                                    board = board_res;
+                                    history.push(board);
+                                    board = board.make_move(mv);
                                 } else {
                                     return Err(UCIError::IlegalUciMove(uci_move.to_string()));
                                 }
                             }
-                            return Ok(Self::Position(board));
                         }
-                        None => Board::default(),
-                        Some(_) => {
-                            return Err(UCIError::InvalidPositionFormat(
-                                "unexpected token after 'startpos' (expected 'moves' or end of command)".to_string(),
-                            ))
-                        }
-                    },
+                        (board, history)
+                    }
                     Some("fen") => {
                         let mut fen: String = String::with_capacity(128);
                         for token in tokens.by_ref().take(6) {
@@ -149,28 +145,28 @@ impl FromStr for UCICommand {
                         let mut board: Board = Board::from_str(&fen)
                             .ok()
                             .ok_or(UCIError::InvalidFenPosition)?;
+                        let mut history: Vec<Board> = Vec::with_capacity(16);
 
                         if matches!(tokens.next(), Some("moves")) {
                             for uci_move in tokens {
                                 if let Some(mv) = board.find_move(uci_move) {
-                                    let board_res: Board = board.make_move(mv);
-                                    board = board_res;
+                                    history.push(board);
+                                    board = board.make_move(mv);
                                 } else {
                                     return Err(UCIError::IlegalUciMove(uci_move.to_string()));
                                 }
                             }
                         }
-
-                        board
+                        (board, history)
                     }
                     _ => {
                         return Err(UCIError::InvalidPositionFormat(
                             "expected 'startpos' or 'fen' after 'position'".to_string(),
-                        ))
+                        ));
                     }
                 };
 
-                Ok(Self::Position(board))
+                Ok(Self::Position(board, history))
             }
             Some("go") => {
                 let mut commands: String = String::with_capacity(64);
@@ -278,10 +274,12 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
             }
             Ok(UCICommand::UciNewGame) => {
                 position.set_board(Board::default());
+                position.set_game(Vec::new());
                 ttable.clear(threadpool.threads);
             }
-            Ok(UCICommand::Position(pos)) => {
-                position.set_board(pos);
+            Ok(UCICommand::Position(board, history)) => {
+                position.set_board(board);
+                position.set_game(history);
             }
             Ok(UCICommand::Go(time_control)) => {
                 ttable.age();
