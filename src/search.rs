@@ -199,7 +199,7 @@ impl Position {
             match score {
                 s if s <= alpha => {
                     // Fail-low, expand window down
-                    beta = (alpha - beta) / 2; // Midpoint collapse of beta
+                    beta = (alpha + beta) / 2; // Midpoint collapse of beta
                     alpha = (-INFINITY).max(alpha - delta);
                 }
                 s if s >= beta => {
