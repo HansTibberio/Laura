@@ -275,6 +275,11 @@ impl Position {
             if alpha >= beta {
                 return alpha;
             }
+
+            // Stop searching if the position is a rule-based draw
+            if self.is_draw() {
+                return 0;
+            }
         }
 
         // 4. Probe the Transposition Table
@@ -479,6 +484,14 @@ impl Position {
         }
 
         let in_check: bool = self.in_check();
+        if thread.ply >= MAX_PLY {
+            return if in_check { 0 } else { self.evaluate() };
+        }
+
+        // Stop searching if the position is a rule-based draw
+        if self.is_draw() {
+            return 0;
+        }
 
         // Update thread selective depth
         if thread.ply > thread.seldepth {

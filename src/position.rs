@@ -22,7 +22,7 @@
 //! Position management.
 
 use crate::{evaluation, thread::Thread};
-use laura_core::{AllMoves, Board, Color, Move, enumerate_legal_moves};
+use laura_core::{AllMoves, BitBoard, Board, Color, Move, enumerate_legal_moves};
 use std::{
     mem::replace,
     time::{Duration, Instant},
@@ -98,6 +98,11 @@ impl Position {
         self.board = board
     }
 
+    #[inline(always)]
+    pub fn set_game(&mut self, history: Vec<Board>) {
+        self.game = history;
+    }
+
     pub fn perft(&self, depth: u8) -> u64 {
         let total_nodes: u64 = perft::<false>(&self.board, depth);
         total_nodes
@@ -160,5 +165,83 @@ impl Position {
     pub fn possible_zugzwang(&self) -> bool {
         (self.board.allied_presence() ^ self.board.allied_king() ^ self.board.allied_pawns())
             .is_empty()
+    }
+
+    #[inline(always)]
+    pub fn is_draw(&self) -> bool {
+        // Fifty-move rule
+        if self.board.fifty_move >= 100 {
+            return true;
+        }
+
+        // Threefold repetition
+        let key: u64 = self.key();
+        let mut count: i32 = 1;
+        let max_back: usize = self.board.fifty_move as usize;
+        for board in self.game.iter().rev().take(max_back).skip(1).step_by(2) {
+            if board.zobrist.0 == key {
+                count += 1;
+                if count >= 3 {
+                    return true;
+                }
+            }
+        }
+
+        // Insufficient material
+        if self.is_insufficient_material() {
+            return true;
+        }
+
+        false
+    }
+
+    #[inline(always)]
+    fn is_insufficient_material(&self) -> bool {
+        let board: &Board = &self.board;
+        let pawns: BitBoard = board.pawns();
+        let rooks: BitBoard = board.rooks();
+        let queens: BitBoard = board.queens();
+
+        if !pawns.is_empty() || !rooks.is_empty() || !queens.is_empty() {
+            return false;
+        }
+
+        let white: BitBoard = board.white_bitboard();
+        let black: BitBoard = board.black_bitboard();
+        let bishops: BitBoard = board.bishops();
+        let knights: BitBoard = board.knights();
+
+        let white_bishops: u32 = (white & bishops).count_bits();
+        let black_bishops: u32 = (black & bishops).count_bits();
+        let white_knights: u32 = (white & knights).count_bits();
+        let black_knights: u32 = (black & knights).count_bits();
+
+        let white_minors: u32 = white_knights + white_bishops;
+        let black_minors: u32 = black_knights + black_bishops;
+
+        match (white_minors, black_minors) {
+            // KK
+            (0, 0) => true,
+
+            // KNK or KBK
+            (1, 0) | (0, 1) => true,
+
+            // KNNK
+            (2, 0) if white_bishops == 0 => true,
+            (0, 2) if black_bishops == 0 => true,
+
+            // KBKB
+            (1, 1) if white_knights == 0 && black_knights == 0 => {
+                let white_bishop_bb: BitBoard = white & bishops;
+                let black_bishop_bb: BitBoard = black & bishops;
+
+                let wb_on_light: bool = !(white_bishop_bb & BitBoard::LIGHT_SQUARES).is_empty();
+                let bb_on_light: bool = !(black_bishop_bb & BitBoard::LIGHT_SQUARES).is_empty();
+
+                wb_on_light == bb_on_light
+            }
+
+            _ => false,
+        }
     }
 }
