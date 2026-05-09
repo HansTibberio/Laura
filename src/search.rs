@@ -228,23 +228,26 @@ impl Position {
         };
 
         // 1. Check Extension
+        // Extends the search depth when the side to move is in check
         let in_check: bool = self.in_check();
         if in_check && depth < MAX_PLY {
             depth += 1;
         }
 
         // 2. Quiescence Search
+        // Switches to quiescence search at leaf nodes to avoid evaluating
+        // tactically unstable positions caused by captures or checks.
         if depth == 0 || thread.ply >= MAX_PLY {
             return self.quiescence(thread, ttable, alpha, beta, child_pv);
         }
-
-        node_pv.len = 0;
 
         // Limit the depth
         depth = depth.min(MAX_PLY - 1);
 
         if !RootNode {
             // 3. Mate Distance Pruning.
+            // Narrows the search window based on the maximum achievable mate
+            // distance from the current ply, avoiding redundant mate searches.
             alpha = alpha.max(mated_in(thread.ply));
             beta = beta.min(mate_in(thread.ply + 1));
 
@@ -279,24 +282,21 @@ impl Position {
             }
         }
 
-        // 5. Null Move Pruning
-        if !in_check && !Node::PV_NODE && depth > 3 && !self.possible_zugzwang() {
-            let r: usize = (4 + depth / 4).min(depth);
-            self.push_null(thread);
-            let null_score =
-                -self.alphabeta::<NonPv>(thread, ttable, depth - r, -beta, -beta + 1, child_pv);
-            self.pop_move(thread);
         let static_eval: i32 = if in_check { -INFINITY } else { self.evaluate() };
 
         // 5. Forward static pruning techniques
         if !in_check && !is_pv {
             // 5.1. Reverse Futility Pruning
+            // Skips shallow nodes when the static evaluation already exceeds beta
+            // by a safe margin, assuming the position is unlikely to fail low.
             let rfp_margin: i32 = 100 * depth as i32;
             if depth <= 8 && static_eval >= beta + rfp_margin {
                 return static_eval;
             }
 
             // 5.2. Null Move Pruning
+            // Performs a reduced-depth null move search to detect positions
+            // where the side to move can still exceed beta after passing.
             if depth > 3 && !self.possible_zugzwang() && do_null {
                 let r: usize = (4 + depth / 4).min(depth);
                 self.push_null(thread);
@@ -318,7 +318,8 @@ impl Position {
         }
 
         // 6. Iternal Iterative Reduction
-        if !Node::ROOT_NODE && depth >= 4 && tt_entry.is_none() {
+        // Reduces the search depth in positions without a transposition table hit,
+        // trading depth for faster move ordering and lower search overhead.
         if !RootNode && depth >= 4 && tt_entry.is_none() && !in_check {
             depth -= 1;
         }
@@ -340,19 +341,27 @@ impl Position {
             let is_quiet: bool = mv.is_quiet();
 
             // 8. Quiet moves pruning
+            // Applies selective pruning heuristics to late or low-value quiet moves
+            // in order to reduce the search tree in non-tactical positions.
             if !is_pv && !in_check && is_quiet {
                 // 8.1. History Leaf Pruning
+                // Skips quiet moves with consistently poor history scores at shallow depth,
+                // assuming they are unlikely to improve alpha.
                 if depth < 6 && thread.history.get_score(mv, self.board().side()) < -5000 {
                     picker.skip_quiets = true;
                 }
 
                 // 8.2. Futility Pruning
+                // Prunes quiet moves when the static evaluation plus a depth-based margin
+                // is still insufficient to raise alpha.
                 let futility_margin: i32 = 80 * depth as i32;
                 if static_eval + futility_margin < alpha && depth <= 6 {
                     picker.skip_quiets = true;
                 }
 
                 // 8.3. Late Move Pruning
+                // Skips late quiet moves at shallow depth after enough moves
+                // have already been searched.
                 if depth < 4 && move_count >= 9 {
                     picker.skip_quiets = true;
                 }
