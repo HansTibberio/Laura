@@ -10,7 +10,7 @@ checksum = "0c77f935b4fdc48214eb86fa38350977a000d5505d08caa223eee7408f8518ef"
 
 [[package]]
 name = "laura_engine"
-version = "2.0.0"
+version = "4.0.0"
 dependencies = [
  "laura_core",
 ]
