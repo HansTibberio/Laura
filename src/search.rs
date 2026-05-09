@@ -198,7 +198,7 @@ impl Position {
     }
 
     // Alpha-Beta with Fail-Soft
-    #[allow(non_upper_case_globals)]
+    #[allow(non_upper_case_globals, clippy::too_many_arguments)]
     fn alphabeta<const RootNode: bool>(
         &mut self,
         thread: &mut Thread,
