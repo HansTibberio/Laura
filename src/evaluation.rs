@@ -174,7 +174,7 @@ const CONNECTED_PAWN_BONUS: [Value; 8] = [
     Value(40, 40), // Rank Seven
     Value(0, 0),   // Rank Eight
 ];
-const CENTRAL_PAWN_BONUS: Value = Value(25, 50);
+const CENTRAL_PAWN_BONUS: Value = Value(25, 15);
 const OUTPOST_KNIGHT_BONUS: [Value; 8] = [
     Value(0, 0),   // Rank One
     Value(0, 0),   // Rank Two
@@ -282,7 +282,7 @@ const QUEEN_MOBILITY_BONUS: [Value; 28] = [
     Value(85, 80), // 28
 ];
 const OPEN_FILE_KING: [Value; 2] = [Value(-15, -5), Value(-20, -0)];
-const SHIELD_PENALTY: [Value; 4] = [Value(-60, 0), Value(-40, 0), Value(-20, 0), Value(5, 0)];
+const SHIELD_PENALTY: [Value; 4] = [Value(-20, 0), Value(-15, 0), Value(-8, 0), Value(5, 0)];
 const PAWN_STORM: [Value; 8] = [
     Value(0, 0),
     Value(-20, 0),
@@ -332,13 +332,24 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
         board.pieces_bitboard[PieceType::PAWN] & board.sides_bitboard[COLOR ^ 1];
     let connected: BitBoard = connected_pawns::<COLOR>(pawns);
 
+    // Detect endgame: no queens, and at most one minor piece or one rook per side
+    let queens: u32 = board.pieces_bitboard[PieceType::QUEEN].count_bits();
+    let is_endgame = queens == 0;
+
     for square in pawns {
         eval += PIECE_VALUE[PieceType::PAWN];
         eval += PAWN_TABLE[square.to_index() ^ (56 * COLOR)];
 
+        let rank_index = square.rank().to_index() ^ (7 * COLOR);
+
         // Passed pawn bonus
         if enemy_pawns.0 & PASSED_PAWN_MASKS[COLOR][square.to_index()] == 0 {
-            eval += PASSED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)];
+            let mut bonus = PASSED_PAWN_BONUS[rank_index];
+            // Extra endgame incentive for passed pawns when no queen
+            if is_endgame {
+                bonus += Value(0, bonus.1 / 2);
+            }
+            eval += bonus;
         }
         // Isolated pawn penalties
         if pawns.0 & ISOLATED_PAWN_MASKS[square.file().to_index()] == 0 {
@@ -351,12 +362,19 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
 
         //Double supported pawn bonus
         if (pawns.0 & DOUBLE_SUPPORTED_PAWN_MASKS[COLOR][square.to_index()]).count_ones() >= 2 {
-            eval += CONNECTED_PAWN_BONUS[square.rank().to_index() ^ (7 * COLOR)]
+            eval += CONNECTED_PAWN_BONUS[rank_index]
         }
 
         // Central pawn bonus
         if CENTER_MASK & (1u64 << square.to_index()) != 0 {
             eval += CENTRAL_PAWN_BONUS;
+        }
+
+        // Endgame: general advancement bonus for all pawns (rank-scaled)
+        // Encourages flank pawns (a,b,c,f,g,h) to push forward in endgame
+        if is_endgame && rank_index >= 2 {
+            let advance_bonus = (rank_index as i32 - 1) * 6;
+            eval += Value(0, advance_bonus);
         }
     }
 
@@ -383,7 +401,12 @@ fn evaluate_king_pawns<const COLOR: usize>(board: &Board) -> Value {
         .to_square()
         .unwrap();
 
-    if king.rank().to_index() ^ (7 * COLOR) <= 1 {
+    // King safety (shelter, open files, pawn storm) only applies in middlegame.
+    // In endgame (no queens) the king should be active, so we skip these penalties.
+    let queens: u32 = board.pieces_bitboard[PieceType::QUEEN].count_bits();
+    let is_endgame: bool = queens == 0;
+
+    if !is_endgame && king.rank().to_index() ^ (7 * COLOR) <= 1 {
         // Open/Semi-open file penalty
         if pawns & king.file().to_bitboard() == BitBoard::EMPTY {
             let open: usize = (enemy_pawns & king.file().to_bitboard() == BitBoard::EMPTY) as usize;
