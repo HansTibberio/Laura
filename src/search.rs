@@ -83,7 +83,7 @@ impl fmt::Display for PrincipalVariation {
             write!(f, "pv ")?;
         }
 
-        for &mv in self.as_slice() {
+        for &mv in self.as_slice().iter().take(16) {
             write!(f, "{mv} ")?;
         }
         Ok(())
