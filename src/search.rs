@@ -47,30 +47,6 @@ impl ThreadType for WorkerThread {
     const MAIN: bool = false;
 }
 
-trait NodeType {
-    const PV_NODE: bool;
-    const ROOT_NODE: bool;
-}
-
-struct RootNode;
-struct PvNode;
-struct NonPv;
-
-impl NodeType for RootNode {
-    const PV_NODE: bool = true;
-    const ROOT_NODE: bool = true;
-}
-
-impl NodeType for PvNode {
-    const PV_NODE: bool = true;
-    const ROOT_NODE: bool = false;
-}
-
-impl NodeType for NonPv {
-    const PV_NODE: bool = false;
-    const ROOT_NODE: bool = false;
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct PrincipalVariation {
     pub moves: [Move; MAX_PLY],
@@ -189,7 +165,7 @@ impl Position {
 
         loop {
             let score: i32 =
-                self.alphabeta::<RootNode>(thread, ttable, depth, alpha, beta, &mut root_pv);
+                self.alphabeta::<true>(thread, ttable, depth, alpha, beta, &mut root_pv, true);
 
             if thread.time_manager.stopped() {
                 return -INFINITY;
@@ -222,8 +198,8 @@ impl Position {
     }
 
     // Alpha-Beta with Fail-Soft
-    #[allow(unused_assignments)]
-    fn alphabeta<Node: NodeType>(
+    #[allow(non_upper_case_globals)]
+    fn alphabeta<const RootNode: bool>(
         &mut self,
         thread: &mut Thread,
         ttable: &TranspositionTable,
@@ -231,9 +207,13 @@ impl Position {
         mut alpha: i32,
         mut beta: i32,
         node_pv: &mut PrincipalVariation,
+        do_null: bool,
     ) -> i32 {
         let mut temp_pv: PrincipalVariation = PrincipalVariation::default();
         let child_pv: &mut PrincipalVariation = &mut temp_pv;
+        node_pv.clear();
+
+        let is_pv: bool = beta - alpha > 1;
 
         // Hard Limit Time Control
         if thread.time_manager.stop_hard(thread.nodes) {
@@ -241,7 +221,7 @@ impl Position {
         }
 
         // Update thread selective depth
-        thread.seldepth = if Node::ROOT_NODE {
+        thread.seldepth = if RootNode {
             0
         } else {
             thread.seldepth.max(thread.ply)
@@ -255,11 +235,7 @@ impl Position {
 
         // 2. Quiescence Search
         if depth == 0 || thread.ply >= MAX_PLY {
-            return if Node::PV_NODE {
-                self.quiescence::<PvNode>(thread, ttable, alpha, beta, node_pv)
-            } else {
-                self.quiescence::<NonPv>(thread, ttable, alpha, beta, node_pv)
-            };
+            return self.quiescence(thread, ttable, alpha, beta, child_pv);
         }
 
         node_pv.len = 0;
@@ -267,7 +243,7 @@ impl Position {
         // Limit the depth
         depth = depth.min(MAX_PLY - 1);
 
-        if !Node::ROOT_NODE {
+        if !RootNode {
             // 3. Mate Distance Pruning.
             alpha = alpha.max(mated_in(thread.ply));
             beta = beta.min(mate_in(thread.ply + 1));
@@ -287,7 +263,7 @@ impl Position {
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
-            if entry.depth >= depth && !Node::PV_NODE {
+            if entry.depth >= depth && !is_pv {
                 let entry_score: i32 = entry.score;
 
                 if entry.bound == BoundType::Exact
@@ -310,14 +286,40 @@ impl Position {
             let null_score =
                 -self.alphabeta::<NonPv>(thread, ttable, depth - r, -beta, -beta + 1, child_pv);
             self.pop_move(thread);
+        let static_eval: i32 = if in_check { -INFINITY } else { self.evaluate() };
 
-            if null_score >= beta {
-                return beta;
+        // 5. Forward static pruning techniques
+        if !in_check && !is_pv {
+            // 5.1. Reverse Futility Pruning
+            let rfp_margin: i32 = 100 * depth as i32;
+            if depth <= 8 && static_eval >= beta + rfp_margin {
+                return static_eval;
+            }
+
+            // 5.2. Null Move Pruning
+            if depth > 3 && !self.possible_zugzwang() && do_null {
+                let r: usize = (4 + depth / 4).min(depth);
+                self.push_null(thread);
+                let null_score = -self.alphabeta::<false>(
+                    thread,
+                    ttable,
+                    depth - r,
+                    -beta,
+                    -beta + 1,
+                    child_pv,
+                    false,
+                );
+                self.pop_move(thread);
+
+                if null_score >= beta {
+                    return null_score;
+                }
             }
         }
 
         // 6. Iternal Iterative Reduction
         if !Node::ROOT_NODE && depth >= 4 && tt_entry.is_none() {
+        if !RootNode && depth >= 4 && tt_entry.is_none() && !in_check {
             depth -= 1;
         }
 
@@ -333,21 +335,46 @@ impl Position {
 
         // 7. Main Alpha-Beta Loop
         while let Some(mv) = picker.next(&self.board(), &thread.history) {
-            self.push_move(mv, thread);
-            ttable.prefetch(self.key());
             move_count += 1;
             let mut score: i32;
+            let is_quiet: bool = mv.is_quiet();
 
-            // Principal Variation Search
+            // 8. Quiet moves pruning
+            if !is_pv && !in_check && is_quiet {
+                // 8.1. History Leaf Pruning
+                if depth < 6 && thread.history.get_score(mv, self.board().side()) < -5000 {
+                    picker.skip_quiets = true;
+                }
+
+                // 8.2. Futility Pruning
+                let futility_margin: i32 = 80 * depth as i32;
+                if static_eval + futility_margin < alpha && depth <= 6 {
+                    picker.skip_quiets = true;
+                }
+
+                // 8.3. Late Move Pruning
+                if depth < 4 && move_count >= 9 {
+                    picker.skip_quiets = true;
+                }
+            }
+
+            self.push_move(mv, thread);
+            ttable.prefetch(self.key());
+
+            // 9. Principal Variation Search
             if move_count == 1 {
-                // First move: Full Window Search
-                score = if Node::PV_NODE {
-                    -self.alphabeta::<PvNode>(thread, ttable, depth - 1, -beta, -alpha, child_pv)
-                } else {
-                    -self.alphabeta::<NonPv>(thread, ttable, depth - 1, -beta, -alpha, child_pv)
-                };
+                // 9.1. First move: Full Window Search
+                score = -self.alphabeta::<false>(
+                    thread,
+                    ttable,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    child_pv,
+                    true,
+                )
             } else {
-                // Later moves: Null Window Search + Late Moves Reduction
+                // 9.2. Later moves: Null Window Search + Late Moves Reduction
                 let reduction: usize =
                     if move_count >= 3 && depth >= 3 && !in_check && mv.is_quiet() {
                         let r: usize = lmr_reduction(depth, move_count);
@@ -357,36 +384,39 @@ impl Position {
                     };
 
                 // Reduced depth + Null Window Search
-                score = -self.alphabeta::<NonPv>(
+                score = -self.alphabeta::<false>(
                     thread,
                     ttable,
                     depth - 1 - reduction,
                     -alpha - 1,
                     -alpha,
                     child_pv,
+                    true,
                 );
 
-                // If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
+                // 9.3. If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
                 if score > alpha && reduction > 0 {
-                    score = -self.alphabeta::<NonPv>(
+                    score = -self.alphabeta::<false>(
                         thread,
                         ttable,
                         depth - 1,
                         -alpha - 1,
                         -alpha,
                         child_pv,
+                        true,
                     );
                 }
 
-                // If it fails high, and we are in a PV node, re-search with Full Window
-                if score > alpha && Node::PV_NODE {
-                    score = -self.alphabeta::<PvNode>(
+                // 9.4. If it fails high, and we are in a PV node, re-search with Full Window
+                if score > alpha && is_pv {
+                    score = -self.alphabeta::<false>(
                         thread,
                         ttable,
                         depth - 1,
                         -beta,
                         -alpha,
                         child_pv,
+                        true,
                     );
                 }
             }
@@ -408,7 +438,7 @@ impl Position {
                 if score > alpha {
                     alpha = score;
                     best_move = mv;
-                    if Node::PV_NODE {
+                    if is_pv {
                         node_pv.push_line(best_move, child_pv);
                     }
                 }
@@ -455,10 +485,10 @@ impl Position {
             self.key(),
             best_move,
             best_score,
-            0,
+            static_eval,
             depth,
             bound,
-            Node::PV_NODE,
+            is_pv,
             thread.ply,
         );
 
@@ -466,7 +496,7 @@ impl Position {
     }
 
     #[allow(unused_assignments, unused_variables)]
-    fn quiescence<Node: NodeType>(
+    fn quiescence(
         &mut self,
         thread: &mut Thread,
         ttable: &TranspositionTable,
@@ -476,7 +506,9 @@ impl Position {
     ) -> i32 {
         let mut temp_pv: PrincipalVariation = PrincipalVariation::default();
         let child_pv: &mut PrincipalVariation = &mut temp_pv;
-        node_pv.len = 0;
+        node_pv.clear();
+
+        let is_pv: bool = beta - alpha > 1;
 
         // Hard Limit Time Control
         if thread.time_manager.stop_hard(thread.nodes) {
@@ -503,7 +535,7 @@ impl Position {
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
-            if !Node::PV_NODE {
+            if !is_pv {
                 let entry_score: i32 = entry.score;
 
                 if entry.bound == BoundType::Exact
@@ -546,7 +578,7 @@ impl Position {
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
             move_count += 1;
-            let score: i32 = -self.quiescence::<Node>(thread, ttable, -beta, -alpha, child_pv);
+            let score: i32 = -self.quiescence(thread, ttable, -beta, -alpha, child_pv);
             self.pop_move(thread);
 
             if thread.time_manager.stopped() {
@@ -560,13 +592,13 @@ impl Position {
                 if score > alpha {
                     alpha = score;
                     best_move = mv;
-                    if Node::PV_NODE {
-                        node_pv.push_line(mv, child_pv);
+                    if is_pv {
+                        node_pv.push_line(best_move, child_pv);
                     }
                 }
 
                 // Beta Pruning
-                if score >= beta {
+                if alpha >= beta {
                     break;
                 }
             }
@@ -592,7 +624,7 @@ impl Position {
             0,
             0,
             bound,
-            Node::PV_NODE,
+            is_pv,
             thread.ply,
         );
 
