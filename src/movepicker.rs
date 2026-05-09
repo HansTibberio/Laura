@@ -119,8 +119,10 @@ impl MovePicker {
                     self.stage = Stage::Quiets;
                 }
                 Stage::Quiets => {
-                    if let Some(mv) = self.next_from_list(&self.quiets.clone()) {
-                        return Some(mv);
+                    if !self.skip_quiets {
+                        if let Some(mv) = self.next_from_list(&self.quiets.clone()) {
+                            return Some(mv);
+                        }
                     }
                     self.stage = Stage::BadCaptures;
                     self.index = 0;
