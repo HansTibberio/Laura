@@ -47,8 +47,7 @@ pub static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table: [[i32; 64]; 64] = [[0i32; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (moves, value) in row.iter_mut().enumerate().skip(1) {
-            *value =
-                (0.6897 + (depth as f64).ln() * (moves as f64).ln() / 2.5467) as i32;
+            *value = (0.6897 + (depth as f64).ln() * (moves as f64).ln() / 2.5467) as i32;
         }
     }
     table
