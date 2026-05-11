@@ -56,6 +56,7 @@ pub static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
 
 // Tables parameters
 pub const KILLER_SLOTS: usize = 2;
+pub const HIST_CLAMP: i32 = 16384;
 
 // Transposition table parameters
 pub const TTMATE: i32 = 30_000;
