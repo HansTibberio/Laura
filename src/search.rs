@@ -21,10 +21,10 @@
 
 //! Search implementation
 
-use crate::config::lmr_reduction;
 use crate::{
     config::{
-        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, MATE, MAX_DELTA, MAX_MATE, MAX_PLY,
+        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, LMR_TABLE, MATE, MAX_DELTA,
+        MAX_MATE, MAX_PLY,
     },
     movepicker::MovePicker,
     position::Position,
@@ -679,4 +679,9 @@ fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable) {
         ttable.hash_full(),
         thread.principal_variation
     );
+}
+
+#[inline(always)]
+pub fn lmr_reduction(depth: usize, move_count: usize) -> usize {
+    LMR_TABLE[depth.min(63)][move_count.min(63)] as usize
 }
