@@ -24,18 +24,30 @@ You have two main options to install and run **Laura**:
 
 ### 1. Compile from Source
 
-To build **Laura** optimized for your machine, ensure you have [Rust][rust-link] installed, then run:
+To build **Laura** optimized for your machine, ensure you have [Rust][rust-link] installed, then clone the repository:
 
 ``` bash
 git clone https://github.com/HansTibberio/Laura.git
 cd Laura
+```
+
+Linux/macOS/Git Bash/WSL
+
+``` bash
 RUSTFLAGS="-C target-cpu=native" cargo build --release
+```
+
+Windows PowerShell
+
+``` bash
+$env:RUSTFLAGS="-C target-cpu=native"
+cargo build --release
 ```
 
 For even better performance on supported CPUs, enable the `bmi2` feature:
 
 ``` bash
-RUSTFLAGS="-C target-cpu=native" cargo build --release --features bmi2
+cargo build --release --features bmi2
 ```
 
 ### 2. Download Precompiled Binary
@@ -49,8 +61,12 @@ You can also download a precompiled binary from the [Releases][release-link] sec
 -   Fail-soft negamax with alpha-beta pruning
 -   Iterative deepening
 -   Aspiration windows
--   Principal variation search (PVS)
+-   Reverse Futility Pruning (RFP)
 -   Null Move Pruning (NMP)
+-   Futility Pruning
+-   History Leaf Pruning
+-   Late Move Pruning (LMP)
+-   Principal variation search (PVS)
 -   Late Move Reductions (LMR, basic implementation)
 -   Lockless transposition table
 -   Lazy SMP (multithreaded search)
