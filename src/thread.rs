@@ -140,6 +140,7 @@ impl ThreadPool {
         self.threads = threads.max(1);
     }
 
+    #[allow(semicolon_in_expressions_from_non_local_macros)]
     pub fn start_search(
         &mut self,
         position: &mut Position,

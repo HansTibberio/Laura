@@ -69,6 +69,7 @@ impl MovePicker {
         self.stage
     }
 
+    #[allow(semicolon_in_expressions_from_non_local_macros)]
     pub fn next(&mut self, position: &Board, history: &HistoryTable) -> Option<Move> {
         loop {
             match self.stage {
@@ -138,6 +139,7 @@ impl MovePicker {
         }
     }
 
+    #[allow(semicolon_in_expressions_from_non_local_macros)]
     fn generate_and_score_captures(&mut self, position: &Board) {
         let all_captures: MoveList = tactical_moves!(position);
 
