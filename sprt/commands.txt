@@ -1,0 +1,7 @@
+STC:
+
+./fastchess.exe -engine cmd=5.0.0.exe name=new option.Threads=1 option.Hash=16 -engine cmd=4.0.0.exe name=old option.Threads=1 option.Hash=16 -openings file=UHO_4060_v4.epd format=epd order=random -each tc=10+0.1 -resign movecount=5 score=1000 -draw movenumber=40 movecount=10 score=20 -sprt elo0=0 elo1=5 alpha=0.05 beta=0.05 -rounds 6000 -concurrency 8 -pgnout notation=san file=./games/sprt.pgn -recover
+
+LTC:
+
+./fastchess.exe -engine cmd=5.0.0.exe name=new option.Threads=1 option.Hash=128 -engine cmd=4.0.0.exe name=old option.Threads=1 option.Hash=128 -openings file=UHO_4060_v4.epd format=epd order=random -each tc=60+0.6 -resign movecount=5 score=1000 -draw movenumber=40 movecount=10 score=20 -sprt elo0=0 elo1=5 alpha=0.05 beta=0.05 -rounds 6000 -concurrency 8 -pgnout notation=san file=./games/sprt.pgn -recover
