@@ -303,13 +303,14 @@ pub fn evaluate(board: &Board) -> i32 {
 
     // Interpolated evaluation from White perspective
     let mut eval: i32 = (eval.0 * phase + (eval.1 * (128 - phase))) / 128;
-    eval += TEMPO;
 
+    // Convert to side-to-move perspective
     if board.side == Color::Black {
         eval = -eval;
     }
 
-    eval
+    // Tempo bonus always favors the side to move
+    eval + TEMPO
 }
 
 fn evaluate_pieces(board: &Board) -> Value {
@@ -338,7 +339,7 @@ fn evaluate_pawns<const COLOR: usize>(board: &Board) -> Value {
 
     for square in pawns {
         eval += PIECE_VALUE[PieceType::PAWN];
-        eval += PAWN_TABLE[square.to_index() ^ (56 * COLOR)];
+        eval += PAWN_TABLE[square.to_index() ^ (56 * (COLOR ^ 1))];
 
         let rank_index = square.rank().to_index() ^ (7 * COLOR);
 
@@ -443,7 +444,7 @@ fn evaluate_knights<const COLOR: usize>(board: &Board) -> Value {
 
     for square in knights {
         eval += PIECE_VALUE[PieceType::KNIGHT];
-        eval += KNIGHT_TABLE[square.to_index() ^ (56 * COLOR)];
+        eval += KNIGHT_TABLE[square.to_index() ^ (56 * (COLOR ^ 1))];
 
         // Knight mobility bonus/penalty
         let mobility_count: usize =
@@ -485,7 +486,7 @@ fn evaluate_bishops<const COLOR: usize>(board: &Board) -> Value {
 
     for square in bishops {
         eval += PIECE_VALUE[PieceType::BISHOP];
-        eval += BISHOP_TABLE[square.to_index() ^ (56 * COLOR)];
+        eval += BISHOP_TABLE[square.to_index() ^ (56 * (COLOR ^ 1))];
 
         // Bishop mobility bonus/penalty
         let mobility_count: usize = get_bishop_attacks(square, blockers).count_bits() as usize;
@@ -523,7 +524,7 @@ fn evaluate_rooks<const COLOR: usize>(board: &Board) -> Value {
 
     for square in rooks {
         eval += PIECE_VALUE[PieceType::ROOK];
-        eval += ROOK_TABLE[square.to_index() ^ (56 * COLOR)];
+        eval += ROOK_TABLE[square.to_index() ^ (56 * (COLOR ^ 1))];
 
         // Open/Semi-open file bonus
         if pawns & square.file().to_bitboard() == BitBoard::EMPTY {
@@ -567,7 +568,7 @@ fn evaluate_queens<const COLOR: usize>(board: &Board) -> Value {
 
     for square in queens {
         eval += PIECE_VALUE[PieceType::QUEEN];
-        eval += QUEEN_TABLE[square.to_index() ^ (56 * COLOR)];
+        eval += QUEEN_TABLE[square.to_index() ^ (56 * (COLOR ^ 1))];
 
         // Queen mobility bonus/penalty
         let mobility_count: usize = (get_rook_attacks(square, blockers)
@@ -585,7 +586,7 @@ fn evaluate_kings<const COLOR: usize>(board: &Board) -> Value {
         .to_square()
         .unwrap();
 
-    eval += KING_TABLE[king.to_index() ^ (56 * COLOR)];
+    eval += KING_TABLE[king.to_index() ^ (56 * (COLOR ^ 1))];
 
     eval
 }
