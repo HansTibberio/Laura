@@ -28,7 +28,7 @@ use crate::{
     timer::{TimeControl, TimeParserError},
     transposition::TranspositionTable,
 };
-use laura_core::{Board, Move};
+use laura_core::{Board, BoardParseError, Move};
 use std::{
     io::{BufRead, Stdin, stdin},
     str::FromStr,
@@ -72,7 +72,7 @@ pub enum UCIError {
     UnknownCommand(String),
     NoOptionValue,
     InvalidOptionValue,
-    InvalidFenPosition,
+    InvalidFenPosition(BoardParseError),
     InvalidPositionFormat(String),
     InvalidSetOption,
     InvalidGo(TimeParserError),
@@ -85,7 +85,7 @@ impl std::fmt::Display for UCIError {
             UCIError::UnknownCommand(s) => write!(f, "[error] unkown command '{s}'."),
             UCIError::NoOptionValue => write!(f, "[error] no option value provided."),
             UCIError::InvalidOptionValue => write!(f, "[error] invalid option value."),
-            UCIError::InvalidFenPosition => write!(f, "[error] invalid fen position format."),
+            UCIError::InvalidFenPosition(s) => write!(f, "[error] invalid fen {s}."),
             UCIError::InvalidPositionFormat(s) => write!(f, "[error] {s}"),
             UCIError::InvalidSetOption => write!(f, "[error] invalid setoption."),
             UCIError::InvalidGo(err) => write!(f, "[error] '{err:?}'"),
@@ -142,9 +142,8 @@ impl FromStr for UCICommand {
                             }
                             fen.push_str(token);
                         }
-                        let mut board: Board = Board::from_str(&fen)
-                            .ok()
-                            .ok_or(UCIError::InvalidFenPosition)?;
+                        let mut board: Board =
+                            Board::from_str(&fen).map_err(UCIError::InvalidFenPosition)?;
                         let mut history: Vec<Board> = Vec::with_capacity(16);
 
                         if matches!(tokens.next(), Some("moves")) {
