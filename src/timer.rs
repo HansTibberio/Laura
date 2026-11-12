@@ -298,8 +298,10 @@ pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) ->
         (max_time / DEFAULT_MOVESTOGO) + (increment * INCREMENT_TIME_BASE / 100)
     };
 
-    let hard_time: u64 = limit_time.max(MINIMUM_TIME);
-    let soft_time: u64 = (hard_time.min(max_time) * OPTIMAL_TIME_BASE / 100).max(MINIMUM_TIME);
+    let hard_time: u64 = limit_time.min(max_time * 3 / 4).max(MINIMUM_TIME);
+    let soft_time: u64 = (hard_time * OPTIMAL_TIME_BASE / 100)
+        .max(MINIMUM_TIME)
+        .min(hard_time);
 
     (soft_time, hard_time)
 }
