@@ -139,6 +139,7 @@ impl CountermoveTable {
 }
 
 // Continuation History
+#[derive(Debug)]
 pub struct ContinuationHistory {
     // [prev_piece][prev_to][curr_piece][curr_to]
     table: Box<[[[[i32; 64]; 6]; 64]; 6]>,
