@@ -4,13 +4,13 @@ version = 4
 
 [[package]]
 name = "laura_core"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c77f935b4fdc48214eb86fa38350977a000d5505d08caa223eee7408f8518ef"
+checksum = "30abe6bb8a4579b826c1fab4f9aba86fd4c99809c987b9bf41b0ead7275836cb"
 
 [[package]]
 name = "laura_engine"
-version = "5.0.0"
+version = "6.0.0"
 dependencies = [
  "laura_core",
 ]

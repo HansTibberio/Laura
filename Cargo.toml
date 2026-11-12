@@ -1,12 +1,12 @@
 [package]
 name = "laura_engine"
-version = "5.0.0"
+version = "6.0.0"
 edition = "2024"
 authors = ["HansTibberio <hanstiberio@proton.me>"]
 rust-version = "1.85.0"
 
 [dependencies]
-laura_core = "0.4.0"
+laura_core = "0.5.0"
 
 [[bin]]
 name = "laura"
