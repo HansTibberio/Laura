@@ -34,6 +34,9 @@ use crate::{
 use laura_core::Move;
 use std::fmt;
 
+pub type Score = i32;
+pub type Evaluation = i32;
+
 pub trait ThreadType {
     const MAIN: bool;
 }
@@ -126,7 +129,7 @@ impl Position {
                 break;
             }
 
-            let score: i32 = self.aspiration_window(thread, ttable, depth);
+            let score: Score = self.aspiration_window(thread, ttable, depth);
 
             if thread.time_manager.stopped() {
                 break;
@@ -150,7 +153,7 @@ impl Position {
         thread: &mut Thread,
         ttable: &TranspositionTable,
         depth: usize,
-    ) -> i32 {
+    ) -> Score {
         let mut root_pv: PrincipalVariation = PrincipalVariation::default();
         let mut delta: i32 = ASPIRATION_MARGIN;
 
@@ -166,6 +169,7 @@ impl Position {
         loop {
             let score: i32 =
                 self.alphabeta::<true>(thread, ttable, depth, alpha, beta, &mut root_pv, true);
+            let score: Score = self.alphabeta::<true>(
 
             if thread.time_manager.stopped() {
                 return -INFINITY;
@@ -208,7 +212,8 @@ impl Position {
         mut beta: i32,
         node_pv: &mut PrincipalVariation,
         do_null: bool,
-    ) -> i32 {
+        cut_node: bool,
+    ) -> Score {
         let mut temp_pv: PrincipalVariation = PrincipalVariation::default();
         let child_pv: &mut PrincipalVariation = &mut temp_pv;
         node_pv.clear();
@@ -339,6 +344,7 @@ impl Position {
             move_count += 1;
             let mut score: i32;
             let is_quiet: bool = mv.is_quiet();
+            let mut score: Score;
 
             // 8. Quiet moves pruning
             // Applies selective pruning heuristics to late or low-value quiet moves
@@ -512,7 +518,7 @@ impl Position {
         mut alpha: i32,
         beta: i32,
         node_pv: &mut PrincipalVariation,
-    ) -> i32 {
+    ) -> Score {
         let mut temp_pv: PrincipalVariation = PrincipalVariation::default();
         let child_pv: &mut PrincipalVariation = &mut temp_pv;
         node_pv.clear();
@@ -588,6 +594,7 @@ impl Position {
             ttable.prefetch(self.key());
             move_count += 1;
             let score: i32 = -self.quiescence(thread, ttable, -beta, -alpha, child_pv);
+            let score: Score = -self.quiescence(thread, ttable, -beta, -alpha, child_pv);
             self.pop_move(thread);
 
             if thread.time_manager.stopped() {

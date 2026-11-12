@@ -67,7 +67,7 @@ pub struct Thread {
     pub nodes: u64,
     pub ply: usize,
     pub seldepth: usize,
-    pub score: i32,
+    pub score: Score,
     pub depth: usize,
     pub completed: usize,
 }
