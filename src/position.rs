@@ -176,15 +176,17 @@ impl Position {
 
         // Threefold repetition
         let key: u64 = self.key();
-        let mut count: i32 = 1;
         let max_back: usize = self.board.fifty_move as usize;
-        for board in self.game.iter().rev().take(max_back).skip(1).step_by(2) {
-            if board.zobrist.0 == key {
-                count += 1;
-                if count >= 3 {
-                    return true;
-                }
-            }
+        if self
+            .game
+            .iter()
+            .rev()
+            .take(max_back)
+            .skip(1)
+            .step_by(2)
+            .any(|board| board.zobrist.0 == key)
+        {
+            return true;
         }
 
         // Insufficient material
