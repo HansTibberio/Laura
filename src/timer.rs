@@ -252,10 +252,11 @@ impl TimeManager {
         }
         let searched: u64 = nodes - self.buffer;
 
-        if searched > 1024 {
-            self.nodes.fetch_add(searched, Ordering::SeqCst);
-            self.buffer = nodes;
+        if searched < 1024 {
+            return false;
         }
+        self.nodes.fetch_add(searched, Ordering::Relaxed);
+        self.buffer = nodes;
 
         let stop: bool = match self.time_control {
             TimeControl::Depth(_) | TimeControl::Infinite => self.stop.load(Ordering::SeqCst),
