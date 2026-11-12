@@ -21,6 +21,8 @@
 
 //! Search implementation
 
+use crate::config::HIST_CLAMP;
+use crate::sse::SEE;
 use crate::{
     config::{
         ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, LMR_TABLE, MATE, MAX_DELTA,
@@ -31,7 +33,7 @@ use crate::{
     thread::Thread,
     transposition::{BoundType, EntryHit, TranspositionTable},
 };
-use laura_core::Move;
+use laura_core::{Move, MoveType, PieceType};
 use std::fmt;
 
 pub type Score = i32;
@@ -167,9 +169,16 @@ impl Position {
         };
 
         loop {
-            let score: i32 =
-                self.alphabeta::<true>(thread, ttable, depth, alpha, beta, &mut root_pv, true);
             let score: Score = self.alphabeta::<true>(
+                thread,
+                ttable,
+                depth,
+                alpha,
+                beta,
+                &mut root_pv,
+                true,
+                false,
+            );
 
             if thread.time_manager.stopped() {
                 return -INFINITY;
@@ -267,51 +276,101 @@ impl Position {
         }
 
         // 4. Probe the Transposition Table
-        let tt_entry: Option<EntryHit> = ttable.probe(self.key(), thread.ply);
+        // The entry (score, bound, static eval) is usable even when it carries no move:
+        // fail-low (ALL) nodes are stored with a null move. Move legality only decides
+        // whether the move may be used for ordering, never whether the entry is valid.
+        let tt_entry: Option<EntryHit> = ttable
+            .probe(self.key(), thread.ply)
+            .filter(|entry| entry.bound != BoundType::None);
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
-            if entry.depth >= depth && !is_pv {
-                let entry_score: i32 = entry.score;
-
-                if entry.bound == BoundType::Exact
-                    || (entry.bound == BoundType::LowerBound && entry_score >= beta)
-                    || (entry.bound == BoundType::UpperBound && entry_score <= alpha)
-                {
-                    return entry_score;
-                }
+            if entry.is_legal(&self.board()) {
+                tt_move = Some(entry.mv);
             }
 
-            if let Some(mv) = entry.legal_move(&self.board()) {
-                tt_move = Some(mv);
+            if !is_pv && entry.depth >= depth && tt_cutoff(&entry, alpha, beta) {
+                return entry.score;
             }
         }
 
-        let static_eval: i32 = if in_check { -INFINITY } else { self.evaluate() };
+        let static_eval: Evaluation = if in_check {
+            thread.stack[thread.ply].static_eval = -INFINITY;
+            -INFINITY
+        } else if let Some(entry) = tt_entry {
+            let tt_score: Score = entry.score;
+            let tt_evaluation: Evaluation = entry.evaluation;
+
+            thread.stack[thread.ply].static_eval = if tt_evaluation == -INFINITY {
+                self.evaluate()
+            } else {
+                tt_evaluation
+            };
+
+            match entry.bound {
+                BoundType::Exact => tt_score,
+                BoundType::LowerBound if tt_score > thread.stack[thread.ply].static_eval => {
+                    tt_score
+                }
+                BoundType::UpperBound if tt_score < thread.stack[thread.ply].static_eval => {
+                    tt_score
+                }
+                _ => thread.stack[thread.ply].static_eval,
+            }
+        } else {
+            thread.stack[thread.ply].static_eval = self.evaluate();
+            thread.stack[thread.ply].static_eval
+        };
+
+        // Improving
+        let raw_eval: Evaluation = thread.stack[thread.ply].static_eval;
+        let improving: bool = if in_check {
+            false
+        } else if thread.ply >= 2 && thread.stack[thread.ply - 2].static_eval != -INFINITY {
+            raw_eval > thread.stack[thread.ply - 2].static_eval
+        } else if thread.ply >= 4 && thread.stack[thread.ply - 4].static_eval != -INFINITY {
+            raw_eval > thread.stack[thread.ply - 4].static_eval
+        } else {
+            true
+        };
 
         // 5. Forward static pruning techniques
         if !in_check && !is_pv {
             // 5.1. Reverse Futility Pruning
             // Skips shallow nodes when the static evaluation already exceeds beta
             // by a safe margin, assuming the position is unlikely to fail low.
-            let rfp_margin: i32 = 100 * depth as i32;
+            let rfp_margin: i32 = 80 * (depth as i32) - 55 * (improving as i32);
             if depth <= 8 && static_eval >= beta + rfp_margin {
                 return static_eval;
+            }
+
+            // Razoring
+            let razor_margin: i32 = 300 * depth as i32;
+            if depth <= 2 && (static_eval + razor_margin) <= alpha {
+                let razor_score: Score = self.quiescence(thread, ttable, alpha, beta, child_pv);
+                if razor_score <= alpha {
+                    return razor_score;
+                }
             }
 
             // 5.2. Null Move Pruning
             // Performs a reduced-depth null move search to detect positions
             // where the side to move can still exceed beta after passing.
-            if depth > 3 && !self.possible_zugzwang() && do_null {
+            if depth > 3
+                && !self.possible_zugzwang()
+                && do_null
+                && static_eval + 70 * (improving as i32) >= beta
+            {
                 let r: usize = (4 + depth / 4).min(depth);
                 self.push_null(thread);
-                let null_score = -self.alphabeta::<false>(
+                let null_score: Score = -self.alphabeta::<false>(
                     thread,
                     ttable,
                     depth - r,
                     -beta,
                     -beta + 1,
                     child_pv,
+                    false,
                     false,
                 );
                 self.pop_move(thread);
@@ -325,7 +384,7 @@ impl Position {
         // 6. Iternal Iterative Reduction
         // Reduces the search depth in positions without a transposition table hit,
         // trading depth for faster move ordering and lower search overhead.
-        if !RootNode && depth >= 4 && tt_entry.is_none() && !in_check {
+        if !RootNode && depth >= 4 && tt_move.is_none() && !in_check {
             depth -= 1;
         }
 
@@ -338,18 +397,19 @@ impl Position {
         let mut picker: MovePicker = MovePicker::new(tt_move, killers);
 
         let mut quiets_tried: Vec<Move> = Vec::with_capacity(32);
+        let mut caps_tried: Vec<Move> = Vec::with_capacity(32);
 
         // 7. Main Alpha-Beta Loop
         while let Some(mv) = picker.next(&self.board(), &thread.history) {
             move_count += 1;
-            let mut score: i32;
-            let is_quiet: bool = mv.is_quiet();
             let mut score: Score;
+            let is_quiet: bool = !mv.is_capture() && !mv.is_promotion();
+            let is_capture: bool = mv.is_capture();
 
             // 8. Quiet moves pruning
             // Applies selective pruning heuristics to late or low-value quiet moves
             // in order to reduce the search tree in non-tactical positions.
-            if !is_pv && !in_check && is_quiet {
+            if !RootNode && !is_pv && !in_check && is_quiet {
                 // 8.1. History Leaf Pruning
                 // Skips quiet moves with consistently poor history scores at shallow depth,
                 // assuming they are unlikely to improve alpha.
@@ -371,6 +431,23 @@ impl Position {
                 if depth < 4 && move_count >= 9 {
                     picker.skip_quiets = true;
                 }
+
+                if picker.skip_quiets && is_quiet && best_score > -MAX_MATE {
+                    continue;
+                }
+            }
+
+            // SEE pruning techniques
+            if !RootNode && !is_pv && !in_check && move_count > 1 {
+                let see_margin: i32 = if is_quiet {
+                    -65 * depth as i32
+                } else {
+                    -20 * (depth * depth) as i32
+                };
+                if best_score > -MAX_MATE && depth <= 9 && !SEE::see(&self.board(), mv, see_margin)
+                {
+                    continue;
+                }
             }
 
             self.push_move(mv, thread);
@@ -387,16 +464,35 @@ impl Position {
                     -alpha,
                     child_pv,
                     true,
+                    !cut_node,
                 )
             } else {
                 // 9.2. Later moves: Null Window Search + Late Moves Reduction
-                let reduction: usize =
-                    if move_count >= 3 && depth >= 3 && !in_check && mv.is_quiet() {
-                        let r: usize = lmr_reduction(depth, move_count);
-                        r.clamp(1, depth - 1)
+                let reduction: usize = if move_count >= 3 && depth >= 3 && !in_check {
+                    if is_quiet {
+                        let mut r = lmr_reduction(depth, move_count) as i32;
+                        let gives_check = self.in_check();
+
+                        r += !is_pv as i32;
+                        r += cut_node as i32;
+                        r += !improving as i32;
+                        r -= in_check as i32;
+                        r -= gives_check as i32;
+
+                        let history_score = thread.history.get_score(mv, self.board().side());
+                        if history_score > HIST_CLAMP / 2 {
+                            r -= 1;
+                        } else if history_score < -HIST_CLAMP / 2 {
+                            r += 1;
+                        }
+
+                        r.clamp(1, (depth - 1) as i32) as usize
                     } else {
-                        0
-                    };
+                        1
+                    }
+                } else {
+                    0
+                };
 
                 // Reduced depth + Null Window Search
                 score = -self.alphabeta::<false>(
@@ -406,6 +502,7 @@ impl Position {
                     -alpha - 1,
                     -alpha,
                     child_pv,
+                    true,
                     true,
                 );
 
@@ -418,6 +515,7 @@ impl Position {
                         -alpha - 1,
                         -alpha,
                         child_pv,
+                        true,
                         true,
                     );
                 }
@@ -432,6 +530,7 @@ impl Position {
                         -alpha,
                         child_pv,
                         true,
+                        false,
                     );
                 }
             }
@@ -442,8 +541,10 @@ impl Position {
             }
 
             // Tracks quiet moves
-            if mv.is_quiet() {
+            if is_quiet {
                 quiets_tried.push(mv);
+            } else if is_capture {
+                caps_tried.push(mv);
             }
 
             // Best move and alpha update
@@ -479,38 +580,38 @@ impl Position {
         }
 
         if move_count == 0 {
-            return if in_check {
+            if in_check {
                 // We are being mated
-                mated_in(thread.ply)
-            } else {
-                // Stalemate
-                0
-            };
+                return mated_in(thread.ply);
+            }
+            // Stalemate
+            return 0;
         }
 
-        let bound: BoundType = if best_score >= beta {
-            BoundType::LowerBound
-        } else if best_score > alpha_orig {
-            BoundType::Exact
-        } else {
-            BoundType::UpperBound
-        };
+        if !thread.time_manager.stopped() {
+            let bound: BoundType = if best_score >= beta {
+                BoundType::LowerBound
+            } else if best_score > alpha_orig {
+                BoundType::Exact
+            } else {
+                BoundType::UpperBound
+            };
 
-        ttable.insert(
-            self.key(),
-            best_move,
-            best_score,
-            static_eval,
-            depth,
-            bound,
-            is_pv,
-            thread.ply,
-        );
+            ttable.insert(
+                self.key(),
+                best_move,
+                best_score,
+                thread.stack[thread.ply].static_eval,
+                depth,
+                bound,
+                is_pv,
+                thread.ply,
+            );
+        }
 
         best_score
     }
 
-    #[allow(unused_assignments, unused_variables)]
     fn quiescence(
         &mut self,
         thread: &mut Thread,
@@ -546,54 +647,108 @@ impl Position {
         }
 
         // Probe the Transposition Table
-        let tt_entry: Option<EntryHit> = ttable.probe(self.key(), thread.ply);
+        let tt_entry: Option<EntryHit> = ttable
+            .probe(self.key(), thread.ply)
+            .filter(|entry| entry.bound != BoundType::None);
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
-            if !is_pv {
-                let entry_score: i32 = entry.score;
-
-                if entry.bound == BoundType::Exact
-                    || (entry.bound == BoundType::LowerBound && entry_score >= beta)
-                    || (entry.bound == BoundType::UpperBound && entry_score <= alpha)
-                {
-                    return entry_score;
-                }
+            // Outside of check, quiescence only searches tactical moves:
+            // a quiet TT move coming from the main search must not be played here.
+            if entry.is_legal(&self.board())
+                && (in_check || entry.mv.is_capture() || entry.mv.is_promotion())
+            {
+                tt_move = Some(entry.mv);
             }
 
-            if let Some(mv) = entry.legal_move(&self.board()) {
-                tt_move = Some(mv);
+            // Any stored depth (>= 0) is enough for quiescence
+            if !is_pv && tt_cutoff(&entry, alpha, beta) {
+                return entry.score;
             }
         }
 
         let alpha_orig: i32 = alpha;
+        let mut picker: MovePicker = MovePicker::new(tt_move, [None, None]);
+        let stand_pat: Evaluation;
 
-        let stand_pat: i32 = self.evaluate();
+        if in_check {
+            thread.stack[thread.ply].static_eval = -INFINITY;
+            stand_pat = thread.stack[thread.ply].static_eval
+        } else {
+            if let Some(entry) = tt_entry {
+                let tt_score: Score = entry.score;
+                let tt_evaluation: Evaluation = entry.evaluation;
 
-        // Standing Pat Prunning
-        // Fail-soft beta cuttof
-        if stand_pat >= beta {
-            return stand_pat;
+                thread.stack[thread.ply].static_eval = if tt_evaluation == -INFINITY {
+                    self.evaluate()
+                } else {
+                    tt_evaluation
+                };
+
+                match entry.bound {
+                    BoundType::Exact => {
+                        stand_pat = tt_score;
+                    }
+                    BoundType::LowerBound if tt_score > thread.stack[thread.ply].static_eval => {
+                        stand_pat = tt_score
+                    }
+                    BoundType::UpperBound if tt_score < thread.stack[thread.ply].static_eval => {
+                        stand_pat = tt_score
+                    }
+                    _ => stand_pat = thread.stack[thread.ply].static_eval,
+                }
+            } else {
+                thread.stack[thread.ply].static_eval = self.evaluate();
+                stand_pat = thread.stack[thread.ply].static_eval
+            }
+
+            // Standing Pat Pruning
+            // Fail-soft beta cutoff
+            if stand_pat >= beta {
+                return stand_pat;
+            }
+
+            // Improve alpha
+            if stand_pat > alpha {
+                alpha = stand_pat;
+            }
+            picker.skip_quiets = true;
         }
 
-        // Improve alpha
-        if stand_pat > alpha {
-            alpha = stand_pat;
-        }
-
-        let mut best_score: i32 = stand_pat;
+        let mut best_score: Score = stand_pat;
         let mut best_move: Move = Move::default();
         let mut move_count: usize = 0;
 
-        let mut picker: MovePicker = MovePicker::new(tt_move, [None, None]);
-        picker.skip_quiets = true;
-
         // Main Quiescence Loop
         while let Some(mv) = picker.next(&self.board(), &thread.history) {
+            move_count += 1;
+
+            if !in_check && mv.is_capture() && !mv.is_promotion() {
+                let captured = SEE::piece_value(if mv.get_type() == MoveType::EnPassant {
+                    PieceType::Pawn
+                } else {
+                    unsafe {
+                        self.board()
+                            .piece_on(mv.get_dest())
+                            .unwrap_unchecked()
+                            .piece_type()
+                    }
+                });
+
+                // Quiescence Delta Pruning
+                if !is_pv && (best_score + captured + 200) < alpha {
+                    continue;
+                }
+
+                // Quiescence SEE Pruning
+                if move_count > 1 && !SEE::see(&self.board(), mv, 0) {
+                    continue;
+                }
+            }
+
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
-            move_count += 1;
-            let score: i32 = -self.quiescence(thread, ttable, -beta, -alpha, child_pv);
+
             let score: Score = -self.quiescence(thread, ttable, -beta, -alpha, child_pv);
             self.pop_move(thread);
 
@@ -625,26 +780,39 @@ impl Position {
             return mated_in(thread.ply);
         }
 
-        let bound: BoundType = if best_score >= beta {
-            BoundType::LowerBound
-        } else if best_score > alpha_orig {
-            BoundType::Exact
-        } else {
-            BoundType::UpperBound
-        };
+        if !thread.time_manager.stopped() {
+            let bound: BoundType = if best_score >= beta {
+                BoundType::LowerBound
+            } else if best_score > alpha_orig {
+                BoundType::Exact
+            } else {
+                BoundType::UpperBound
+            };
 
-        ttable.insert(
-            self.key(),
-            best_move,
-            best_score,
-            0,
-            0,
-            bound,
-            is_pv,
-            thread.ply,
-        );
+            ttable.insert(
+                self.key(),
+                best_move,
+                best_score,
+                thread.stack[thread.ply].static_eval,
+                0,
+                bound,
+                is_pv,
+                thread.ply,
+            );
+        }
 
         best_score
+    }
+}
+
+/// Returns true if a TT entry's bound proves the score is outside (or equal to) the window.
+#[inline(always)]
+fn tt_cutoff(entry: &EntryHit, alpha: i32, beta: i32) -> bool {
+    match entry.bound {
+        BoundType::Exact => true,
+        BoundType::LowerBound => entry.score >= beta,
+        BoundType::UpperBound => entry.score <= alpha,
+        BoundType::None => false,
     }
 }
 

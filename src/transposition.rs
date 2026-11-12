@@ -32,8 +32,8 @@ use std::{
 use laura_core::{AllMoves, Board, Move, gen_moves};
 
 use crate::config::{
-    AGE_MASK, AGE_OFFSET, BOUND_OFFSET, BOUNDTYPE_MASK, DATA_MASK, ENTRIES_PER_CELL, KEY_MASK,
-    KEY_WRAPPER_MASK, MEGABYTE, PV_NODE_MASK, TTMATE,
+    AGE_MASK, AGE_OFFSET, AGE_WEIGHT, BOUND_OFFSET, BOUNDTYPE_MASK, DATA_MASK, ENTRIES_PER_CELL,
+    KEY_MASK, KEY_WRAPPER_MASK, MAX_AGE, MEGABYTE, PV_NODE_MASK, TTMATE,
 };
 
 fn normalize_score(score: i32, ply: i32) -> i16 {
@@ -106,13 +106,9 @@ pub struct EntryHit {
 
 impl EntryHit {
     #[inline(always)]
-    /// Directly return the best legal move, if one exists, from an EntryHit.
-    pub fn legal_move(&self, board: &Board) -> Option<Move> {
-        if !self.mv.is_null() && gen_moves::<AllMoves>(board).contains(&self.mv) {
-            Some(self.mv)
-        } else {
-            None
-        }
+    /// Returns true if the stored move is legal on the given board.
+    pub fn is_legal(&self, board: &Board) -> bool {
+        !self.mv.is_null() && gen_moves::<AllMoves>(board).contains(&self.mv)
     }
 }
 
@@ -322,7 +318,9 @@ impl TranspositionTable {
         for index in 0..ENTRIES_PER_CELL {
             let entry: Entry = cell.load(index);
 
-            if entry.key != key {
+            // An empty slot (bound None) is never a hit, even if the
+            // lower 16 bits of the position key happen to be 0.
+            if entry.key != key || entry.data.bound() == BoundType::None {
                 continue;
             }
 
@@ -357,29 +355,22 @@ impl TranspositionTable {
 
         let cell: &Cell = unsafe { self.entries.get_unchecked(index) };
 
-        let mut entry: Entry = cell.load(0);
-        let mut store_index: usize = 0;
+        let (store_index, old) = Self::select_slot(cell, key, age);
+        let same_position: bool = old.key == key && old.data.bound() != BoundType::None;
 
-        if !(entry.key == 0 || entry.key == key) {
-            for index in 1..ENTRIES_PER_CELL {
-                let internal: Entry = cell.load(index);
-
-                if internal.key == 0 || internal.key == key {
-                    entry = internal;
-                    store_index = index;
-                    break;
-                }
-            }
+        // Keep the previous best move if this search did not find one (fail-low)
+        if same_position && best_move.is_null() {
+            best_move = old.mv;
         }
 
-        if best_move == Move::null() && entry.key == key {
-            best_move = entry.mv;
-        }
+        // A different position always takes the selected victim slot.
+        // The same position is overwritten only if the new data is at least as useful.
+        let replace: bool = !same_position
+            || old.data.age() != age
+            || (bound == BoundType::Exact && old.data.bound() != BoundType::Exact)
+            || (depth + 4) + 2 * pv_node as usize > old.depth as usize;
 
-        if entry.key != key
-            || bound == BoundType::Exact && entry.data.bound() != BoundType::Exact
-            || (depth + 4) + 2 * pv_node as usize > entry.depth as usize
-        {
+        if replace {
             let new: Entry = Entry {
                 key,
                 mv: best_move,
@@ -391,6 +382,36 @@ impl TranspositionTable {
 
             cell.store(store_index, new);
         }
+    }
+
+    #[inline(always)]
+    fn select_slot(cell: &Cell, key: u16, age: u8) -> (usize, Entry) {
+        let entries: [Entry; ENTRIES_PER_CELL] = std::array::from_fn(|i| cell.load(i));
+
+        if let Some(i) = entries
+            .iter()
+            .position(|e| e.key == key && e.data.bound() != BoundType::None)
+        {
+            return (i, entries[i]);
+        }
+
+        // min_by_key returns the first minimum, so ties favor the lower slot
+        let victim: usize = (0..ENTRIES_PER_CELL)
+            .min_by_key(|&i| Self::replacement_value(&entries[i], age))
+            .unwrap_or(0);
+
+        (victim, entries[victim])
+    }
+
+    #[inline(always)]
+    fn replacement_value(entry: &Entry, age: u8) -> i32 {
+        if entry.data.bound() == BoundType::None {
+            return i32::MIN;
+        }
+
+        // Ages wrap around in AGE_MASK (5 bits); MAX_AGE + age avoids underflow
+        let relative_age: u8 = (MAX_AGE + age - entry.data.age()) & AGE_MASK;
+        entry.depth as i32 - AGE_WEIGHT * relative_age as i32
     }
 }
 

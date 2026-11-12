@@ -67,6 +67,7 @@ pub const MEGABYTE: usize = 1_024 * 1_024;
 pub const ENTRIES_PER_CELL: usize = 3;
 pub const MAX_AGE: u8 = 1 << 5;
 pub const AGE_MASK: u8 = MAX_AGE - 1;
+pub const AGE_WEIGHT: i32 = 8;
 pub const DEFAULT_SIZE: usize = 16;
 pub const DATA_MASK: u128 = 0xFFFF_FFFF_FFFF_FFFF;
 pub const KEY_MASK: u128 = 0xFFFF;
