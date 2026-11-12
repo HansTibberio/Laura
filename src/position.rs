@@ -22,7 +22,7 @@
 //! Position management.
 
 use crate::{evaluation, thread::Thread};
-use laura_core::{AllMoves, BitBoard, Board, Color, Move, enumerate_legal_moves};
+use laura_core::{AllMoves, BitBoard, Board, Color, Move, Piece, enumerate_legal_moves};
 use std::{
     mem::replace,
     time::{Duration, Instant},
@@ -117,10 +117,10 @@ impl Position {
     pub fn push_move(&mut self, mv: Move, thread: &mut Thread) {
         let new: Board = self.board.make_move(mv);
         let old: Board = replace(&mut self.board, new);
+        let piece: Piece = unsafe { old.piece_on(mv.get_src()).unwrap_unchecked() };
         self.game.push(old);
 
-        thread.ply += 1;
-        thread.nodes += 1;
+        thread.push_move(piece, mv)
     }
 
     #[inline(always)]
@@ -129,8 +129,7 @@ impl Position {
         let old: Board = replace(&mut self.board, new);
         self.game.push(old);
 
-        thread.ply += 1;
-        thread.nodes += 1;
+        thread.push_null()
     }
 
     #[inline(always)]
@@ -138,7 +137,7 @@ impl Position {
         let old: Board = self.game.pop().unwrap();
         self.board = old;
 
-        thread.ply -= 1;
+        thread.pop_move();
     }
 
     #[inline(always)]

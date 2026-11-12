@@ -21,7 +21,9 @@
 
 //! Thread management for parallel search.
 
-use crate::tables::HistoryTable;
+use crate::config::MAX_PLY;
+use crate::search::{Evaluation, Score};
+use crate::tables::{CaptureHistory, ContinuationHistory, HistoryTable};
 use crate::{
     TimeManager,
     position::Position,
@@ -30,7 +32,7 @@ use crate::{
     timer::TimeControl,
     transposition::TranspositionTable,
 };
-use laura_core::{Move, MoveList, legal_moves};
+use laura_core::{Move, MoveList, Piece, legal_moves};
 use std::{
     collections::HashMap,
     iter::once,
@@ -41,13 +43,27 @@ use std::{
     thread,
 };
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Stack {
+    pub score: Score,
+    pub static_eval: Evaluation,
+    pub move_made: Option<Move>,
+    pub piece_moved: Option<Piece>,
+}
+
 #[derive(Debug)]
 pub struct Thread {
     pub id: usize,
     pub time_manager: TimeManager,
     pub principal_variation: PrincipalVariation,
+
+    pub stack: [Stack; MAX_PLY],
+
     pub killer: KillerMoves,
     pub history: HistoryTable,
+    pub capture_history: CaptureHistory,
+    pub continuation_history: ContinuationHistory,
+
     pub nodes: u64,
     pub ply: usize,
     pub seldepth: usize,
@@ -69,7 +85,10 @@ impl Thread {
             time_manager,
             killer: KillerMoves::default(),
             history: HistoryTable::default(),
+            capture_history: CaptureHistory::default(),
             completed: 0,
+            continuation_history: ContinuationHistory::default(),
+            stack: [Stack::default(); MAX_PLY],
         }
     }
 
@@ -80,19 +99,38 @@ impl Thread {
         )
     }
 
-    pub fn best_move(&self) -> Move {
-        self.principal_variation.moves[0]
-    }
-
+    #[inline(always)]
     pub fn set_up(&mut self) {
         self.principal_variation = PrincipalVariation::default();
         self.time_manager.reset_buffer();
+        self.stack = [Stack::default(); MAX_PLY];
         self.nodes = 0;
         self.ply = 0;
         self.seldepth = 0;
         self.score = 0;
         self.depth = 0;
         self.completed = 0;
+    }
+
+    #[inline(always)]
+    pub fn push_move(&mut self, piece: Piece, mv: Move) {
+        self.stack[self.ply].piece_moved = Some(piece);
+        self.stack[self.ply].move_made = Some(mv);
+        self.ply += 1;
+        self.nodes += 1;
+    }
+
+    #[inline(always)]
+    pub fn push_null(&mut self) {
+        self.stack[self.ply].piece_moved = None;
+        self.stack[self.ply].move_made = None;
+        self.ply += 1;
+        self.nodes += 1;
+    }
+
+    #[inline(always)]
+    pub fn pop_move(&mut self) {
+        self.ply -= 1;
     }
 }
 
