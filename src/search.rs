@@ -22,8 +22,7 @@
 //! Search implementation
 
 use crate::config::{
-    SE_BETA_SCALE,
-    SE_DOUBLE_LIMIT, SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
+    SE_BETA_SCALE, SE_DOUBLE_LIMIT, SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
 };
 use crate::movepicker::{captured_type, moving_piece};
 use crate::thread::{ContKeys, TriedMove, TriedMoves};
