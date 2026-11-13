@@ -39,9 +39,16 @@ pub const ASPIRATION_MARGIN: i32 = 25;
 pub const ASPIRATION_DEPTH_THRESHOLD: usize = 5;
 pub const MAX_DELTA: i32 = 1_025;
 
+// Singular Extensions
+pub const SE_MIN_DEPTH: usize = 8;
+pub const SE_TT_DEPTH_MARGIN: usize = 3;
+pub const SE_BETA_SCALE: i32 = 2;
+pub const SE_DOUBLE_MARGIN: i32 = 60;
+pub const SE_DOUBLE_LIMIT: u8 = 6;
+
 // LMR values
-pub const LMR_THRESHOLD: i32 = 3;
-pub const LMR_LOWER_DEPTH: i32 = 3;
+pub const LMR_THRESHOLD: usize = 3;
+pub const LMR_LOWER_DEPTH: usize = 3;
 // (0.6897 + (depth).ln() * (moves).ln() / 2.5467)
 pub static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table: [[i32; 64]; 64] = [[0i32; 64]; 64];
