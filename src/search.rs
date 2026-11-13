@@ -324,7 +324,9 @@ impl Position {
             thread.stack[thread.ply].static_eval
         };
 
-        // Improving
+        // 5. Improving
+        // Compares the current raw evaluation with the evaluation two or four
+        // plies earlier to determine whether the position is improving.
         let raw_eval: Evaluation = thread.stack[thread.ply].static_eval;
         let improving: bool = if in_check {
             false
@@ -336,9 +338,9 @@ impl Position {
             true
         };
 
-        // 5. Forward static pruning techniques
+        // 6. Forward static pruning techniques
         if !in_check && !is_pv {
-            // 5.1. Reverse Futility Pruning
+            // 6.1. Reverse Futility Pruning
             // Skips shallow nodes when the static evaluation already exceeds beta
             // by a safe margin, assuming the position is unlikely to fail low.
             let rfp_margin: i32 = 80 * (depth as i32) - 55 * (improving as i32);
@@ -346,7 +348,9 @@ impl Position {
                 return static_eval;
             }
 
-            // 5.2. Razoring
+            // 6.2. Razoring
+            // Uses quiescence search to verify whether a shallow position
+            // is too far below alpha to justify a full-depth search.
             let razor_margin: i32 = 300 * depth as i32;
             if depth <= 2 && (static_eval + razor_margin) <= alpha {
                 let razor_score: Score = self.quiescence(thread, ttable, alpha, beta, child_pv);
@@ -355,7 +359,7 @@ impl Position {
                 }
             }
 
-            // 5.3. Null Move Pruning
+            // 6.3. Null Move Pruning
             // Performs a reduced-depth null move search to detect positions
             // where the side to move can still exceed beta after passing.
             if depth > 3
@@ -383,7 +387,7 @@ impl Position {
             }
         }
 
-        // 6. Iternal Iterative Reduction
+        // 7. Internal Iterative Reduction
         // Reduces the search depth in positions without a transposition table hit,
         // trading depth for faster move ordering and lower search overhead.
         if !RootNode && depth >= 4 && tt_move.is_none() && !in_check {
@@ -401,7 +405,9 @@ impl Position {
         let mut quiets_tried: TriedMoves<64> = TriedMoves::new();
         let mut caps_tried: TriedMoves<32> = TriedMoves::new();
 
-        // 7. Main Alpha-Beta Loop
+        // 8. Main Alpha-Beta Loop
+        // Iterates over ordered legal moves, searches each candidate and updates
+        // the best score and alpha until a beta cutoff or move exhaustion.
         while let Some(mv) = picker.next(&self.board(), thread) {
             move_count += 1;
             let mut score: Score;
@@ -425,18 +431,18 @@ impl Position {
                 },
             };
 
-            // 8. Quiet moves pruning
+            // 9. Quiet moves pruning
             // Applies selective pruning heuristics to late or low-value quiet moves
             // in order to reduce the search tree in non-tactical positions.
             if !RootNode && !is_pv && !in_check && is_quiet {
-                // 8.1. History Leaf Pruning
+                // 9.1. History Leaf Pruning
                 // Skips quiet moves with consistently poor history scores at shallow depth,
                 // assuming they are unlikely to improve alpha.
                 if depth < 6 && quiet_score < -5000 {
                     picker.skip_quiets = true;
                 }
 
-                // 8.2. Futility Pruning
+                // 9.2. Futility Pruning
                 // Prunes quiet moves when the static evaluation plus a depth-based margin
                 // is still insufficient to raise alpha.
                 let futility_margin: i32 = 80 * depth as i32;
@@ -444,7 +450,7 @@ impl Position {
                     picker.skip_quiets = true;
                 }
 
-                // 8.3. Late Move Pruning
+                // 9.3. Late Move Pruning
                 // Skips late quiet moves at shallow depth after enough moves
                 // have already been searched.
                 if depth < 4 && move_count >= 9 {
@@ -472,9 +478,9 @@ impl Position {
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
 
-            // 9. Principal Variation Search
+            // 10. Principal Variation Search
             if move_count == 1 {
-                // 9.1. First move: Full Window Search
+                // 10.1. First move: Full Window Search
                 score = -self.alphabeta::<false>(
                     thread,
                     ttable,
@@ -486,7 +492,7 @@ impl Position {
                     !cut_node,
                 )
             } else {
-                // 9.2. Later moves: Null Window Search + Late Moves Reduction
+                // 10.2. Later moves: Null Window Search + Late Moves Reduction
                 let reduction: usize = if move_count >= 3 && depth >= 3 && !in_check {
                     if is_quiet {
                         let mut r = lmr_reduction(depth, move_count) as i32;
@@ -512,7 +518,7 @@ impl Position {
                     0
                 };
 
-                // Reduced depth + Null Window Search
+                // 10.3. Reduced depth + Null Window Search
                 score = -self.alphabeta::<false>(
                     thread,
                     ttable,
@@ -524,7 +530,7 @@ impl Position {
                     true,
                 );
 
-                // 9.3. If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
+                // 10.4. If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
                 if score > alpha && reduction > 0 {
                     score = -self.alphabeta::<false>(
                         thread,
@@ -538,7 +544,7 @@ impl Position {
                     );
                 }
 
-                // 9.4. If it fails high, and we are in a PV node, re-search with Full Window
+                // 10.5. If it fails high, and we are in a PV node, re-search with Full Window
                 if score > alpha && is_pv {
                     score = -self.alphabeta::<false>(
                         thread,
