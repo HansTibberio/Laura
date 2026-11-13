@@ -22,7 +22,9 @@
 //! Search implementation
 
 use crate::config::HIST_CLAMP;
+use crate::movepicker::{captured_type, moving_piece};
 use crate::sse::SEE;
+use crate::thread::{ContKeys, TriedMove, TriedMoves};
 use crate::{
     config::{
         ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, LMR_TABLE, MATE, MAX_DELTA,
@@ -33,7 +35,7 @@ use crate::{
     thread::Thread,
     transposition::{BoundType, EntryHit, TranspositionTable},
 };
-use laura_core::{Move, MoveType, PieceType};
+use laura_core::{Board, Move, MoveType, Piece, PieceType};
 use std::fmt;
 
 pub type Score = i32;
@@ -344,7 +346,7 @@ impl Position {
                 return static_eval;
             }
 
-            // Razoring
+            // 5.2. Razoring
             let razor_margin: i32 = 300 * depth as i32;
             if depth <= 2 && (static_eval + razor_margin) <= alpha {
                 let razor_score: Score = self.quiescence(thread, ttable, alpha, beta, child_pv);
@@ -353,7 +355,7 @@ impl Position {
                 }
             }
 
-            // 5.2. Null Move Pruning
+            // 5.3. Null Move Pruning
             // Performs a reduced-depth null move search to detect positions
             // where the side to move can still exceed beta after passing.
             if depth > 3
@@ -393,18 +395,35 @@ impl Position {
         let mut best_score: i32 = -INFINITY;
         let mut move_count: usize = 0;
 
-        let killers: [Option<Move>; 2] = thread.killer.get(thread.ply);
-        let mut picker: MovePicker = MovePicker::new(tt_move, killers);
+        let cont_keys: ContKeys = thread.cont_keys();
+        let mut picker: MovePicker = MovePicker::new(tt_move, thread, cont_keys);
 
-        let mut quiets_tried: Vec<Move> = Vec::with_capacity(32);
-        let mut caps_tried: Vec<Move> = Vec::with_capacity(32);
+        let mut quiets_tried: TriedMoves<64> = TriedMoves::new();
+        let mut caps_tried: TriedMoves<32> = TriedMoves::new();
 
         // 7. Main Alpha-Beta Loop
-        while let Some(mv) = picker.next(&self.board(), &thread.history) {
+        while let Some(mv) = picker.next(&self.board(), thread) {
             move_count += 1;
             let mut score: Score;
+            let board: Board = self.board();
+
             let is_quiet: bool = !mv.is_capture() && !mv.is_promotion();
-            let is_capture: bool = mv.is_capture();
+            let is_tactical: bool = !is_quiet && !mv.is_underpromotion();
+            let piece: Piece = moving_piece(&board, mv);
+            let quiet_score: i32 = if is_quiet {
+                thread.quiet_score(board.side(), piece, mv, &cont_keys)
+            } else {
+                0
+            };
+            let tried: TriedMove = TriedMove {
+                mv,
+                piece,
+                captured: if is_tactical {
+                    captured_type(&board, mv)
+                } else {
+                    PieceType::King
+                },
+            };
 
             // 8. Quiet moves pruning
             // Applies selective pruning heuristics to late or low-value quiet moves
@@ -413,7 +432,7 @@ impl Position {
                 // 8.1. History Leaf Pruning
                 // Skips quiet moves with consistently poor history scores at shallow depth,
                 // assuming they are unlikely to improve alpha.
-                if depth < 6 && thread.history.get_score(mv, self.board().side()) < -5000 {
+                if depth < 6 && quiet_score < -5000 {
                     picker.skip_quiets = true;
                 }
 
@@ -479,10 +498,9 @@ impl Position {
                         r -= in_check as i32;
                         r -= gives_check as i32;
 
-                        let history_score = thread.history.get_score(mv, self.board().side());
-                        if history_score > HIST_CLAMP / 2 {
+                        if quiet_score > HIST_CLAMP / 2 {
                             r -= 1;
-                        } else if history_score < -HIST_CLAMP / 2 {
+                        } else if quiet_score < -HIST_CLAMP / 2 {
                             r += 1;
                         }
 
@@ -540,13 +558,6 @@ impl Position {
                 return 0;
             }
 
-            // Tracks quiet moves
-            if is_quiet {
-                quiets_tried.push(mv);
-            } else if is_capture {
-                caps_tried.push(mv);
-            }
-
             // Best move and alpha update
             if score > best_score {
                 best_score = score;
@@ -561,21 +572,27 @@ impl Position {
 
                 // Beta Pruning
                 if score >= beta {
-                    if mv.is_quiet() {
-                        // Bonus to cutoff move
-                        thread.history.update_cutoff(mv, depth, self.board().side);
-
-                        // Penalties
-                        quiets_tried.pop();
-                        thread
-                            .history
-                            .update_non_cutoffs(&quiets_tried, depth, self.board().side);
-
-                        // Killers updates
-                        thread.killer.store(thread.ply, mv);
+                    // Underpromotions are left out of every history table.
+                    if is_quiet || is_tactical {
+                        thread.update_histories(
+                            board.side(),
+                            tried,
+                            is_quiet,
+                            quiets_tried.as_slice(),
+                            caps_tried.as_slice(),
+                            depth,
+                            &cont_keys,
+                        );
                     }
                     break;
                 }
+            }
+
+            // Tracks searched moves that did not produce a cutoff
+            if is_quiet {
+                quiets_tried.push(tried);
+            } else if is_tactical {
+                caps_tried.push(tried);
             }
         }
 
@@ -668,7 +685,7 @@ impl Position {
         }
 
         let alpha_orig: i32 = alpha;
-        let mut picker: MovePicker = MovePicker::new(tt_move, [None, None]);
+        let mut picker: MovePicker = MovePicker::new_qsearch(tt_move, thread.cont_keys());
         let stand_pat: Evaluation;
 
         if in_check {
@@ -720,7 +737,7 @@ impl Position {
         let mut move_count: usize = 0;
 
         // Main Quiescence Loop
-        while let Some(mv) = picker.next(&self.board(), &thread.history) {
+        while let Some(mv) = picker.next(&self.board(), thread) {
             move_count += 1;
 
             if !in_check && mv.is_capture() && !mv.is_promotion() {

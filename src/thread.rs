@@ -23,7 +23,9 @@
 
 use crate::config::MAX_PLY;
 use crate::search::{Evaluation, Score};
-use crate::tables::{CaptureHistory, ContinuationHistory, HistoryTable};
+use crate::tables::{
+    CaptureHistory, ContKey, ContinuationHistory, CountermoveTable, HistoryTable, calculate_bonus,
+};
 use crate::{
     TimeManager,
     position::Position,
@@ -32,7 +34,7 @@ use crate::{
     timer::TimeControl,
     transposition::TranspositionTable,
 };
-use laura_core::{Move, MoveList, Piece, legal_moves};
+use laura_core::{Color, Move, MoveList, Piece, PieceType, legal_moves};
 use std::{
     collections::HashMap,
     iter::once,
@@ -51,6 +53,55 @@ pub struct Stack {
     pub piece_moved: Option<Piece>,
 }
 
+// Plies back used as continuation history contexts (1 = opponent's last move).
+pub const CONT_PLIES: [usize; 3] = [1, 2, 4];
+
+// Continuation history keys for the current node, one per entry in CONT_PLIES.
+pub type ContKeys = [Option<ContKey>; 3];
+
+// A move searched at a node, with the data needed to update histories afterwards.
+#[derive(Copy, Clone, Debug)]
+pub struct TriedMove {
+    pub mv: Move,
+    pub piece: Piece,
+    // Captured piece type for tactical moves (King = nothing captured).
+    pub captured: PieceType,
+}
+
+// Fixed-size list of tried moves (no heap allocation per node).
+pub struct TriedMoves<const N: usize> {
+    moves: [TriedMove; N],
+    len: usize,
+}
+
+impl<const N: usize> TriedMoves<N> {
+    #[inline(always)]
+    pub fn new() -> Self {
+        Self {
+            moves: [TriedMove {
+                mv: Move::null(),
+                piece: Piece::WP,
+                captured: PieceType::King,
+            }; N],
+            len: 0,
+        }
+    }
+
+    // Moves beyond capacity are silently dropped (they would get only a malus).
+    #[inline(always)]
+    pub fn push(&mut self, tried: TriedMove) {
+        if self.len < N {
+            self.moves[self.len] = tried;
+            self.len += 1;
+        }
+    }
+
+    #[inline(always)]
+    pub fn as_slice(&self) -> &[TriedMove] {
+        &self.moves[..self.len]
+    }
+}
+
 #[derive(Debug)]
 pub struct Thread {
     pub id: usize,
@@ -63,6 +114,7 @@ pub struct Thread {
     pub history: HistoryTable,
     pub capture_history: CaptureHistory,
     pub continuation_history: ContinuationHistory,
+    pub countermoves: CountermoveTable,
 
     pub nodes: u64,
     pub ply: usize,
@@ -88,6 +140,7 @@ impl Thread {
             capture_history: CaptureHistory::default(),
             completed: 0,
             continuation_history: ContinuationHistory::default(),
+            countermoves: CountermoveTable::default(),
             stack: [Stack::default(); MAX_PLY],
         }
     }
@@ -132,6 +185,100 @@ impl Thread {
     pub fn pop_move(&mut self) {
         self.ply -= 1;
     }
+
+    // The move played plies_back plies before the current node, if it was a real move.
+    #[inline(always)]
+    fn previous(&self, plies_back: usize) -> Option<(Piece, Move)> {
+        if self.ply < plies_back {
+            return None;
+        }
+        let entry: &Stack = &self.stack[self.ply - plies_back];
+        match (entry.piece_moved, entry.move_made) {
+            (Some(piece), Some(mv)) => Some((piece, mv)),
+            _ => None,
+        }
+    }
+
+    // Continuation history keys for the current node (1, 2 and 4 plies back).
+    // A null move or the root boundary leaves the corresponding slot empty.
+    #[inline(always)]
+    pub fn cont_keys(&self) -> ContKeys {
+        CONT_PLIES.map(|back| {
+            self.previous(back)
+                .map(|(piece, mv)| ContinuationHistory::key(piece, mv.get_dest()))
+        })
+    }
+
+    // Countermove stored for the opponent's last move.
+    #[inline(always)]
+    pub fn countermove(&self) -> Option<Move> {
+        self.previous(1)
+            .and_then(|(piece, mv)| self.countermoves.get(piece, mv.get_dest()))
+    }
+
+    // Combined quiet-move score used for ordering, pruning and LMR.
+    // The 4-ply context is weighted at half, as it is a weaker predictor (or not).
+    #[inline(always)]
+    pub fn quiet_score(&self, side: Color, piece: Piece, mv: Move, keys: &ContKeys) -> i32 {
+        let mut score: i32 = self.history.get_score(mv, side);
+        if let Some(key) = keys[0] {
+            score += self.continuation_history.get_score(key, piece, mv);
+        }
+        if let Some(key) = keys[1] {
+            score += self.continuation_history.get_score(key, piece, mv);
+        }
+        if let Some(key) = keys[2] {
+            score += self.continuation_history.get_score(key, piece, mv) / 2;
+        }
+        score
+    }
+
+    // Updates every history table after a beta cutoff.
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_histories(
+        &mut self,
+        side: Color,
+        best: TriedMove,
+        best_is_quiet: bool,
+        quiets: &[TriedMove],
+        captures: &[TriedMove],
+        depth: usize,
+        keys: &ContKeys,
+    ) {
+        let bonus: i32 = calculate_bonus(depth as i32);
+
+        if best_is_quiet {
+            // Butterfly + continuation: bonus to the cutoff move, malus to the rest.
+            self.history.add_score(best.mv, side, bonus);
+            for key in keys.iter().flatten() {
+                self.continuation_history
+                    .add_score(*key, best.piece, best.mv, bonus);
+            }
+            for tried in quiets {
+                self.history.add_score(tried.mv, side, -bonus);
+                for key in keys.iter().flatten() {
+                    self.continuation_history
+                        .add_score(*key, tried.piece, tried.mv, -bonus);
+                }
+            }
+
+            // Refutation moves
+            self.killer.store(self.ply, best.mv);
+            if let Some((prev_piece, prev_mv)) = self.previous(1) {
+                self.countermoves
+                    .store(prev_piece, prev_mv.get_dest(), best.mv);
+            }
+        } else {
+            self.capture_history
+                .add_score(best.piece, best.mv, best.captured, bonus);
+        }
+
+        // Captures that were searched and failed to cut are always penalised.
+        for tried in captures {
+            self.capture_history
+                .add_score(tried.piece, tried.mv, tried.captured, -bonus);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -167,7 +314,7 @@ impl ThreadPool {
             self.pool.drain(desired_size..);
         }
 
-        let mut id: usize = current_size + 1;
+        let mut id: usize = self.pool.iter().map(|t| t.id).max().unwrap_or(0) + 1;
         self.pool.resize_with(desired_size, || {
             let thread_id: usize = id;
             id += 1;
@@ -192,6 +339,9 @@ impl ThreadPool {
             position.white(),
         );
 
+        self.stop.store(false, Ordering::SeqCst);
+        self.nodes.store(0, Ordering::SeqCst);
+
         let moves: MoveList = legal_moves!(&position.board());
         if moves.is_empty() {
             if position.in_check() {
@@ -205,9 +355,6 @@ impl ThreadPool {
         if moves.len() == 1 || self.main.time_manager.not_search() {
             return Some(moves[0]);
         }
-
-        self.stop.store(false, Ordering::SeqCst);
-        self.nodes.store(0, Ordering::SeqCst);
 
         let pcopy: Position = position.clone();
         thread::scope(|s| {
