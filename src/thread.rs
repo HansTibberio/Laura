@@ -51,6 +51,8 @@ pub struct Stack {
     pub static_eval: Evaluation,
     pub move_made: Option<Move>,
     pub piece_moved: Option<Piece>,
+    pub excluded: Option<Move>,
+    pub double_exts: u8,
 }
 
 // Plies back used as continuation history contexts (1 = opponent's last move).

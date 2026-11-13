@@ -21,17 +21,20 @@
 
 //! Search implementation
 
-use crate::config::HIST_CLAMP;
+use crate::config::{
+    SE_BETA_SCALE,
+    SE_DOUBLE_LIMIT, SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
+};
 use crate::movepicker::{captured_type, moving_piece};
-use crate::sse::SEE;
 use crate::thread::{ContKeys, TriedMove, TriedMoves};
 use crate::{
     config::{
-        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, LMR_TABLE, MATE, MAX_DELTA,
-        MAX_MATE, MAX_PLY,
+        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HIST_CLAMP, INFINITY, LMR_LOWER_DEPTH,
+        LMR_TABLE, LMR_THRESHOLD, MATE, MAX_DELTA, MAX_MATE, MAX_PLY,
     },
     movepicker::MovePicker,
     position::Position,
+    sse::SEE,
     thread::Thread,
     transposition::{BoundType, EntryHit, TranspositionTable},
 };
@@ -260,6 +263,17 @@ impl Position {
         // Limit the depth
         depth = depth.min(MAX_PLY - 1);
 
+        // Singular verification search: same node, with the TT move excluded.
+        let excluded: Option<Move> = thread.stack[thread.ply].excluded;
+
+        // Double extensions accumulated along the current path.
+        let double_exts: u8 = if RootNode {
+            0
+        } else {
+            thread.stack[thread.ply - 1].double_exts
+        };
+        thread.stack[thread.ply].double_exts = double_exts;
+
         if !RootNode {
             // 3. Mate Distance Pruning.
             // Narrows the search window based on the maximum achievable mate
@@ -281,9 +295,13 @@ impl Position {
         // The entry (score, bound, static eval) is usable even when it carries no move:
         // fail-low (ALL) nodes are stored with a null move. Move legality only decides
         // whether the move may be used for ordering, never whether the entry is valid.
-        let tt_entry: Option<EntryHit> = ttable
-            .probe(self.key(), thread.ply)
-            .filter(|entry| entry.bound != BoundType::None);
+        let tt_entry: Option<EntryHit> = if excluded.is_some() {
+            None
+        } else {
+            ttable
+                .probe(self.key(), thread.ply)
+                .filter(|entry| entry.bound != BoundType::None)
+        };
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
@@ -339,7 +357,7 @@ impl Position {
         };
 
         // 6. Forward static pruning techniques
-        if !in_check && !is_pv {
+        if !in_check && !is_pv && excluded.is_none() {
             // 6.1. Reverse Futility Pruning
             // Skips shallow nodes when the static evaluation already exceeds beta
             // by a safe margin, assuming the position is unlikely to fail low.
@@ -390,7 +408,7 @@ impl Position {
         // 7. Internal Iterative Reduction
         // Reduces the search depth in positions without a transposition table hit,
         // trading depth for faster move ordering and lower search overhead.
-        if !RootNode && depth >= 4 && tt_move.is_none() && !in_check {
+        if !RootNode && depth >= 4 && tt_move.is_none() && !in_check && excluded.is_none() {
             depth -= 1;
         }
 
@@ -409,6 +427,10 @@ impl Position {
         // Iterates over ordered legal moves, searches each candidate and updates
         // the best score and alpha until a beta cutoff or move exhaustion.
         while let Some(mv) = picker.next(&self.board(), thread) {
+            if excluded == Some(mv) {
+                continue;
+            }
+
             move_count += 1;
             let mut score: Score;
             let board: Board = self.board();
@@ -475,54 +497,104 @@ impl Position {
                 }
             }
 
+            // 10. Singular Extensions
+            // If the TT move is the only one that holds the score (every other move
+            // fails low against s_beta in a reduced search), it is extended.
+            let mut extension: i32 = 0;
+            if !RootNode
+                && excluded.is_none()
+                && depth >= SE_MIN_DEPTH
+                && tt_move == Some(mv)
+                && let Some(entry) = tt_entry
+                && entry.depth + SE_TT_DEPTH_MARGIN >= depth
+                && entry.bound != BoundType::UpperBound
+                && entry.score.abs() < MAX_MATE
+            {
+                let s_beta: i32 = entry.score - SE_BETA_SCALE * depth as i32;
+                let s_depth: usize = (depth - 1) / 2;
+                let mut s_pv: PrincipalVariation = PrincipalVariation::default();
+
+                thread.stack[thread.ply].excluded = Some(mv);
+                let s_score: Score = self.alphabeta::<false>(
+                    thread,
+                    ttable,
+                    s_depth,
+                    s_beta - 1,
+                    s_beta,
+                    &mut s_pv,
+                    true,
+                    cut_node,
+                );
+                thread.stack[thread.ply].excluded = None;
+
+                if thread.time_manager.stopped() {
+                    return 0;
+                }
+
+                if s_score < s_beta {
+                    // 10.1. Singular (double extension if clearly singular)
+                    extension = if !is_pv
+                        && s_score < s_beta - SE_DOUBLE_MARGIN
+                        && double_exts < SE_DOUBLE_LIMIT
+                    {
+                        2
+                    } else {
+                        1
+                    };
+                } else if !is_pv && s_beta >= beta {
+                    // 10.2. Multi-cut: another move also beats beta
+                    return s_beta;
+                } else if entry.score >= beta || cut_node {
+                    // 10.3. Negative extension: the TT move is likely not the only good move
+                    extension = -1;
+                }
+            }
+
+            let new_depth: usize = (depth as i32 - 1 + extension) as usize;
+            thread.stack[thread.ply].double_exts = double_exts + (extension == 2) as u8;
+
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
 
-            // 10. Principal Variation Search
+            // 11. Principal Variation Search
             if move_count == 1 {
-                // 10.1. First move: Full Window Search
+                // 11.1. First move: Full Window Search
                 score = -self.alphabeta::<false>(
-                    thread,
-                    ttable,
-                    depth - 1,
-                    -beta,
-                    -alpha,
-                    child_pv,
-                    true,
-                    !cut_node,
+                    thread, ttable, new_depth, -beta, -alpha, child_pv, true, !cut_node,
                 )
             } else {
-                // 10.2. Later moves: Null Window Search + Late Moves Reduction
-                let reduction: usize = if move_count >= 3 && depth >= 3 && !in_check {
-                    if is_quiet {
-                        let mut r = lmr_reduction(depth, move_count) as i32;
-                        let gives_check = self.in_check();
+                // 11.2. Later moves: Null Window Search + Late Moves Reduction
+                let reduction: usize =
+                    if move_count >= LMR_THRESHOLD && depth >= LMR_LOWER_DEPTH && !in_check {
+                        if is_quiet {
+                            let mut r: i32 = lmr_reduction(depth, move_count) as i32;
+                            let gives_check: bool = self.in_check();
 
-                        r += !is_pv as i32;
-                        r += cut_node as i32;
-                        r += !improving as i32;
-                        r -= in_check as i32;
-                        r -= gives_check as i32;
+                            r += !is_pv as i32;
+                            r += cut_node as i32;
+                            r += !improving as i32;
+                            r -= in_check as i32;
+                            r -= gives_check as i32;
 
-                        if quiet_score > HIST_CLAMP / 2 {
-                            r -= 1;
-                        } else if quiet_score < -HIST_CLAMP / 2 {
-                            r += 1;
+                            if quiet_score > HIST_CLAMP / 2 {
+                                r -= 1;
+                            } else if quiet_score < -HIST_CLAMP / 2 {
+                                r += 1;
+                            }
+
+                            r.clamp(1, (depth - 1) as i32) as usize
+                        } else {
+                            1
                         }
-
-                        r.clamp(1, (depth - 1) as i32) as usize
                     } else {
-                        1
-                    }
-                } else {
-                    0
-                };
+                        0
+                    };
 
-                // 10.3. Reduced depth + Null Window Search
+                // 11.3. Reduced depth + Null Window Search
                 score = -self.alphabeta::<false>(
                     thread,
                     ttable,
-                    depth - 1 - reduction,
+                    new_depth.saturating_sub(reduction),
                     -alpha - 1,
                     -alpha,
                     child_pv,
@@ -530,12 +602,12 @@ impl Position {
                     true,
                 );
 
-                // 10.4. If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
+                // 11.4. If it fails high, and it has been reduced, let's re-search with Full depth & Null Window
                 if score > alpha && reduction > 0 {
                     score = -self.alphabeta::<false>(
                         thread,
                         ttable,
-                        depth - 1,
+                        new_depth,
                         -alpha - 1,
                         -alpha,
                         child_pv,
@@ -544,17 +616,10 @@ impl Position {
                     );
                 }
 
-                // 10.5. If it fails high, and we are in a PV node, re-search with Full Window
+                // 11.5. If it fails high, and we are in a PV node, re-search with Full Window
                 if score > alpha && is_pv {
                     score = -self.alphabeta::<false>(
-                        thread,
-                        ttable,
-                        depth - 1,
-                        -beta,
-                        -alpha,
-                        child_pv,
-                        true,
-                        false,
+                        thread, ttable, new_depth, -beta, -alpha, child_pv, true, false,
                     );
                 }
             }
@@ -603,6 +668,10 @@ impl Position {
         }
 
         if move_count == 0 {
+            // Only the excluded move was legal: it is trivially singular.
+            if excluded.is_some() {
+                return alpha;
+            }
             if in_check {
                 // We are being mated
                 return mated_in(thread.ply);
@@ -611,7 +680,9 @@ impl Position {
             return 0;
         }
 
-        if !thread.time_manager.stopped() {
+        // A singular search result is only valid without the excluded move:
+        // it must never overwrite the real entry of this position.
+        if !thread.time_manager.stopped() && excluded.is_none() {
             let bound: BoundType = if best_score >= beta {
                 BoundType::LowerBound
             } else if best_score > alpha_orig {
@@ -828,7 +899,7 @@ impl Position {
     }
 }
 
-/// Returns true if a TT entry's bound proves the score is outside (or equal to) the window.
+// Returns true if a TT entry's bound proves the score is outside (or equal to) the window.
 #[inline(always)]
 fn tt_cutoff(entry: &EntryHit, alpha: i32, beta: i32) -> bool {
     match entry.bound {
