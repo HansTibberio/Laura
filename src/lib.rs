@@ -19,7 +19,7 @@
 
 // src/lib.rs
 
-#[allow(dead_code)]
+#![allow(dead_code)]
 
 mod config;
 mod evaluation;
