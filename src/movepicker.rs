@@ -35,7 +35,9 @@
 
 use crate::sse::SEE;
 use crate::thread::{ContKeys, Thread};
-use laura_core::{Board, Move, MoveType, Piece, PieceType, quiet_moves, tactical_moves};
+use laura_core::{
+    Board, Color, Move, MoveList, MoveType, Piece, PieceType, quiet_moves, tactical_moves,
+};
 
 const MAX_MOVES: usize = 256;
 
@@ -274,7 +276,7 @@ impl MovePicker {
     // Captures and queen promotions, scored by MVV + capture history.
     #[allow(semicolon_in_expressions_from_non_local_macros)]
     fn generate_captures(&mut self, board: &Board, thread: &Thread) {
-        let captures = tactical_moves!(board);
+        let captures: MoveList = tactical_moves!(board);
         let mut len: usize = 0;
 
         for &mv in captures.iter() {
@@ -304,8 +306,8 @@ impl MovePicker {
     // scored by butterfly + continuation history.
     #[allow(semicolon_in_expressions_from_non_local_macros)]
     fn generate_quiets(&mut self, board: &Board, thread: &Thread) {
-        let quiets = quiet_moves!(board);
-        let side = board.side();
+        let quiets: MoveList = quiet_moves!(board);
+        let side: Color = board.side();
         let mut len: usize = self.cap_end;
 
         for &mv in quiets.iter() {
