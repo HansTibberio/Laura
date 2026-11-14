@@ -56,30 +56,96 @@ You can also download a precompiled binary from the [Releases][release-link] sec
 
 ## Features
 
--   Hand-crafted static evaluation function
--   High-performance legal move generation via **laura_core**
+### Board Representation & Move Generation
+
+-   High-performance legal move generation via **laura_core** (Black Magic / PEXT bitboards)
+-   Staged move generation (tactical moves first, quiet moves only when needed)
+
+### Search
+
 -   Fail-soft negamax with alpha-beta pruning
+-   Principal Variation Search (PVS)
 -   Iterative deepening
--   Aspiration windows
--   Reverse Futility Pruning (RFP)
--   Null Move Pruning (NMP)
--   Futility Pruning
--   History Leaf Pruning
--   Late Move Pruning (LMP)
--   Principal variation search (PVS)
--   Late Move Reductions (LMR, basic implementation)
--   Lockless transposition table
--   Lazy SMP (multithreaded search)
--   Enhanced move ordering:
-    -   TT move
-    -   Good captures
-    -   Killer moves
-    -   Quiets (ordered via history heuristic table)
-    -   Bad captures
--   Static Exchange Evaluation (SEE)
+-   Aspiration windows with progressive widening
+-   Quiescence search (with check evasions)
+-   Check extensions
+-   Singular Extensions:
+    -   Double extensions (limited per search path)
+    -   Multi-cut pruning
+    -   Negative extensions
+-   Internal Iterative Reductions (IIR)
 -   Mate distance pruning
--   Internal iterative reductions (IIR)
--   Quiescence search
+-   Search stack with per-ply static evaluation and move history
+-   *Improving* heuristic (static eval compared against 2 and 4 plies back)
+-   TT-adjusted static evaluation
+-   Draw detection: fifty-move rule, repetitions and insufficient material
+
+### Pruning & Reductions
+
+-   Reverse Futility Pruning (RFP, *improving*-aware)
+-   Razoring
+-   Null Move Pruning (NMP, depth-adaptive reduction with zugzwang guard)
+-   Futility Pruning
+-   Late Move Pruning (LMP)
+-   History Leaf Pruning
+-   SEE pruning for quiet moves and captures
+-   Late Move Reductions (LMR), logarithmic table adjusted by:
+    -   PV / cut-node status
+    -   *Improving* flag
+    -   Checks given
+    -   Quiet history score
+-   Quiescence search pruning:
+    -   Delta pruning
+    -   SEE pruning
+
+### Move Ordering
+
+-   Staged move picker:
+    -   TT move
+    -   Good captures (MVV + capture history, lazy SEE)
+    -   Killer moves (2 slots)
+    -   Countermove
+    -   Quiets (butterfly history + continuation history)
+    -   Bad captures
+-   History heuristics with gravity:
+    -   Butterfly history
+    -   Capture history
+    -   Continuation history (1, 2 and 4 plies)
+-   Static Exchange Evaluation (SEE)
+
+### Evaluation
+
+-   Hand-crafted, tapered evaluation (midgame / endgame phase interpolation)
+-   Material and piece-square tables
+-   Pawn structure: passed, isolated, doubled, connected/phalanx and central pawns
+-   Piece mobility (knights, bishops, rooks, queens)
+-   Outposts (knights, bishops, rooks)
+-   Bishop pair
+-   Rooks on open / semi-open files and on the 7th rank
+-   King safety: pawn shelter, open files and pawn storms
+-   Tempo bonus
+
+### Transposition Table
+
+-   Lockless, shared across threads
+-   32-byte buckets with 3 compact 10-byte entries
+-   Age- and depth-aware replacement policy
+-   Stores static evaluation and PV-node flag
+-   Best move preserved on fail-low updates
+-   Memory prefetching
+-   Multithreaded clearing
+
+### Parallelism & Time Management
+
+-   Lazy SMP (multithreaded search) with staggered start depths
+-   Best-move selection by voting among threads at the deepest completed iteration
+-   Soft / hard time limits with move overhead
+-   Supports `depth`, `nodes`, `movetime`, `wtime/btime/winc/binc`, `movestogo` and `infinite`
+
+### UCI Interface
+
+-   Options: `Hash` (up to 1 TB) and `Threads` (up to 512)
+-   Extra commands: `perft`, `dperft` (divided perft), `eval`, `print`
 
 ## License
 
