@@ -29,7 +29,7 @@ use crate::thread::{ContKeys, TriedMove, TriedMoves};
 use crate::{
     config::{
         ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HIST_CLAMP, INFINITY, LMR_LOWER_DEPTH,
-        LMR_TABLE, LMR_THRESHOLD, MATE, MAX_DELTA, MAX_MATE, MAX_PLY,
+        LMR_TABLE, LMR_THRESHOLD, MATE, MAX_DELTA, MAX_MATE, MAX_PLY, TM_MIN_DEPTH,
     },
     movepicker::MovePicker,
     position::Position,
@@ -129,6 +129,10 @@ impl Position {
             .depth()
             .unwrap_or(MAX_PLY);
 
+        // Best move stability tracking (time management, main thread only)
+        let mut prev_best: Option<Move> = None;
+        let mut stability: usize = 0;
+
         // Main Iterative Deepening Loop
         for depth in start_depth..=max_depth {
             if thread.depth > MAX_PLY || thread.time_manager.stop_soft() {
@@ -146,6 +150,25 @@ impl Position {
 
             if T::MAIN {
                 uci_printer(thread, ttable);
+
+                // Rescale the soft limit: more time when the best move is unstable
+                // or shares the effort with alternatives, less when it is clear.
+                let best: Option<Move> = thread.principal_variation.as_slice().first().copied();
+                if best == prev_best {
+                    stability += 1;
+                } else {
+                    stability = 0;
+                    prev_best = best;
+                }
+
+                if depth >= TM_MIN_DEPTH
+                    && let Some(best) = best
+                {
+                    let best_nodes: u64 =
+                        thread.root_nodes[best.get_src() as usize][best.get_dest() as usize];
+                    let fraction: f64 = best_nodes as f64 / thread.nodes.max(1) as f64;
+                    thread.time_manager.update_soft(stability, fraction);
+                }
             }
         }
 
@@ -552,6 +575,7 @@ impl Position {
             let new_depth: usize = (depth as i32 - 1 + extension) as usize;
             thread.stack[thread.ply].double_exts = double_exts + (extension == 2) as u8;
 
+            let nodes_before: u64 = thread.nodes;
             self.push_move(mv, thread);
             ttable.prefetch(self.key());
 
@@ -623,6 +647,11 @@ impl Position {
                 }
             }
             self.pop_move(thread);
+
+            if RootNode {
+                thread.root_nodes[mv.get_src() as usize][mv.get_dest() as usize] +=
+                    thread.nodes - nodes_before;
+            }
 
             if thread.time_manager.stopped() {
                 return 0;

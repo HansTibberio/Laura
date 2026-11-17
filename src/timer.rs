@@ -22,7 +22,9 @@
 //! Timer implementation
 
 use crate::config::{
-    DEFAULT_MOVESTOGO, INCREMENT_TIME_BASE, MINIMUM_TIME, MOVE_OVERHEAD, OPTIMAL_TIME_BASE,
+    DEFAULT_MOVESTOGO, HARD_TIME_BASE, HARD_TIME_MAX_PCT, INCREMENT_TIME_BASE, MINIMUM_TIME,
+    MOVE_OVERHEAD, SOFT_TIME_BASE, TM_NODE_BASE, TM_NODE_SCALE, TM_SCALE_MAX, TM_SCALE_MIN,
+    TM_STABILITY,
 };
 use std::{
     str::{FromStr, SplitWhitespace},
@@ -143,8 +145,10 @@ pub struct TimeManager {
     time_control: TimeControl,
     // Starting Time
     start_time: Instant,
-    // Soft Limit Time
+    // Soft Limit Time (rescaled during the search)
     soft_limit: Duration,
+    // Soft Limit Time before any scaling
+    base_soft: Duration,
     // Hard Limit Time
     hard_limit: Duration,
     // Stop Timer
@@ -199,6 +203,7 @@ impl TimeManager {
             time_control,
             start_time: Instant::now(),
             soft_limit,
+            base_soft: soft_limit,
             hard_limit,
             stop,
             nodes,
@@ -287,19 +292,39 @@ impl TimeManager {
     pub fn reset_buffer(&mut self) {
         self.buffer = 0;
     }
+
+    // Rescales the soft limit from what the search sees. Called by the main
+    // thread after each completed iteration; only affects clock-based searches.
+    pub fn update_soft(&mut self, stability: usize, best_fraction: f64) {
+        if !matches!(self.time_control, TimeControl::DynamicTime { .. }) {
+            return;
+        }
+
+        let stability_factor: f64 = TM_STABILITY[stability.min(TM_STABILITY.len() - 1)];
+        let node_factor: f64 = (TM_NODE_BASE - best_fraction.clamp(0.0, 1.0)) * TM_NODE_SCALE;
+        let scale: f64 = (stability_factor * node_factor).clamp(TM_SCALE_MIN, TM_SCALE_MAX);
+
+        self.soft_limit = self.base_soft.mul_f64(scale).min(self.hard_limit);
+    }
+
+    #[cfg(test)]
+    pub fn limits(&self) -> (Duration, Duration) {
+        (self.soft_limit, self.hard_limit)
+    }
 }
 
 pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) -> (u64, u64) {
     let max_time: u64 = remaining.saturating_sub(MOVE_OVERHEAD);
+    let movestogo: u64 = movestogo.unwrap_or(DEFAULT_MOVESTOGO).max(1);
 
-    let limit_time: u64 = if let Some(movestogo) = movestogo {
-        max_time / movestogo
-    } else {
-        (max_time / DEFAULT_MOVESTOGO) + (increment * INCREMENT_TIME_BASE / 100)
-    };
+    // Ideal time for this move: an even share of the clock plus most of the increment.
+    let ideal_time: u64 = max_time / movestogo + increment * INCREMENT_TIME_BASE / 100;
 
-    let hard_time: u64 = limit_time.min(max_time * 3 / 4).max(MINIMUM_TIME);
-    let soft_time: u64 = (hard_time * OPTIMAL_TIME_BASE / 100)
+    // The hard limit leaves room for the soft limit to stretch when the search is unstable.
+    let hard_time: u64 = (ideal_time * HARD_TIME_BASE / 100)
+        .min(max_time * HARD_TIME_MAX_PCT / 100)
+        .max(MINIMUM_TIME);
+    let soft_time: u64 = (ideal_time * SOFT_TIME_BASE / 100)
         .max(MINIMUM_TIME)
         .min(hard_time);
 
@@ -308,11 +333,46 @@ pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) ->
 
 #[cfg(test)]
 mod test {
-    use crate::timer::calculate_time;
+    use crate::timer::{TimeControl, TimeManager, calculate_time};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU64},
+    };
 
     #[test]
     fn test() {
-        let (soft, hard) = calculate_time(20, 0, None);
-        println!("Soft: {}, Hard: {}", soft, hard);
+        for (time, inc) in [
+            (20, 0),
+            (1_000, 100),
+            (10_000, 100),
+            (60_000, 600),
+            (300_000, 0),
+        ] {
+            let (soft, hard) = calculate_time(time, inc, None);
+            println!("{time}+{inc}: soft {soft} ms, hard {hard} ms");
+            assert!(soft <= hard);
+        }
+    }
+
+    #[test]
+    fn soft_scaling() {
+        let control: TimeControl = "wtime 10000 btime 10000 winc 100 binc 100".parse().unwrap();
+        let mut tm = TimeManager::new(
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            control,
+            true,
+        );
+        let (base, hard) = tm.limits();
+
+        // Best move just changed and shares the nodes: think longer.
+        tm.update_soft(0, 0.3);
+        let (unstable, _) = tm.limits();
+        // Best move held for many iterations and dominates: stop earlier.
+        tm.update_soft(10, 0.95);
+        let (stable, _) = tm.limits();
+
+        println!("base {base:?} unstable {unstable:?} stable {stable:?} hard {hard:?}");
+        assert!(unstable > base && stable < base && unstable <= hard);
     }
 }

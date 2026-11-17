@@ -124,6 +124,9 @@ pub struct Thread {
     pub score: Score,
     pub depth: usize,
     pub completed: usize,
+
+    // Nodes spent under each root move, [from][to] (time management).
+    pub root_nodes: Box<[[u64; 64]; 64]>,
 }
 
 impl Thread {
@@ -144,6 +147,7 @@ impl Thread {
             continuation_history: ContinuationHistory::default(),
             countermoves: CountermoveTable::default(),
             stack: [Stack::default(); MAX_PLY],
+            root_nodes: Box::new([[0; 64]; 64]),
         }
     }
 
@@ -165,6 +169,7 @@ impl Thread {
         self.score = 0;
         self.depth = 0;
         self.completed = 0;
+        self.root_nodes.iter_mut().for_each(|row| row.fill(0));
     }
 
     #[inline(always)]

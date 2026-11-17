@@ -24,11 +24,33 @@
 use std::sync::LazyLock;
 
 // Timer parameters
+// Time reserved for communication and move execution overhead.
 pub const MOVE_OVERHEAD: u64 = 50;
+// Minimum time allocation for a single move.
 pub const MINIMUM_TIME: u64 = 30;
-pub const OPTIMAL_TIME_BASE: u64 = 65;
-pub const INCREMENT_TIME_BASE: u64 = 85;
+// Default number of moves remaining until the next time control.
 pub const DEFAULT_MOVESTOGO: u64 = 20;
+// Percentage of the increment included in the ideal move time.
+pub const INCREMENT_TIME_BASE: u64 = 75;
+// Base soft time limit as a percentage of the ideal move time.
+pub const SOFT_TIME_BASE: u64 = 60;
+// Hard time limit as a percentage of the ideal move time.
+pub const HARD_TIME_BASE: u64 = 300;
+// Maximum hard time limit as a percentage of the remaining clock.
+pub const HARD_TIME_MAX_PCT: u64 = 50;
+// Soft time scaling: base * stability * node fraction.
+// Multipliers indexed by the number of consecutive iterations retaining the same best move.
+pub const TM_STABILITY: [f64; 7] = [2.2, 1.6, 1.4, 1.1, 1.0, 0.95, 0.9];
+// Base coefficient used to calculate the node-based time scaling factor.
+pub const TM_NODE_BASE: f64 = 1.5;
+// Scaling coefficient applied to the node-based time factor.
+pub const TM_NODE_SCALE: f64 = 1.35;
+// Minimum allowed combined time scaling factor.
+pub const TM_SCALE_MIN: f64 = 0.35;
+// Maximum allowed combined time scaling factor.
+pub const TM_SCALE_MAX: f64 = 3.0;
+// Minimum search depth required before applying node-based time scaling.
+pub const TM_MIN_DEPTH: usize = 5;
 
 // Search parameters
 pub const INFINITY: i32 = 32_001;
