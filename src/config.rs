@@ -53,24 +53,39 @@ pub const TM_SCALE_MAX: f64 = 3.0;
 pub const TM_MIN_DEPTH: usize = 5;
 
 // Search parameters
+// Score representing positive or negative infinity.
 pub const INFINITY: i32 = 32_001;
+// Base score used to represent a checkmate.
 pub const MATE: i32 = 32_000;
+// Maximum mate score adjusted for the maximum search ply.
 pub const MAX_MATE: i32 = MATE - MAX_PLY as i32;
+// Maximum supported search ply.
 pub const MAX_PLY: usize = 128;
+// Initial aspiration window half-width.
 pub const ASPIRATION_MARGIN: i32 = 25;
+// Minimum search depth required to enable aspiration windows.
 pub const ASPIRATION_DEPTH_THRESHOLD: usize = 5;
+// Maximum evaluation change considered for delta pruning.
 pub const MAX_DELTA: i32 = 1_025;
 
 // Singular Extensions
+// Minimum depth required to consider a singular extension.
 pub const SE_MIN_DEPTH: usize = 8;
+// Minimum TT depth advantage required to consider a singular extension.
 pub const SE_TT_DEPTH_MARGIN: usize = 3;
+// Scaling factor applied to the singular extension beta threshold.
 pub const SE_BETA_SCALE: i32 = 2;
+// Margin used to trigger a double singular extension.
 pub const SE_DOUBLE_MARGIN: i32 = 60;
+// Maximum number of consecutive double singular extensions.
 pub const SE_DOUBLE_LIMIT: u8 = 6;
 
 // LMR values
+// Minimum move count required to apply late move reductions.
 pub const LMR_THRESHOLD: usize = 3;
+// Minimum search depth required to apply late move reductions.
 pub const LMR_LOWER_DEPTH: usize = 3;
+// Precomputed logarithmic reduction table indexed by search depth and move number.
 // (0.6897 + (depth).ln() * (moves).ln() / 2.5467)
 pub static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table: [[i32; 64]; 64] = [[0i32; 64]; 64];
@@ -83,21 +98,38 @@ pub static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
 });
 
 // Tables parameters
+// Number of killer moves stored per ply.
 pub const KILLER_SLOTS: usize = 2;
+// Maximum absolute value allowed for history scores.
 pub const HIST_CLAMP: i32 = 16384;
 
 // Transposition table parameters
+// Score threshold used to distinguish mate scores in the TT.
 pub const TTMATE: i32 = 30_000;
+// Bit offset of the generation age field in the TT entry.
 pub const AGE_OFFSET: u8 = 3;
+// Bit offset of the bound type field in the TT entry.
 pub const BOUND_OFFSET: u8 = 1;
+// Bit mask used to extract the bound type field.
 pub const BOUNDTYPE_MASK: u8 = 0x6;
+// Bit mask used to identify principal variation nodes.
 pub const PV_NODE_MASK: u8 = 0x1;
+// Number of bytes in one megabyte.
 pub const MEGABYTE: usize = 1_024 * 1_024;
+// Number of entries stored per transposition table cluster.
 pub const ENTRIES_PER_CELL: usize = 3;
+// Number of distinct transposition table generations.
 pub const MAX_AGE: u8 = 1 << 5;
+// Bit mask used to wrap the transposition table generation counter.
 pub const AGE_MASK: u8 = MAX_AGE - 1;
+// Weight assigned to the age component during TT replacement evaluation.
 pub const AGE_WEIGHT: i32 = 8;
+// Default transposition table size in megabytes.
 pub const DEFAULT_SIZE: usize = 16;
+// Mask used to extract the 64-bit data field from the packed entry.
 pub const DATA_MASK: u128 = 0xFFFF_FFFF_FFFF_FFFF;
+// Mask used to extract the 16-bit partial Zobrist key from the packed 128-bit entry
 pub const KEY_MASK: u128 = 0xFFFF;
+// Mask used to extract the lower 16 bits of the full Zobrist key.
 pub const KEY_WRAPPER_MASK: u64 = 0xFFFF;
+
