@@ -355,7 +355,22 @@ impl ThreadPool {
         }
 
         if moves.len() == 1 || self.main.time_manager.not_search() {
-            return Some(moves[0]);
+            self.main.time_manager = TimeManager::new(
+                self.stop.clone(),
+                self.nodes.clone(),
+                TimeControl::Depth(1),
+                position.white(),
+            );
+            self.main.set_up();
+            position.iterative_deepening::<MainThread>(&mut self.main, ttable);
+
+            return self
+                .main
+                .principal_variation
+                .as_slice()
+                .first()
+                .copied()
+                .or(Some(moves[0]));
         }
 
         let pcopy: Position = position.clone();
