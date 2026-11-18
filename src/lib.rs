@@ -23,6 +23,7 @@
 
 mod config;
 mod evaluation;
+mod legality;
 mod movepicker;
 mod position;
 mod search;

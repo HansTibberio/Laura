@@ -29,12 +29,13 @@ use std::{
     thread,
 };
 
-use laura_core::{AllMoves, Board, Move, gen_moves};
+use laura_core::{Board, Move};
 
 use crate::config::{
     AGE_MASK, AGE_OFFSET, AGE_WEIGHT, BOUND_OFFSET, BOUNDTYPE_MASK, DATA_MASK, ENTRIES_PER_CELL,
     KEY_MASK, KEY_WRAPPER_MASK, MAX_AGE, MEGABYTE, PV_NODE_MASK, TTMATE,
 };
+use crate::legality::is_legal_move;
 
 fn normalize_score(score: i32, ply: i32) -> i16 {
     if score >= TTMATE {
@@ -106,13 +107,13 @@ pub struct EntryHit {
 
 impl EntryHit {
     #[inline(always)]
-    /// Returns true if the stored move is legal on the given board.
+    // Returns true if the stored move is legal on the given board.
     pub fn is_legal(&self, board: &Board) -> bool {
-        !self.mv.is_null() && gen_moves::<AllMoves>(board).contains(&self.mv)
+        is_legal_move(board, self.mv)
     }
 }
 
-/// 10 Bytes Entry
+// 10 Bytes Entry
 #[repr(C, align(8))]
 #[derive(Debug, Clone, Copy)]
 pub struct Entry {
