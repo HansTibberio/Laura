@@ -327,12 +327,13 @@ impl Position {
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
-            if entry.is_legal(&self.board()) {
-                tt_move = Some(entry.mv);
-            }
-
             if !is_pv && entry.depth >= depth && tt_cutoff(&entry, alpha, beta) {
                 return entry.score;
+            }
+
+            // Only verified when the move is actually going to be used
+            if entry.is_legal(&self.board()) {
+                tt_move = Some(entry.mv);
             }
         }
 
@@ -775,17 +776,17 @@ impl Position {
         let mut tt_move: Option<Move> = None;
 
         if let Some(entry) = tt_entry {
-            // Outside of check, quiescence only searches tactical moves:
-            // a quiet TT move coming from the main search must not be played here.
-            if entry.is_legal(&self.board())
-                && (in_check || entry.mv.is_capture() || entry.mv.is_promotion())
-            {
-                tt_move = Some(entry.mv);
-            }
-
             // Any stored depth (>= 0) is enough for quiescence
             if !is_pv && tt_cutoff(&entry, alpha, beta) {
                 return entry.score;
+            }
+
+            // Outside of check, quiescence only searches tactical moves:
+            // a quiet TT move coming from the main search must not be played here.
+            if (in_check || entry.mv.is_capture() || entry.mv.is_promotion())
+                && entry.is_legal(&self.board())
+            {
+                tt_move = Some(entry.mv);
             }
         }
 

@@ -21,7 +21,11 @@
 
 //! Constant-time legality check for a single move (TT move, killers...).
 
-use laura_core::{get_bishop_attacks, get_bishop_rays, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks, get_rook_rays, BitBoard, Board, Color, Move, MoveType, Piece, PieceType, Rank, Square};
+use laura_core::{
+    BitBoard, Board, Color, Move, MoveType, Piece, PieceType, Rank, Square, get_bishop_attacks,
+    get_bishop_rays, get_king_attacks, get_knight_attacks, get_pawn_attacks, get_rook_attacks,
+    get_rook_rays,
+};
 
 // Castling geometry (standard chess). laura_core keeps these as pub(crate).
 const KING_FROM: [Square; 2] = [Square::E1, Square::E8];
