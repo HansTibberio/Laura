@@ -19,9 +19,20 @@
 
 // src/main.rs
 
-use laura_engine::{uci_listener, uci_start};
+use laura_engine::{BENCH_DEPTH, bench, uci_listener, uci_start};
 
 fn main() {
+    // `laura bench [depth]`: run the benchmark and exit (used by OpenBench)
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("bench") {
+        let depth: usize = args
+            .get(2)
+            .and_then(|depth| depth.parse().ok())
+            .unwrap_or(BENCH_DEPTH);
+        bench(depth);
+        return;
+    }
+
     uci_start();
     uci_listener();
 }

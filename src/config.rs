@@ -132,3 +132,7 @@ pub const DATA_MASK: u128 = 0xFFFF_FFFF_FFFF_FFFF;
 pub const KEY_MASK: u128 = 0xFFFF;
 // Mask used to extract the lower 16 bits of the full Zobrist key.
 pub const KEY_WRAPPER_MASK: u64 = 0xFFFF;
+
+// OpenBench
+// Default depth used by `bench` when no depth is given.
+pub const BENCH_DEPTH: usize = 13;

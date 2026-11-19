@@ -45,15 +45,23 @@ pub type Evaluation = i32;
 
 pub trait ThreadType {
     const MAIN: bool;
+    const PRINT: bool;
 }
 pub struct MainThread;
 pub struct WorkerThread;
+pub struct BenchThread;
 
 impl ThreadType for MainThread {
     const MAIN: bool = true;
+    const PRINT: bool = true;
 }
 impl ThreadType for WorkerThread {
     const MAIN: bool = false;
+    const PRINT: bool = false;
+}
+impl ThreadType for BenchThread {
+    const MAIN: bool = true;
+    const PRINT: bool = false;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -149,7 +157,9 @@ impl Position {
             thread.depth += 1;
 
             if T::MAIN {
-                uci_printer(thread, ttable);
+                if T::PRINT {
+                    uci_printer(thread, ttable);
+                }
 
                 // Rescale the soft limit: more time when the best move is unstable
                 // or shares the effort with alternatives, less when it is clear.
@@ -172,7 +182,7 @@ impl Position {
             }
         }
 
-        if T::MAIN && thread.time_manager.stopped() {
+        if T::PRINT && thread.time_manager.stopped() {
             uci_printer(thread, ttable);
         }
     }

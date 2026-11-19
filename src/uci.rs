@@ -22,6 +22,7 @@
 //! UCI protocol implementation
 
 use crate::{
+    BENCH_DEPTH, bench,
     config::DEFAULT_SIZE,
     position::Position,
     thread::ThreadPool,
@@ -61,6 +62,7 @@ pub enum UCICommand {
     SetOption { name: String, value: String },
     DividePerft(u8),
     Perft(u8),
+    Bench(usize),
     Print,
     Eval,
     License,
@@ -201,6 +203,13 @@ impl FromStr for UCICommand {
                 Ok(depth) if depth > 0 => Ok(Self::Perft(depth)),
                 _ => Err(UCIError::InvalidOptionValue),
             },
+            Some("bench") => match tokens.next() {
+                None => Ok(Self::Bench(BENCH_DEPTH)),
+                Some(depth) => match depth.parse::<usize>() {
+                    Ok(depth) if depth > 0 => Ok(Self::Bench(depth)),
+                    _ => Err(UCIError::InvalidOptionValue),
+                },
+            },
             Some("print") => Ok(Self::Print),
             Some("eval") => Ok(Self::Eval),
             Some("license") => Ok(Self::License),
@@ -320,6 +329,9 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
             }
             Ok(UCICommand::Perft(depth)) => {
                 position.perft(depth);
+            }
+            Ok(UCICommand::Bench(depth)) => {
+                bench(depth);
             }
             Ok(UCICommand::Print) => {
                 println!("{}", position.board());

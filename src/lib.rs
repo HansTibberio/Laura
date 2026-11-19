@@ -21,6 +21,7 @@
 
 #![allow(dead_code)]
 
+mod bench;
 mod config;
 mod evaluation;
 mod legality;
@@ -34,6 +35,8 @@ mod timer;
 mod transposition;
 mod uci;
 
+pub use bench::bench;
+pub use config::BENCH_DEPTH;
 pub use position::Position;
 pub use thread::ThreadPool;
 pub use timer::TimeManager;
