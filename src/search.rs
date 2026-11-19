@@ -489,12 +489,13 @@ impl Position {
             // 9. Quiet moves pruning
             // Applies selective pruning heuristics to late or low-value quiet moves
             // in order to reduce the search tree in non-tactical positions.
-            if !RootNode && !is_pv && !in_check && is_quiet {
+            if !RootNode && !is_pv && !in_check && is_quiet && best_score > -MAX_MATE {
                 // 9.1. History Leaf Pruning
                 // Skips quiet moves with consistently poor history scores at shallow depth,
                 // assuming they are unlikely to improve alpha.
-                if depth < 6 && quiet_score < -5000 {
+                if depth < 6 && quiet_score < -5000 && !picker.is_refutation(mv) {
                     picker.skip_quiets = true;
+                    continue;
                 }
 
                 // 9.2. Futility Pruning
@@ -503,6 +504,7 @@ impl Position {
                 let futility_margin: i32 = 80 * depth as i32;
                 if static_eval + futility_margin < alpha && depth <= 6 {
                     picker.skip_quiets = true;
+                    continue;
                 }
 
                 // 9.3. Late Move Pruning
@@ -510,9 +512,6 @@ impl Position {
                 // have already been searched.
                 if depth < 4 && move_count >= 9 {
                     picker.skip_quiets = true;
-                }
-
-                if picker.skip_quiets && is_quiet && best_score > -MAX_MATE {
                     continue;
                 }
             }

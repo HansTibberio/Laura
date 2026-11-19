@@ -340,6 +340,11 @@ impl MovePicker {
     fn is_generated_quiet(&self, mv: Move) -> bool {
         !mv.is_null() && self.moves[self.cap_end..self.quiet_end].contains(&mv)
     }
+
+    #[inline(always)]
+    pub fn is_refutation(&self, mv: Move) -> bool {
+        mv == self.killers[0] || mv == self.killers[1] || mv == self.counter
+    }
 }
 
 #[cfg(test)]
