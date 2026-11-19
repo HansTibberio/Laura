@@ -221,5 +221,6 @@ fn gravity(old: i32, delta: i32) -> i32 {
 
 #[inline(always)]
 pub fn calculate_bonus(depth: i32) -> i32 {
-    (300 * depth - 250).clamp(1, 2500)
+    let depth: i32 = depth.min(12);
+    (18) * (depth * depth + (2 * depth) - 2)
 }
