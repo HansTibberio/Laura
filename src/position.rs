@@ -21,8 +21,8 @@
 
 //! Position management.
 
-use crate::{evaluation, thread::Thread};
-use laura_core::{AllMoves, BitBoard, Board, Color, Move, Piece, enumerate_legal_moves};
+use crate::{evaluation, tables::CorrKeys, thread::Thread};
+use laura_core::{AllMoves, BitBoard, Board, Color, Move, Piece, PieceType, enumerate_legal_moves};
 use std::{
     mem::replace,
     time::{Duration, Instant},
@@ -74,6 +74,25 @@ fn inner_perft<const DIV: bool>(board: &Board, depth: u8) -> u64 {
     });
 
     total
+}
+
+// SplitMix64 finalizer: spreads every input bit over the whole output.
+#[inline(always)]
+const fn mix(mut z: u64) -> u64 {
+    z ^= z >> 30;
+    z = z.wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z ^= z >> 27;
+    z = z.wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+// Order-dependent hash of a set of bitboards (each one keeps its own role).
+#[inline(always)]
+fn hash_bitboards(bitboards: &[u64]) -> u64 {
+    bitboards.iter().fold(
+        0x9E37_79B9_7F4A_7C15,
+        |hash, &bitboard| mix(hash ^ bitboard),
+    )
 }
 
 #[derive(Default, Debug, Clone)]
@@ -143,6 +162,42 @@ impl Position {
     #[inline(always)]
     pub fn evaluate(&self) -> i32 {
         evaluation::evaluate(&self.board)
+    }
+
+    // Keys of the position components indexed by the correction histories.
+    #[inline(always)]
+    pub fn corr_keys(&self) -> CorrKeys {
+        let board: &Board = &self.board;
+        let white: u64 = board.sides_bitboard[Color::White as usize].0;
+        let black: u64 = board.sides_bitboard[Color::Black as usize].0;
+        let pawns: u64 = board.pieces_bitboard[PieceType::PAWN].0;
+        let knights: u64 = board.pieces_bitboard[PieceType::KNIGHT].0;
+        let bishops: u64 = board.pieces_bitboard[PieceType::BISHOP].0;
+        let rooks: u64 = board.pieces_bitboard[PieceType::ROOK].0;
+        let queens: u64 = board.pieces_bitboard[PieceType::QUEEN].0;
+        let kings: u64 = board.pieces_bitboard[PieceType::KING].0;
+
+        let non_pawn = |side: u64| -> u64 {
+            hash_bitboards(&[
+                knights & side,
+                bishops & side,
+                rooks & side,
+                queens & side,
+                kings & side,
+            ])
+        };
+
+        CorrKeys {
+            pawn: hash_bitboards(&[pawns & white, pawns & black]),
+            non_pawn: [non_pawn(white), non_pawn(black)],
+            minor: hash_bitboards(&[
+                knights & white,
+                bishops & white,
+                knights & black,
+                bishops & black,
+            ]),
+            major: hash_bitboards(&[rooks & white, queens & white, rooks & black, queens & black]),
+        }
     }
 
     #[inline(always)]

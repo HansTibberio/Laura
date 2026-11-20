@@ -36,6 +36,7 @@ use crate::config::{
     KEY_MASK, KEY_WRAPPER_MASK, MAX_AGE, MEGABYTE, PV_NODE_MASK, TTMATE,
 };
 use crate::legality::is_legal_move;
+use crate::search::{Evaluation, Score};
 
 fn normalize_score(score: i32, ply: i32) -> i16 {
     if score >= TTMATE {
@@ -98,8 +99,8 @@ impl PackedData {
 #[derive(Debug, Clone, Copy)]
 pub struct EntryHit {
     pub mv: Move,
-    pub score: i32,
-    pub evaluation: i32,
+    pub score: Score,
+    pub evaluation: Evaluation,
     pub depth: usize,
     pub bound: BoundType,
     pub pv_node: bool,

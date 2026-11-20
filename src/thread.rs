@@ -21,10 +21,14 @@
 
 //! Thread management for parallel search.
 
-use crate::config::MAX_PLY;
+use crate::config::{
+    CORR_BONUS_DIV, CORR_HIST_LIMIT, CORR_SCALE, CORR_WEIGHT_CONT, CORR_WEIGHT_MAJOR,
+    CORR_WEIGHT_MINOR, CORR_WEIGHT_NON_PAWN, CORR_WEIGHT_PAWN, MAX_MATE, MAX_PLY,
+};
 use crate::search::{Evaluation, Score};
 use crate::tables::{
-    CaptureHistory, ContKey, ContinuationHistory, CountermoveTable, HistoryTable, calculate_bonus,
+    CaptureHistory, ContKey, ContinuationCorrectionHistory, ContinuationHistory, CorrKeys,
+    CorrectionHistory, CountermoveTable, HistoryTable, calculate_bonus,
 };
 use crate::{
     TimeManager,
@@ -34,7 +38,7 @@ use crate::{
     timer::TimeControl,
     transposition::TranspositionTable,
 };
-use laura_core::{Color, Move, MoveList, Piece, PieceType, legal_moves};
+use laura_core::{Color, Move, MoveList, Piece, PieceType, Square, legal_moves};
 use std::{
     collections::HashMap,
     iter::once,
@@ -57,6 +61,9 @@ pub struct Stack {
 
 // Plies back used as continuation history contexts (1 = opponent's last move).
 pub const CONT_PLIES: [usize; 3] = [1, 2, 4];
+
+// Plies back used as continuation correction contexts for the last move.
+pub const CONT_CORR_PLIES: [usize; 2] = [2, 4];
 
 // Continuation history keys for the current node, one per entry in CONT_PLIES.
 pub type ContKeys = [Option<ContKey>; 3];
@@ -118,6 +125,12 @@ pub struct Thread {
     pub continuation_history: ContinuationHistory,
     pub countermoves: CountermoveTable,
 
+    pub pawn_corr: CorrectionHistory,
+    pub non_pawn_corr: [CorrectionHistory; 2],
+    pub minor_corr: CorrectionHistory,
+    pub major_corr: CorrectionHistory,
+    pub cont_corr: ContinuationCorrectionHistory,
+
     pub nodes: u64,
     pub ply: usize,
     pub seldepth: usize,
@@ -146,6 +159,11 @@ impl Thread {
             completed: 0,
             continuation_history: ContinuationHistory::default(),
             countermoves: CountermoveTable::default(),
+            pawn_corr: CorrectionHistory::default(),
+            non_pawn_corr: [CorrectionHistory::default(), CorrectionHistory::default()],
+            minor_corr: CorrectionHistory::default(),
+            major_corr: CorrectionHistory::default(),
+            cont_corr: ContinuationCorrectionHistory::default(),
             stack: [Stack::default(); MAX_PLY],
             root_nodes: Box::new([[0; 64]; 64]),
         }
@@ -238,6 +256,76 @@ impl Thread {
             score += self.continuation_history.get_score(key, piece, mv) / 2;
         }
         score
+    }
+
+    // Continuation correction contexts (2 and 4 plies back) and the last move (piece, to).
+    // A null move as last move disables the table; a null context only empties its slot.
+    #[inline(always)]
+    fn cont_corr_contexts(&self) -> Option<(Piece, Square, [Option<ContKey>; 2])> {
+        let (piece, mv) = self.previous(1)?;
+        let contexts = CONT_CORR_PLIES.map(|back| {
+            self.previous(back)
+                .map(|(ctx_piece, ctx_mv)| ContinuationHistory::key(ctx_piece, ctx_mv.get_dest()))
+        });
+        Some((piece, mv.get_dest(), contexts))
+    }
+
+    // Continuation correction value; the 4-ply context is read at half weight.
+    #[inline(always)]
+    fn cont_correction(&self) -> i32 {
+        let Some((piece, to, [ctx2, ctx4])) = self.cont_corr_contexts() else {
+            return 0;
+        };
+        let mut value: i32 = 0;
+        if let Some(ctx) = ctx2 {
+            value += self.cont_corr.get(ctx, piece, to);
+        }
+        if let Some(ctx) = ctx4 {
+            value += self.cont_corr.get(ctx, piece, to) / 2;
+        }
+        value
+    }
+
+    // Static evaluation adjusted by the correction histories.
+    // The result is kept out of the mate range so it is never mistaken for a mate score.
+    #[inline(always)]
+    pub fn corrected_eval(&self, raw: Evaluation, side: Color, keys: &CorrKeys) -> Evaluation {
+        let weighted: i32 = CORR_WEIGHT_PAWN * self.pawn_corr.get(side, keys.pawn)
+            + CORR_WEIGHT_NON_PAWN
+                * (self.non_pawn_corr[0].get(side, keys.non_pawn[0])
+                    + self.non_pawn_corr[1].get(side, keys.non_pawn[1]))
+            + CORR_WEIGHT_MINOR * self.minor_corr.get(side, keys.minor)
+            + CORR_WEIGHT_MAJOR * self.major_corr.get(side, keys.major)
+            + CORR_WEIGHT_CONT * self.cont_correction();
+
+        (raw + weighted / CORR_SCALE).clamp(-MAX_MATE + 1, MAX_MATE - 1)
+    }
+
+    // Moves every correction table towards the error observed at this node
+    // (search score - corrected static eval), weighted by depth.
+    #[inline(always)]
+    pub fn update_correction(
+        &mut self,
+        side: Color,
+        keys: &CorrKeys,
+        depth: usize,
+        best_score: Score,
+        static_eval: Evaluation,
+    ) {
+        let bonus: i32 = ((best_score - static_eval) * depth as i32 / CORR_BONUS_DIV)
+            .clamp(-CORR_HIST_LIMIT / 4, CORR_HIST_LIMIT / 4);
+
+        self.pawn_corr.update(side, keys.pawn, bonus);
+        self.non_pawn_corr[0].update(side, keys.non_pawn[0], bonus);
+        self.non_pawn_corr[1].update(side, keys.non_pawn[1], bonus);
+        self.minor_corr.update(side, keys.minor, bonus);
+        self.major_corr.update(side, keys.major, bonus);
+
+        if let Some((piece, to, contexts)) = self.cont_corr_contexts() {
+            for ctx in contexts.into_iter().flatten() {
+                self.cont_corr.update(ctx, piece, to, bonus);
+            }
+        }
     }
 
     // Updates every history table after a beta cutoff.

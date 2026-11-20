@@ -21,7 +21,7 @@
 
 //! Search tables for move ordering.
 
-use crate::config::{HIST_CLAMP, KILLER_SLOTS, MAX_PLY};
+use crate::config::{CORR_HIST_LIMIT, CORR_HIST_SIZE, HIST_CLAMP, KILLER_SLOTS, MAX_PLY};
 use laura_core::{Color, Move, Piece, PieceType, Square};
 
 // Killer Moves
@@ -210,6 +210,97 @@ impl CaptureHistory {
         let entry: &mut i32 =
             &mut self.table[piece.to_index()][mv.get_dest().to_index()][captured as usize];
         *entry = gravity(*entry, delta);
+    }
+}
+
+// Hashed keys of the position components used to index the correction histories.
+#[derive(Debug, Default, Copy, Clone)]
+pub struct CorrKeys {
+    pub pawn: u64,
+    // Indexed by color: knights, bishops, rooks, queens and king of that side.
+    pub non_pawn: [u64; 2],
+    // Knights and bishops of both colors.
+    pub minor: u64,
+    // Rooks and queens of both colors.
+    pub major: u64,
+}
+
+// Correction History
+// [side_to_move][key % CORR_HIST_SIZE]. Each entry tracks the signed error of the
+// static evaluation (search score - static eval) for positions sharing a key.
+#[derive(Debug, Clone)]
+pub struct CorrectionHistory {
+    table: Box<[[i16; CORR_HIST_SIZE]; 2]>,
+}
+
+const _: () = assert!(CORR_HIST_SIZE.is_power_of_two());
+
+impl Default for CorrectionHistory {
+    fn default() -> Self {
+        Self {
+            table: Box::new([[0; CORR_HIST_SIZE]; 2]),
+        }
+    }
+}
+
+impl CorrectionHistory {
+    #[inline(always)]
+    pub fn get(&self, side: Color, key: u64) -> i32 {
+        let index: usize = key as usize & (CORR_HIST_SIZE - 1);
+        unsafe { *self.table[side as usize].get_unchecked(index) as i32 }
+    }
+
+    #[inline(always)]
+    pub fn update(&mut self, side: Color, key: u64, bonus: i32) {
+        let index: usize = key as usize & (CORR_HIST_SIZE - 1);
+        let entry: &mut i16 = &mut self.table[side as usize][index];
+        *entry = corr_gravity(*entry as i32, bonus) as i16;
+    }
+}
+
+// Correction gravity: same shape as the history gravity, bounded by CORR_HIST_LIMIT.
+#[inline(always)]
+fn corr_gravity(old: i32, bonus: i32) -> i32 {
+    (old + bonus - (old * bonus.abs()) / CORR_HIST_LIMIT).clamp(-CORR_HIST_LIMIT, CORR_HIST_LIMIT)
+}
+
+// Sub-table addressed by the last move: [piece][to].
+type PieceToCorrection = [[i16; 64]; Piece::NUM_PIECES];
+
+// Continuation Correction History
+// [context_piece][context_to][last_piece][last_to], flattened on the first two indices.
+// The context is the move played 2 or 4 plies back, the last move is the one leading
+// to the current node. 12 * 64 * 12 * 64 * 2 bytes = 1.125 MB per thread.
+#[derive(Debug)]
+pub struct ContinuationCorrectionHistory {
+    table: Box<[PieceToCorrection]>,
+}
+
+impl Default for ContinuationCorrectionHistory {
+    fn default() -> Self {
+        // Allocated through a Vec so the array is never built on the stack.
+        Self {
+            table: vec![[[0; 64]; Piece::NUM_PIECES]; Piece::NUM_PIECES * 64].into_boxed_slice(),
+        }
+    }
+}
+
+impl ContinuationCorrectionHistory {
+    #[inline(always)]
+    pub fn get(&self, context: ContKey, piece: Piece, to: Square) -> i32 {
+        unsafe {
+            *self
+                .table
+                .get_unchecked(context)
+                .get_unchecked(piece.to_index())
+                .get_unchecked(to.to_index()) as i32
+        }
+    }
+
+    #[inline(always)]
+    pub fn update(&mut self, context: ContKey, piece: Piece, to: Square, bonus: i32) {
+        let entry: &mut i16 = &mut self.table[context][piece.to_index()][to.to_index()];
+        *entry = corr_gravity(*entry as i32, bonus) as i16;
     }
 }
 

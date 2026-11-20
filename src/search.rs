@@ -25,6 +25,7 @@ use crate::config::{
     SE_BETA_SCALE, SE_DOUBLE_LIMIT, SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
 };
 use crate::movepicker::{captured_type, moving_piece};
+use crate::tables::CorrKeys;
 use crate::thread::{ContKeys, TriedMove, TriedMoves};
 use crate::{
     config::{
@@ -347,44 +348,44 @@ impl Position {
             }
         }
 
+        // Static Evaluation
+        // The raw evaluation (stored in the TT) is adjusted by the correction histories;
+        // the corrected value is kept in the stack and may be refined by the TT score.
+        let corr_keys: CorrKeys = if in_check {
+            CorrKeys::default()
+        } else {
+            self.corr_keys()
+        };
+        let raw_eval: Evaluation;
         let static_eval: Evaluation = if in_check {
+            raw_eval = -INFINITY;
             thread.stack[thread.ply].static_eval = -INFINITY;
             -INFINITY
-        } else if let Some(entry) = tt_entry {
-            let tt_score: Score = entry.score;
-            let tt_evaluation: Evaluation = entry.evaluation;
-
-            thread.stack[thread.ply].static_eval = if tt_evaluation == -INFINITY {
-                self.evaluate()
-            } else {
-                tt_evaluation
-            };
-
-            match entry.bound {
-                BoundType::Exact => tt_score,
-                BoundType::LowerBound if tt_score > thread.stack[thread.ply].static_eval => {
-                    tt_score
-                }
-                BoundType::UpperBound if tt_score < thread.stack[thread.ply].static_eval => {
-                    tt_score
-                }
-                _ => thread.stack[thread.ply].static_eval,
-            }
         } else {
-            thread.stack[thread.ply].static_eval = self.evaluate();
-            thread.stack[thread.ply].static_eval
+            raw_eval = match tt_entry {
+                Some(entry) if entry.evaluation != -INFINITY => entry.evaluation,
+                _ => self.evaluate(),
+            };
+            let corrected: Evaluation =
+                thread.corrected_eval(raw_eval, self.board().side(), &corr_keys);
+            thread.stack[thread.ply].static_eval = corrected;
+
+            match tt_entry {
+                Some(entry) => tt_adjusted_eval(&entry, corrected),
+                None => corrected,
+            }
         };
 
         // 5. Improving
-        // Compares the current raw evaluation with the evaluation two or four
+        // Compares the current corrected evaluation with the evaluation two or four
         // plies earlier to determine whether the position is improving.
-        let raw_eval: Evaluation = thread.stack[thread.ply].static_eval;
+        let node_eval: Evaluation = thread.stack[thread.ply].static_eval;
         let improving: bool = if in_check {
             false
         } else if thread.ply >= 2 && thread.stack[thread.ply - 2].static_eval != -INFINITY {
-            raw_eval > thread.stack[thread.ply - 2].static_eval
+            node_eval > thread.stack[thread.ply - 2].static_eval
         } else if thread.ply >= 4 && thread.stack[thread.ply - 4].static_eval != -INFINITY {
-            raw_eval > thread.stack[thread.ply - 4].static_eval
+            node_eval > thread.stack[thread.ply - 4].static_eval
         } else {
             true
         };
@@ -729,11 +730,32 @@ impl Position {
                 BoundType::UpperBound
             };
 
+            // Correction History update
+            // Only quiet (or no) best moves, outside check, with a non-mate score whose
+            // bound is consistent with the direction of the evaluation error.
+            let node_eval: Evaluation = thread.stack[thread.ply].static_eval;
+            let tactical_best: bool = bound != BoundType::UpperBound
+                && (best_move.is_capture() || best_move.is_promotion());
+            if !in_check
+                && !tactical_best
+                && best_score.abs() < MAX_MATE
+                && !(bound == BoundType::LowerBound && best_score <= node_eval)
+                && !(bound == BoundType::UpperBound && best_score >= node_eval)
+            {
+                thread.update_correction(
+                    self.board().side(),
+                    &corr_keys,
+                    depth,
+                    best_score,
+                    node_eval,
+                );
+            }
+
             ttable.insert(
                 self.key(),
                 best_move,
                 best_score,
-                thread.stack[thread.ply].static_eval,
+                raw_eval,
                 depth,
                 bound,
                 is_pv,
@@ -803,36 +825,25 @@ impl Position {
         let mut picker: MovePicker = MovePicker::new_qsearch(tt_move, thread.cont_keys());
         let stand_pat: Evaluation;
 
+        let raw_eval: Evaluation;
         if in_check {
+            raw_eval = -INFINITY;
             thread.stack[thread.ply].static_eval = -INFINITY;
-            stand_pat = thread.stack[thread.ply].static_eval
+            stand_pat = -INFINITY;
         } else {
-            if let Some(entry) = tt_entry {
-                let tt_score: Score = entry.score;
-                let tt_evaluation: Evaluation = entry.evaluation;
+            // Corrected static evaluation (quiescence reads the tables, never updates them)
+            raw_eval = match tt_entry {
+                Some(entry) if entry.evaluation != -INFINITY => entry.evaluation,
+                _ => self.evaluate(),
+            };
+            let corrected: Evaluation =
+                thread.corrected_eval(raw_eval, self.board().side(), &self.corr_keys());
+            thread.stack[thread.ply].static_eval = corrected;
 
-                thread.stack[thread.ply].static_eval = if tt_evaluation == -INFINITY {
-                    self.evaluate()
-                } else {
-                    tt_evaluation
-                };
-
-                match entry.bound {
-                    BoundType::Exact => {
-                        stand_pat = tt_score;
-                    }
-                    BoundType::LowerBound if tt_score > thread.stack[thread.ply].static_eval => {
-                        stand_pat = tt_score
-                    }
-                    BoundType::UpperBound if tt_score < thread.stack[thread.ply].static_eval => {
-                        stand_pat = tt_score
-                    }
-                    _ => stand_pat = thread.stack[thread.ply].static_eval,
-                }
-            } else {
-                thread.stack[thread.ply].static_eval = self.evaluate();
-                stand_pat = thread.stack[thread.ply].static_eval
-            }
+            stand_pat = match tt_entry {
+                Some(entry) => tt_adjusted_eval(&entry, corrected),
+                None => corrected,
+            };
 
             // Standing Pat Pruning
             // Fail-soft beta cutoff
@@ -925,7 +936,7 @@ impl Position {
                 self.key(),
                 best_move,
                 best_score,
-                thread.stack[thread.ply].static_eval,
+                raw_eval,
                 0,
                 bound,
                 is_pv,
@@ -945,6 +956,17 @@ fn tt_cutoff(entry: &EntryHit, alpha: i32, beta: i32) -> bool {
         BoundType::LowerBound => entry.score >= beta,
         BoundType::UpperBound => entry.score <= alpha,
         BoundType::None => false,
+    }
+}
+
+// Uses the TT score instead of the static evaluation when its bound proves it more accurate.
+#[inline(always)]
+fn tt_adjusted_eval(entry: &EntryHit, eval: Evaluation) -> Evaluation {
+    match entry.bound {
+        BoundType::Exact => entry.score,
+        BoundType::LowerBound if entry.score > eval => entry.score,
+        BoundType::UpperBound if entry.score < eval => entry.score,
+        _ => eval,
     }
 }
 

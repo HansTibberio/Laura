@@ -103,6 +103,26 @@ pub const KILLER_SLOTS: usize = 2;
 // Maximum absolute value allowed for history scores.
 pub const HIST_CLAMP: i32 = 16384;
 
+// Correction History parameters
+// Number of entries per side to move in each hashed correction table (power of two).
+pub const CORR_HIST_SIZE: usize = 16_384;
+// Maximum absolute value of a correction history entry (gravity limit).
+pub const CORR_HIST_LIMIT: i32 = 1_024;
+// Divisor applied to (search score - static eval) * depth to obtain the update bonus.
+pub const CORR_BONUS_DIV: i32 = 8;
+// Divisor applied to the weighted sum of entries to obtain the correction in centipawns.
+pub const CORR_SCALE: i32 = 131_072;
+// Weight of the pawn structure correction table.
+pub const CORR_WEIGHT_PAWN: i32 = 6_400;
+// Weight of each side's non-pawn material correction table.
+pub const CORR_WEIGHT_NON_PAWN: i32 = 6_700;
+// Weight of the minor piece (knights and bishops) correction table.
+pub const CORR_WEIGHT_MINOR: i32 = 6_500;
+// Weight of the major piece (rooks and queens) correction table.
+pub const CORR_WEIGHT_MAJOR: i32 = 3_600;
+// Weight of the continuation correction table (the 4-ply context is read at half weight).
+pub const CORR_WEIGHT_CONT: i32 = 5_900;
+
 // Transposition table parameters
 // Score threshold used to distinguish mate scores in the TT.
 pub const TTMATE: i32 = 30_000;
