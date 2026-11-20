@@ -282,7 +282,7 @@ impl Position {
         // 1. Check Extension
         // Extends the search depth when the side to move is in check
         let in_check: bool = self.in_check();
-        if in_check && depth < MAX_PLY {
+        if in_check && is_pv && depth <= 1 {
             depth += 1;
         }
 
