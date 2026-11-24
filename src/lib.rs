@@ -34,6 +34,7 @@ mod thread;
 mod timer;
 mod transposition;
 mod uci;
+mod wdl;
 
 pub use bench::bench;
 pub use config::BENCH_DEPTH;
