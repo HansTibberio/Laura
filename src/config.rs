@@ -88,13 +88,26 @@ pub const SE_DOUBLE_LIMIT: u8 = 6;
 pub const LMR_THRESHOLD: usize = 3;
 // Minimum search depth required to apply late move reductions.
 pub const LMR_LOWER_DEPTH: usize = 3;
-// Precomputed logarithmic reduction table indexed by search depth and move number.
-// (0.6897 + (depth).ln() * (moves).ln() / 2.5467)
+// Reductions are computed in fractional units: LMR_SCALE = one ply.
+pub const LMR_SCALE: i32 = 1024;
+// Logarithmic base reduction: LMR_BASE + ln(depth) * ln(moves) / LMR_DIVISOR (in plies).
+pub const LMR_BASE: f64 = 0.6897;
+pub const LMR_DIVISOR: f64 = 2.5467;
+// Adjustments to the quiet-move reduction, in LMR_SCALE units.
+pub const LMR_NON_PV: i32 = 1024;
+pub const LMR_CUT_NODE: i32 = 1024;
+pub const LMR_NOT_IMPROVING: i32 = 1024;
+pub const LMR_GIVES_CHECK: i32 = 1024;
+pub const LMR_HISTORY: i32 = 1024;
+// Precomputed base reduction table indexed by search depth and move number, in LMR_SCALE units.
+// Scaling by 1024 (a power of two) is exact in f64, so floor(value / LMR_SCALE)
+// reproduces the previous whole-ply table bit for bit.
 pub static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table: [[i32; 64]; 64] = [[0i32; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (moves, value) in row.iter_mut().enumerate().skip(1) {
-            *value = (0.6897 + (depth as f64).ln() * (moves as f64).ln() / 2.5467) as i32;
+            let plies: f64 = LMR_BASE + (depth as f64).ln() * (moves as f64).ln() / LMR_DIVISOR;
+            *value = (plies * LMR_SCALE as f64) as i32;
         }
     }
     table

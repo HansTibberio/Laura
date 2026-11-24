@@ -30,7 +30,8 @@ use crate::thread::{ContKeys, TriedMove, TriedMoves};
 use crate::wdl::{to_cp, wdl, wdl_material};
 use crate::{
     config::{
-        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HIST_CLAMP, INFINITY, LMR_LOWER_DEPTH,
+        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HIST_CLAMP, INFINITY, LMR_CUT_NODE,
+        LMR_GIVES_CHECK, LMR_HISTORY, LMR_LOWER_DEPTH, LMR_NON_PV, LMR_NOT_IMPROVING, LMR_SCALE,
         LMR_TABLE, LMR_THRESHOLD, MATE, MAX_DELTA, MAX_MATE, MAX_PLY, TM_MIN_DEPTH,
     },
     movepicker::MovePicker,
@@ -606,21 +607,23 @@ impl Position {
                 let reduction: usize =
                     if move_count >= LMR_THRESHOLD && depth >= LMR_LOWER_DEPTH && !in_check {
                         if is_quiet {
-                            let mut r: i32 = lmr_reduction(depth, move_count) as i32;
+                            // Reduction in fractional units (LMR_SCALE = one ply)
+                            let mut r: i32 = lmr_base_reduction(depth, move_count);
                             let gives_check: bool = self.in_check();
 
-                            r += !is_pv as i32;
-                            r += cut_node as i32;
-                            r += !improving as i32;
-                            r -= gives_check as i32;
+                            r += LMR_NON_PV * !is_pv as i32;
+                            r += LMR_CUT_NODE * cut_node as i32;
+                            r += LMR_NOT_IMPROVING * !improving as i32;
+                            r -= LMR_GIVES_CHECK * gives_check as i32;
 
                             if quiet_score > HIST_CLAMP / 2 {
-                                r -= 1;
+                                r -= LMR_HISTORY;
                             } else if quiet_score < -HIST_CLAMP / 2 {
-                                r += 1;
+                                r += LMR_HISTORY;
                             }
 
-                            r.clamp(1, (depth - 1) as i32) as usize
+                            // Floor division back to whole plies
+                            r.div_euclid(LMR_SCALE).clamp(1, (depth - 1) as i32) as usize
                         } else {
                             1
                         }
@@ -1033,6 +1036,6 @@ fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable, material: i32) 
 }
 
 #[inline(always)]
-pub fn lmr_reduction(depth: usize, move_count: usize) -> usize {
-    LMR_TABLE[depth.min(63)][move_count.min(63)] as usize
+pub fn lmr_base_reduction(depth: usize, move_count: usize) -> i32 {
+    LMR_TABLE[depth.min(63)][move_count.min(63)]
 }
