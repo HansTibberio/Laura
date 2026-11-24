@@ -350,6 +350,7 @@ impl MovePicker {
 #[cfg(test)]
 mod test {
     use super::{MovePicker, Stage};
+    use crate::config::MOVE_OVERHEAD;
     use crate::sse::SEE;
     use crate::thread::Thread;
     use crate::timer::{TimeControl, TimeManager};
@@ -367,6 +368,7 @@ mod test {
                 Arc::new(AtomicU64::new(0)),
                 TimeControl::Infinite,
                 true,
+                MOVE_OVERHEAD,
             ),
             0,
         )

@@ -32,7 +32,7 @@ use std::{
 
 use laura_core::Board;
 
-use crate::config::DEFAULT_SIZE;
+use crate::config::{DEFAULT_SIZE, MOVE_OVERHEAD};
 use crate::{
     position::Position,
     search::BenchThread,
@@ -120,6 +120,7 @@ pub fn bench(depth: usize) -> u64 {
             shared_nodes.clone(),
             TimeControl::Depth(depth as u32),
             position.white(),
+            MOVE_OVERHEAD,
         );
         let mut thread: Thread = Thread::new(time_manager, 0);
         thread.set_up();

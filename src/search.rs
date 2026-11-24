@@ -27,6 +27,7 @@ use crate::config::{
 use crate::movepicker::{captured_type, moving_piece};
 use crate::tables::CorrKeys;
 use crate::thread::{ContKeys, TriedMove, TriedMoves};
+use crate::wdl::{to_cp, wdl, wdl_material};
 use crate::{
     config::{
         ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HIST_CLAMP, INFINITY, LMR_LOWER_DEPTH,
@@ -138,6 +139,9 @@ impl Position {
             .depth()
             .unwrap_or(MAX_PLY);
 
+        // Root material, input of the WDL model used for the UCI output.
+        let material: i32 = wdl_material(&self.board());
+
         // Best move stability tracking (time management, main thread only)
         let mut prev_best: Option<Move> = None;
         let mut stability: usize = 0;
@@ -159,7 +163,7 @@ impl Position {
 
             if T::MAIN {
                 if T::PRINT {
-                    uci_printer(thread, ttable);
+                    uci_printer(thread, ttable, material);
                 }
 
                 // Rescale the soft limit: more time when the best move is unstable
@@ -184,7 +188,7 @@ impl Position {
         }
 
         if T::PRINT && thread.time_manager.stopped() {
-            uci_printer(thread, ttable);
+            uci_printer(thread, ttable, material);
         }
     }
 
@@ -981,8 +985,10 @@ fn mated_in(ply: usize) -> i32 {
 }
 
 #[inline(always)]
-fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable) {
-    let score: String = if thread.score.abs() >= MAX_MATE {
+fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable, material: i32) {
+    let is_mate: bool = thread.score.abs() >= MAX_MATE;
+
+    let score: String = if is_mate {
         let mate_in: i32 = (MATE - thread.score.abs() + 1) / 2;
 
         if thread.score > 0 {
@@ -990,18 +996,34 @@ fn uci_printer(thread: &mut Thread, ttable: &TranspositionTable) {
         } else {
             format!("mate -{}", mate_in)
         }
+    } else if thread.options.normalize {
+        format!("cp {}", to_cp(thread.score, material))
     } else {
         format!("cp {}", thread.score)
+    };
+
+    let wdl: String = if !thread.options.show_wdl {
+        String::new()
+    } else if is_mate {
+        if thread.score > 0 {
+            " wdl 1000 0 0".to_string()
+        } else {
+            " wdl 0 0 1000".to_string()
+        }
+    } else {
+        let (w, d, l) = wdl(thread.score, material);
+        format!(" wdl {w} {d} {l}")
     };
 
     let time: u128 = thread.time_manager.elapsed().as_millis().max(1);
     let nodes: u64 = thread.time_manager.nodes();
     let nps: u128 = (nodes as u128 * 1000) / time;
     println!(
-        "info depth {} seldepth {} score {} time {} nodes {} nps {} hashfull {} {}",
+        "info depth {} seldepth {} score {}{} time {} nodes {} nps {} hashfull {} {}",
         thread.depth,
         thread.seldepth,
         score,
+        wdl,
         time,
         nodes,
         nps,

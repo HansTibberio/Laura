@@ -23,8 +23,7 @@
 
 use crate::config::{
     DEFAULT_MOVESTOGO, HARD_TIME_BASE, HARD_TIME_MAX_PCT, INCREMENT_TIME_BASE, MINIMUM_TIME,
-    MOVE_OVERHEAD, SOFT_TIME_BASE, TM_NODE_BASE, TM_NODE_SCALE, TM_SCALE_MAX, TM_SCALE_MIN,
-    TM_STABILITY,
+    SOFT_TIME_BASE, TM_NODE_BASE, TM_NODE_SCALE, TM_SCALE_MAX, TM_SCALE_MIN, TM_STABILITY,
 };
 use std::{
     str::{FromStr, SplitWhitespace},
@@ -165,12 +164,13 @@ impl TimeManager {
         nodes: Arc<AtomicU64>,
         time_control: TimeControl,
         white: bool,
+        move_overhead: u64,
     ) -> Self {
         let (soft_limit, hard_limit) = match time_control {
             TimeControl::Depth(_) => (Duration::ZERO, Duration::ZERO),
             TimeControl::MoveTime(time) => (
-                Duration::from_millis(time - MOVE_OVERHEAD.min(time)),
-                Duration::from_millis(time - MOVE_OVERHEAD.min(time)),
+                Duration::from_millis(time - move_overhead.min(time)),
+                Duration::from_millis(time - move_overhead.min(time)),
             ),
             TimeControl::DynamicTime {
                 wtime,
@@ -191,7 +191,7 @@ impl TimeManager {
                     }
                 };
 
-                let (soft, hard) = calculate_time(remaining, increment, movestogo);
+                let (soft, hard) = calculate_time(remaining, increment, movestogo, move_overhead);
 
                 (Duration::from_millis(soft), Duration::from_millis(hard))
             }
@@ -313,8 +313,13 @@ impl TimeManager {
     }
 }
 
-pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) -> (u64, u64) {
-    let max_time: u64 = remaining.saturating_sub(MOVE_OVERHEAD);
+pub fn calculate_time(
+    remaining: u64,
+    increment: u64,
+    movestogo: Option<u64>,
+    move_overhead: u64,
+) -> (u64, u64) {
+    let max_time: u64 = remaining.saturating_sub(move_overhead);
     let movestogo: u64 = movestogo.unwrap_or(DEFAULT_MOVESTOGO).max(1);
 
     // Ideal time for this move: an even share of the clock plus most of the increment.
@@ -333,6 +338,7 @@ pub fn calculate_time(remaining: u64, increment: u64, movestogo: Option<u64>) ->
 
 #[cfg(test)]
 mod test {
+    use crate::config::MOVE_OVERHEAD;
     use crate::timer::{TimeControl, TimeManager, calculate_time};
     use std::sync::{
         Arc,
@@ -348,7 +354,7 @@ mod test {
             (60_000, 600),
             (300_000, 0),
         ] {
-            let (soft, hard) = calculate_time(time, inc, None);
+            let (soft, hard) = calculate_time(time, inc, None, MOVE_OVERHEAD);
             println!("{time}+{inc}: soft {soft} ms, hard {hard} ms");
             assert!(soft <= hard);
         }
@@ -362,6 +368,7 @@ mod test {
             Arc::new(AtomicU64::new(0)),
             control,
             true,
+            MOVE_OVERHEAD,
         );
         let (base, hard) = tm.limits();
 

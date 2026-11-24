@@ -26,6 +26,9 @@ use std::sync::LazyLock;
 // Timer parameters
 // Time reserved for communication and move execution overhead.
 pub const MOVE_OVERHEAD: u64 = 50;
+// Allowed range for the UCI "Move Overhead" option.
+pub const MOVE_OVERHEAD_MIN: u64 = 0;
+pub const MOVE_OVERHEAD_MAX: u64 = 5_000;
 // Minimum time allocation for a single move.
 pub const MINIMUM_TIME: u64 = 30;
 // Default number of moves remaining until the next time control.

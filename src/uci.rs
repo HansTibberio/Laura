@@ -23,7 +23,7 @@
 
 use crate::{
     BENCH_DEPTH, bench,
-    config::DEFAULT_SIZE,
+    config::{DEFAULT_SIZE, MOVE_OVERHEAD, MOVE_OVERHEAD_MAX, MOVE_OVERHEAD_MIN},
     position::Position,
     thread::ThreadPool,
     timer::{TimeControl, TimeParserError},
@@ -184,14 +184,31 @@ impl FromStr for UCICommand {
             Some("stop") => Ok(Self::Stop),
             Some("quit") => Ok(Self::Quit),
             Some("setoption") => {
-                let name = match tokens.next() {
-                    Some("name") => tokens.next().ok_or(UCIError::NoOptionValue)?.to_string(),
-                    _ => return Err(UCIError::InvalidSetOption),
-                };
-                let value = match tokens.next() {
-                    Some("value") => tokens.next().ok_or(UCIError::NoOptionValue)?.to_string(),
-                    _ => return Err(UCIError::InvalidSetOption),
-                };
+                // setoption name <id> [value <x>]
+                // Both <id> and <x> may contain spaces; buttons carry no value.
+                if tokens.next() != Some("name") {
+                    return Err(UCIError::InvalidSetOption);
+                }
+
+                let mut name: String = String::with_capacity(32);
+                let mut value: String = String::with_capacity(32);
+                let mut in_value: bool = false;
+
+                for token in tokens {
+                    if !in_value && token == "value" {
+                        in_value = true;
+                        continue;
+                    }
+                    let target: &mut String = if in_value { &mut value } else { &mut name };
+                    if !target.is_empty() {
+                        target.push(' ');
+                    }
+                    target.push_str(token);
+                }
+
+                if name.is_empty() || (in_value && value.is_empty()) {
+                    return Err(UCIError::NoOptionValue);
+                }
 
                 Ok(Self::SetOption { name, value })
             }
@@ -216,6 +233,15 @@ impl FromStr for UCICommand {
             Some("help") => Ok(Self::Help),
             _ => Err(UCIError::UnknownCommand(s.to_string())),
         }
+    }
+}
+
+// Parses the value of a UCI "check" option.
+fn parse_check(value: &str) -> Option<bool> {
+    match value.to_ascii_lowercase().as_str() {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
     }
 }
 
@@ -274,6 +300,13 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
                 // UCI options
                 println!("option name Hash type spin default 16 min 1 max 1048576");
                 println!("option name Threads type spin default 1 min 1 max 512");
+                println!("option name Clear Hash type button");
+                println!(
+                    "option name Move Overhead type spin default {} min {} max {}",
+                    MOVE_OVERHEAD, MOVE_OVERHEAD_MIN, MOVE_OVERHEAD_MAX
+                );
+                println!("option name UCI_ShowWDL type check default false");
+                println!("option name Normalize type check default true");
 
                 println!("uciok");
             }
@@ -320,6 +353,41 @@ pub fn uci_loop(receiver: Receiver<Result<UCICommand, UCIError>>, stop: Arc<Atom
                     _ => eprintln!(
                         "info string [error] Invalid value for Threads: '{}'. Must be between {} and {}.",
                         value, THREADS_MIN, THREADS_MAX
+                    ),
+                },
+                "clear hash" => {
+                    ttable.clear(threadpool.threads);
+                    threadpool.clear();
+                    println!("info string Hash and history tables cleared");
+                }
+                "move overhead" => match value.parse::<u64>() {
+                    Ok(ms) if (MOVE_OVERHEAD_MIN..=MOVE_OVERHEAD_MAX).contains(&ms) => {
+                        threadpool.options.move_overhead = ms;
+                        println!("info string Move Overhead set to {} ms", ms);
+                    }
+                    _ => eprintln!(
+                        "info string [error] Invalid value for Move Overhead: '{}'. Must be between {} and {}.",
+                        value, MOVE_OVERHEAD_MIN, MOVE_OVERHEAD_MAX
+                    ),
+                },
+                "uci_showwdl" => match parse_check(&value) {
+                    Some(enabled) => {
+                        threadpool.options.show_wdl = enabled;
+                        println!("info string UCI_ShowWDL set to {}", enabled);
+                    }
+                    None => eprintln!(
+                        "info string [error] Invalid value for UCI_ShowWDL: '{}'. Must be true or false.",
+                        value
+                    ),
+                },
+                "normalize" => match parse_check(&value) {
+                    Some(enabled) => {
+                        threadpool.options.normalize = enabled;
+                        println!("info string Normalize set to {}", enabled);
+                    }
+                    None => eprintln!(
+                        "info string [error] Invalid value for Normalize: '{}'. Must be true or false.",
+                        value
                     ),
                 },
                 _ => eprintln!("info string [error] unrecognized option '{}'", name),

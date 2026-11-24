@@ -23,7 +23,7 @@
 
 use crate::config::{
     CORR_BONUS_DIV, CORR_HIST_LIMIT, CORR_SCALE, CORR_WEIGHT_CONT, CORR_WEIGHT_MAJOR,
-    CORR_WEIGHT_MINOR, CORR_WEIGHT_NON_PAWN, CORR_WEIGHT_PAWN, MAX_MATE, MAX_PLY,
+    CORR_WEIGHT_MINOR, CORR_WEIGHT_NON_PAWN, CORR_WEIGHT_PAWN, MAX_MATE, MAX_PLY, MOVE_OVERHEAD,
 };
 use crate::search::{Evaluation, Score};
 use crate::tables::{
@@ -48,6 +48,27 @@ use std::{
     },
     thread,
 };
+
+// Engine options set through UCI that affect the search or its output.
+#[derive(Copy, Clone, Debug)]
+pub struct SearchOptions {
+    // Milliseconds subtracted from the clock for communication lag.
+    pub move_overhead: u64,
+    // Append "wdl W D L" to the info lines.
+    pub show_wdl: bool,
+    // Report centipawns normalized so that 100 cp = 50 % win chance.
+    pub normalize: bool,
+}
+
+impl Default for SearchOptions {
+    fn default() -> Self {
+        Self {
+            move_overhead: MOVE_OVERHEAD,
+            show_wdl: false,
+            normalize: true,
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Stack {
@@ -115,6 +136,7 @@ impl<const N: usize> TriedMoves<N> {
 pub struct Thread {
     pub id: usize,
     pub time_manager: TimeManager,
+    pub options: SearchOptions,
     pub principal_variation: PrincipalVariation,
 
     pub stack: [Stack; MAX_PLY],
@@ -153,6 +175,7 @@ impl Thread {
             score: 0,
             depth: 0,
             time_manager,
+            options: SearchOptions::default(),
             killer: KillerMoves::default(),
             history: HistoryTable::default(),
             capture_history: CaptureHistory::default(),
@@ -171,7 +194,7 @@ impl Thread {
 
     pub fn smp(stop: Arc<AtomicBool>, nodes: Arc<AtomicU64>, id: usize) -> Self {
         Self::new(
-            TimeManager::new(stop, nodes, TimeControl::Infinite, false),
+            TimeManager::new(stop, nodes, TimeControl::Infinite, false, MOVE_OVERHEAD),
             id,
         )
     }
@@ -381,6 +404,7 @@ pub struct ThreadPool {
     main: Thread,
     pool: Vec<Thread>,
     pub threads: usize,
+    pub options: SearchOptions,
     stop: Arc<AtomicBool>,
     nodes: Arc<AtomicU64>,
 }
@@ -392,8 +416,18 @@ impl ThreadPool {
             main: Thread::smp(stop.clone(), nodes.clone(), 0),
             pool: Vec::new(),
             threads: 1,
+            options: SearchOptions::default(),
             stop,
             nodes,
+        }
+    }
+
+    // Resets every per-thread table (histories, killers, countermoves and
+    // correction histories) so the next search starts from a clean state.
+    pub fn clear(&mut self) {
+        self.main = Thread::smp(self.stop.clone(), self.nodes.clone(), 0);
+        for thread in self.pool.iter_mut() {
+            *thread = Thread::smp(self.stop.clone(), self.nodes.clone(), thread.id);
         }
     }
 
@@ -427,11 +461,13 @@ impl ThreadPool {
         ttable: &TranspositionTable,
         time_control: TimeControl,
     ) -> Option<Move> {
+        self.main.options = self.options;
         self.main.time_manager = TimeManager::new(
             self.stop.clone(),
             self.nodes.clone(),
             time_control,
             position.white(),
+            self.options.move_overhead,
         );
 
         self.stop.store(false, Ordering::SeqCst);
@@ -439,10 +475,13 @@ impl ThreadPool {
 
         let moves: MoveList = legal_moves!(&position.board());
         if moves.is_empty() {
+            let show_wdl: bool = self.options.show_wdl;
             if position.in_check() {
-                println!("info depth 0 score mate 0 time 0");
+                let wdl: &str = if show_wdl { " wdl 0 0 1000" } else { "" };
+                println!("info depth 0 score mate 0{wdl} time 0");
             } else {
-                println!("info depth 0 score cp 0 time 0");
+                let wdl: &str = if show_wdl { " wdl 0 1000 0" } else { "" };
+                println!("info depth 0 score cp 0{wdl} time 0");
             }
             return None;
         }
@@ -453,6 +492,7 @@ impl ThreadPool {
                 self.nodes.clone(),
                 TimeControl::Depth(1),
                 position.white(),
+                self.options.move_overhead,
             );
             self.main.set_up();
             position.iterative_deepening::<MainThread>(&mut self.main, ttable);
