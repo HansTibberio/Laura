@@ -597,8 +597,9 @@ impl Position {
             // 11. Principal Variation Search
             if move_count == 1 {
                 // 11.1. First move: Full Window Search
+                let child_cut: bool = !is_pv && !cut_node;
                 score = -self.alphabeta::<false>(
-                    thread, ttable, new_depth, -beta, -alpha, child_pv, true, !cut_node,
+                    thread, ttable, new_depth, -beta, -alpha, child_pv, true, child_cut,
                 )
             } else {
                 // 11.2. Later moves: Null Window Search + Late Moves Reduction
@@ -611,7 +612,6 @@ impl Position {
                             r += !is_pv as i32;
                             r += cut_node as i32;
                             r += !improving as i32;
-                            r -= in_check as i32;
                             r -= gives_check as i32;
 
                             if quiet_score > HIST_CLAMP / 2 {
