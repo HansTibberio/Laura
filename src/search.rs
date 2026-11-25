@@ -21,25 +21,22 @@
 
 //! Search implementation
 
-use crate::config::{
-    HLP_BASE, HLP_DEPTH_MULT, HLP_IMPROVING, HLP_MAX_DEPTH, SE_BETA_SCALE, SE_DOUBLE_LIMIT,
-    SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
-};
-use crate::movepicker::{captured_type, moving_piece};
-use crate::tables::CorrKeys;
-use crate::thread::{ContKeys, TriedMove, TriedMoves};
-use crate::wdl::{to_cp, wdl, wdl_material};
 use crate::{
     config::{
-        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, LMR_CUT_NODE, LMR_GIVES_CHECK,
-        LMR_HIST_DIV, LMR_HIST_MAX, LMR_LOWER_DEPTH, LMR_NON_PV, LMR_NOT_IMPROVING, LMR_SCALE,
-        LMR_TABLE, LMR_THRESHOLD, MATE, MAX_DELTA, MAX_MATE, MAX_PLY, TM_MIN_DEPTH,
+        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HLP_BASE, HLP_DEPTH_MULT, HLP_IMPROVING,
+        HLP_MAX_DEPTH, INFINITY, LMR_CUT_NODE, LMR_GIVES_CHECK, LMR_HIST_DIV, LMR_HIST_MAX,
+        LMR_LOWER_DEPTH, LMR_NON_PV, LMR_NOT_IMPROVING, LMR_SCALE, LMR_TABLE, LMR_THRESHOLD, MATE,
+        MAX_DELTA, MAX_MATE, MAX_PLY, SE_BETA_SCALE, SE_DOUBLE_LIMIT, SE_DOUBLE_MARGIN,
+        SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN, TM_MIN_DEPTH,
     },
     movepicker::MovePicker,
+    movepicker::{captured_type, moving_piece},
     position::Position,
     sse::SEE,
-    thread::Thread,
+    tables::CorrKeys,
+    thread::{ContKeys, Thread, TriedMove, TriedMoves},
     transposition::{BoundType, EntryHit, TranspositionTable},
+    wdl::{to_cp, wdl, wdl_material},
 };
 use laura_core::{Board, Move, MoveType, Piece, PieceType};
 use std::fmt;
