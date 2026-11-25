@@ -30,8 +30,8 @@ use crate::thread::{ContKeys, TriedMove, TriedMoves};
 use crate::wdl::{to_cp, wdl, wdl_material};
 use crate::{
     config::{
-        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, HIST_CLAMP, INFINITY, LMR_CUT_NODE,
-        LMR_GIVES_CHECK, LMR_HISTORY, LMR_LOWER_DEPTH, LMR_NON_PV, LMR_NOT_IMPROVING, LMR_SCALE,
+        ASPIRATION_DEPTH_THRESHOLD, ASPIRATION_MARGIN, INFINITY, LMR_CUT_NODE, LMR_GIVES_CHECK,
+        LMR_HIST_DIV, LMR_HIST_MAX, LMR_LOWER_DEPTH, LMR_NON_PV, LMR_NOT_IMPROVING, LMR_SCALE,
         LMR_TABLE, LMR_THRESHOLD, MATE, MAX_DELTA, MAX_MATE, MAX_PLY, TM_MIN_DEPTH,
     },
     movepicker::MovePicker,
@@ -616,11 +616,8 @@ impl Position {
                             r += LMR_NOT_IMPROVING * !improving as i32;
                             r -= LMR_GIVES_CHECK * gives_check as i32;
 
-                            if quiet_score > HIST_CLAMP / 2 {
-                                r -= LMR_HISTORY;
-                            } else if quiet_score < -HIST_CLAMP / 2 {
-                                r += LMR_HISTORY;
-                            }
+                            r -= (quiet_score * LMR_SCALE / LMR_HIST_DIV)
+                                .clamp(-LMR_HIST_MAX, LMR_HIST_MAX);
 
                             // Floor division back to whole plies
                             r.div_euclid(LMR_SCALE).clamp(1, (depth - 1) as i32) as usize

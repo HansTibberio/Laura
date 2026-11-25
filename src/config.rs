@@ -98,7 +98,10 @@ pub const LMR_NON_PV: i32 = 1024;
 pub const LMR_CUT_NODE: i32 = 1024;
 pub const LMR_NOT_IMPROVING: i32 = 1024;
 pub const LMR_GIVES_CHECK: i32 = 1024;
-pub const LMR_HISTORY: i32 = 1024;
+// Continuous history adjustment: one ply per LMR_HIST_DIV of combined quiet history
+// (butterfly + continuation 1/2 + continuation 4 at half weight), capped at LMR_HIST_MAX.
+pub const LMR_HIST_DIV: i32 = 16384;
+pub const LMR_HIST_MAX: i32 = 2048;
 // Precomputed base reduction table indexed by search depth and move number, in LMR_SCALE units.
 // Scaling by 1024 (a power of two) is exact in f64, so floor(value / LMR_SCALE)
 // reproduces the previous whole-ply table bit for bit.
