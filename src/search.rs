@@ -201,12 +201,17 @@ impl Position {
         depth: usize,
     ) -> Score {
         let mut root_pv: PrincipalVariation = PrincipalVariation::default();
-        let mut delta: i32 = ASPIRATION_MARGIN;
+        let mut delta: Score = ASPIRATION_MARGIN;
+        let mut search_depth: usize = depth;
 
-        let (mut alpha, mut beta) = if depth >= ASPIRATION_DEPTH_THRESHOLD {
+        let use_window: bool = depth >= ASPIRATION_DEPTH_THRESHOLD
+            && thread.completed > 0
+            && thread.score.abs() < MAX_MATE;
+
+        let (mut alpha, mut beta) = if use_window {
             (
-                (-INFINITY).max(thread.score - delta),
-                INFINITY.min(thread.score + delta),
+                (thread.score - delta).max(-INFINITY),
+                (thread.score + delta).min(INFINITY),
             )
         } else {
             (-INFINITY, INFINITY)
@@ -216,7 +221,7 @@ impl Position {
             let score: Score = self.alphabeta::<true>(
                 thread,
                 ttable,
-                depth,
+                search_depth,
                 alpha,
                 beta,
                 &mut root_pv,
@@ -228,22 +233,27 @@ impl Position {
                 return -INFINITY;
             }
 
-            match score {
-                s if s <= alpha => {
-                    // Fail-low, expand window down
-                    beta = (alpha + beta) / 2; // Midpoint collapse of beta
-                    alpha = (-INFINITY).max(alpha - delta);
-                }
-                s if s >= beta => {
-                    // Fail-high, expand window up
-                    beta = (INFINITY).min(beta + delta);
-                }
-                _ => {
-                    // Successful
+            if score <= alpha {
+                // Fail-low: set beta to the midpoint, widen the window below the score, and restore the search depth.
+                beta = (alpha + beta) / 2;
+                alpha = (score - delta).max(-INFINITY);
+                search_depth = depth;
+            } else if score >= beta {
+                // Fail-high: save the principal variation and reduce the search depth.
+                beta = (score + delta).min(INFINITY);
+                if !root_pv.is_empty() {
                     thread.principal_variation = root_pv;
-                    thread.completed = depth;
-                    return score;
                 }
+                if score.abs() < MAX_MATE {
+                    search_depth = search_depth
+                        .saturating_sub(1)
+                        .max(depth.saturating_sub(3))
+                        .max(1);
+                }
+            } else {
+                thread.principal_variation = root_pv;
+                thread.completed = depth;
+                return score;
             }
 
             delta += delta / 2;
