@@ -70,6 +70,14 @@ pub const ASPIRATION_MARGIN: i32 = 25;
 pub const ASPIRATION_DEPTH_THRESHOLD: usize = 5;
 // Maximum evaluation change considered for delta pruning.
 pub const MAX_DELTA: i32 = 1_025;
+// Maximum depth at which quiet moves can be pruned by their combined history score.
+pub const HLP_MAX_DEPTH: usize = 6;
+// Base margin of the history pruning threshold.
+pub const HLP_BASE: i32 = 2_048;
+// Margin added per remaining ply of depth.
+pub const HLP_DEPTH_MULT: i32 = 1_024;
+// Extra margin when the static evaluation is improving (pruned moves fail high ~3-4x more often).
+pub const HLP_IMPROVING: i32 = 2_048;
 
 // Singular Extensions
 // Minimum depth required to consider a singular extension.

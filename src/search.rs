@@ -22,7 +22,8 @@
 //! Search implementation
 
 use crate::config::{
-    SE_BETA_SCALE, SE_DOUBLE_LIMIT, SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
+    HLP_BASE, HLP_DEPTH_MULT, HLP_IMPROVING, HLP_MAX_DEPTH, SE_BETA_SCALE, SE_DOUBLE_LIMIT,
+    SE_DOUBLE_MARGIN, SE_MIN_DEPTH, SE_TT_DEPTH_MARGIN,
 };
 use crate::movepicker::{captured_type, moving_piece};
 use crate::tables::CorrKeys;
@@ -499,7 +500,10 @@ impl Position {
                 // 9.1. History Leaf Pruning
                 // Skips quiet moves with consistently poor history scores at shallow depth,
                 // assuming they are unlikely to improve alpha.
-                if depth < 6 && quiet_score < -5000 && !picker.is_refutation(mv) {
+                let hlp_margin: i32 =
+                    HLP_BASE + HLP_DEPTH_MULT * depth as i32 + HLP_IMPROVING * improving as i32;
+                if depth <= HLP_MAX_DEPTH && quiet_score < -hlp_margin && !picker.is_refutation(mv)
+                {
                     picker.skip_quiets = true;
                     continue;
                 }
